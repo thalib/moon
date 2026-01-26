@@ -12,6 +12,11 @@ When performing tasks, strictly adhere to the guidelines and structures defined 
 
 For all operations, consult these sections in `SPEC.md`:
 
+
+## Database Default
+
+SQLite is used as the default database if no other is specified. For most development and testing scenarios, you do not need to configure a database connection string unless you want to use Postgres or MySQL.
+
 ## Best Practices
 
 - Follow industry best practices for Go.

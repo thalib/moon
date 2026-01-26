@@ -8,10 +8,21 @@ This document outlines the design for a high-performance, API-first backend buil
 - **AIP-136 Custom Actions:** APIs use a colon separator (`:`) to distinguish between the resource and the action, providing a predictable and AI-friendly interface.
 - **Zero-Latency Validation:** An **In-Memory Schema Registry** (using `sync.Map`) stores the current database structure, allowing the server to validate requests in nanoseconds before hitting the disk.
 - **Resource Efficiency:** Targeted to run with a memory footprint under **50MB**, optimized for cloud-native and edge deployments.
+- **Database Default:** SQLite is used as the default database if no other is specified. For most development and testing scenarios, you do not need to configure a database connection string unless you want to use Postgres or MySQL.
+
+## Configuration Architecture
+
+The system uses a Single Source of Truth configuration loader (e.g., Viper):
+
+- **Static Config (`config.yaml` or `config.toml`):** Stores store names, currency, and business logic.
+- **Secrets (`.env`):** Sensitive credentials injected at runtime.
+- **Immutable State:** On startup, the configuration is parsed into a global, read-only `AppConfig` struct to prevent accidental runtime mutations and ensure thread safety.
 
 ## 2. API Endpoint Specification
 
 The system uses a strict pattern to ensure that AI agents and developers can interact with any collection without new code deployment.
+
+- **RESTful API:** A standardized, versioned JSON API (`/api/v1`) that follows strict predictable patterns, making it easy for AI to generate documentation.
 
 ### A. Schema Management (`/collections`)
 
@@ -57,9 +68,9 @@ The server acts as a "Smart Bridge" between the user and the database.
 
 - **Predictable Interface:** By standardizing the `:action` suffix, AI agents can guess the correct endpoint for any new collection with 100% accuracy.
 - **Statically Typed Logic:** Although data is dynamic (`map[string]any`), the internal validation logic is strictly typed, preventing AI-generated bugs from corrupting the database.
-- **TDD Foundation:** Every action is covered by integration tests that mock the database. This allows AI agents to refactor the SQL builder while ensuring no breaking changes occur in the API contract.
-
+- **Test-Driven Development:** Every module and feature is covered by automated tests (unit, integration, and API tests). Integration tests mock the database to ensure safe refactoring (e.g., of the SQL builder) and to guarantee the API contract is never broken. Tests are the foundation for all new code and refactoring.
 - **Test Coverage:** The project aims for maximum possible test coverage, including both unit and integration tests, to ensure reliability and maintainability.
+- **Strict Conventions:** By adhering to standard Go patterns, the codebase remains "recognizably structured." Both AI agents and human developers can navigate the project with 99% accuracy because files are exactly where they are expected to be.
 
 ---
 
