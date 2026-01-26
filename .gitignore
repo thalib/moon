@@ -140,3 +140,35 @@ vite.config.ts.timestamp-*
 
 out
 temp
+
+# Go specific
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go.work
+go.work.sum
+
+# Go build artifacts
+/bin/
+/moon
+/cmd/moon/moon
+
+# Test and coverage files
+coverage.txt
+coverage.html
+*.cover
+
+# SQLite databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Configuration and environment
+config.yaml
+config.toml
+.env
+.env.local

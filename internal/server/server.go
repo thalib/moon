@@ -1,0 +1,191 @@
+package server
+
+import (
+"context"
+"encoding/json"
+"fmt"
+"log"
+"net/http"
+"os"
+"os/signal"
+"syscall"
+"time"
+
+"github.com/thalib/moon/internal/config"
+"github.com/thalib/moon/internal/database"
+"github.com/thalib/moon/internal/handlers"
+"github.com/thalib/moon/internal/registry"
+)
+
+// Server represents the HTTP server
+type Server struct {
+config   *config.AppConfig
+db       database.Driver
+registry *registry.SchemaRegistry
+mux      *http.ServeMux
+server   *http.Server
+}
+
+// New creates a new server instance
+func New(cfg *config.AppConfig, db database.Driver, reg *registry.SchemaRegistry) *Server {
+mux := http.NewServeMux()
+
+srv := &Server{
+config:   cfg,
+db:       db,
+registry: reg,
+mux:      mux,
+server: &http.Server{
+Addr:         fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port),
+Handler:      mux,
+ReadTimeout:  15 * time.Second,
+WriteTimeout: 15 * time.Second,
+IdleTimeout:  60 * time.Second,
+},
+}
+
+srv.setupRoutes()
+return srv
+}
+
+// setupRoutes configures all HTTP routes
+func (s *Server) setupRoutes() {
+// Create collections handler
+collectionsHandler := handlers.NewCollectionsHandler(s.db, s.registry)
+
+// Health check endpoint
+s.mux.HandleFunc("GET /health", s.loggingMiddleware(s.healthHandler))
+
+// Schema management endpoints (collections)
+s.mux.HandleFunc("GET /api/v1/collections:list", s.loggingMiddleware(collectionsHandler.List))
+s.mux.HandleFunc("GET /api/v1/collections:get", s.loggingMiddleware(collectionsHandler.Get))
+s.mux.HandleFunc("POST /api/v1/collections:create", s.loggingMiddleware(collectionsHandler.Create))
+s.mux.HandleFunc("POST /api/v1/collections:update", s.loggingMiddleware(collectionsHandler.Update))
+s.mux.HandleFunc("POST /api/v1/collections:destroy", s.loggingMiddleware(collectionsHandler.Destroy))
+
+// Catch-all for 404
+s.mux.HandleFunc("/", s.loggingMiddleware(s.notFoundHandler))
+}
+
+// loggingMiddleware logs HTTP requests and responses
+func (s *Server) loggingMiddleware(next http.HandlerFunc) http.HandlerFunc {
+return func(w http.ResponseWriter, r *http.Request) {
+start := time.Now()
+
+// Create a response writer wrapper to capture status code
+rw := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+
+// Call the next handler
+next(rw, r)
+
+// Log the request
+duration := time.Since(start)
+log.Printf(
+"%s %s %d %s",
+r.Method,
+r.URL.Path,
+rw.statusCode,
+duration,
+)
+}
+}
+
+// responseWriter wraps http.ResponseWriter to capture status code
+type responseWriter struct {
+http.ResponseWriter
+statusCode int
+}
+
+func (rw *responseWriter) WriteHeader(code int) {
+rw.statusCode = code
+rw.ResponseWriter.WriteHeader(code)
+}
+
+// Start starts the HTTP server
+func (s *Server) Start() error {
+log.Printf("Starting server on %s", s.server.Addr)
+return s.server.ListenAndServe()
+}
+
+// Shutdown gracefully shuts down the server
+func (s *Server) Shutdown(ctx context.Context) error {
+log.Println("Shutting down server...")
+return s.server.Shutdown(ctx)
+}
+
+// Run starts the server and handles graceful shutdown
+func (s *Server) Run() error {
+// Start server in a goroutine
+serverErrors := make(chan error, 1)
+go func() {
+serverErrors <- s.Start()
+}()
+
+// Listen for interrupt signals
+shutdown := make(chan os.Signal, 1)
+signal.Notify(shutdown, os.Interrupt, syscall.SIGTERM)
+
+// Block until we receive a signal or server error
+select {
+case err := <-serverErrors:
+return fmt.Errorf("server error: %w", err)
+
+case sig := <-shutdown:
+log.Printf("Received signal: %v", sig)
+
+// Give outstanding requests a deadline for completion
+ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+defer cancel()
+
+// Shutdown the server
+if err := s.Shutdown(ctx); err != nil {
+if err := s.server.Close(); err != nil {
+return fmt.Errorf("could not stop server gracefully: %w", err)
+}
+}
+}
+
+return nil
+}
+
+// Health check handler
+func (s *Server) healthHandler(w http.ResponseWriter, r *http.Request) {
+ctx := r.Context()
+
+// Check database connection
+if err := s.db.Ping(ctx); err != nil {
+s.writeError(w, http.StatusServiceUnavailable, "Database unavailable")
+return
+}
+
+response := map[string]any{
+"status":      "healthy",
+"database":    string(s.db.Dialect()),
+"collections": s.registry.Count(),
+}
+
+s.writeJSON(w, http.StatusOK, response)
+}
+
+// Not found handler
+func (s *Server) notFoundHandler(w http.ResponseWriter, r *http.Request) {
+s.writeError(w, http.StatusNotFound, "Endpoint not found")
+}
+
+// writeJSON writes a JSON response
+func (s *Server) writeJSON(w http.ResponseWriter, statusCode int, data any) {
+w.Header().Set("Content-Type", "application/json")
+w.WriteHeader(statusCode)
+
+if err := json.NewEncoder(w).Encode(data); err != nil {
+log.Printf("Error encoding JSON response: %v", err)
+}
+}
+
+// writeError writes a JSON error response
+func (s *Server) writeError(w http.ResponseWriter, statusCode int, message string) {
+s.writeJSON(w, statusCode, map[string]any{
+"error": message,
+"code":  statusCode,
+})
+}
