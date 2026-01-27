@@ -2,17 +2,82 @@ package config
 
 import (
 	"fmt"
-	"strings"
 
-	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
 )
+
+// Defaults contains all default configuration values
+// centralized in one place to avoid hardcoded literals
+var Defaults = struct {
+	Server struct {
+		Port int
+		Host string
+	}
+	Database struct {
+		Connection string
+		Database   string
+		User       string
+		Password   string
+		Host       string
+	}
+	Logging struct {
+		Path string
+	}
+	JWT struct {
+		Expiry int
+	}
+	APIKey struct {
+		Enabled bool
+		Header  string
+	}
+	ConfigPath string
+}{
+	Server: struct {
+		Port int
+		Host string
+	}{
+		Port: 6006,
+		Host: "0.0.0.0",
+	},
+	Database: struct {
+		Connection string
+		Database   string
+		User       string
+		Password   string
+		Host       string
+	}{
+		Connection: "sqlite",
+		Database:   "/opt/moon/sqlite.db",
+		User:       "",
+		Password:   "",
+		Host:       "0.0.0.0",
+	},
+	Logging: struct {
+		Path string
+	}{
+		Path: "/var/log/moon",
+	},
+	JWT: struct {
+		Expiry int
+	}{
+		Expiry: 3600,
+	},
+	APIKey: struct {
+		Enabled bool
+		Header  string
+	}{
+		Enabled: false,
+		Header:  "X-API-KEY",
+	},
+	ConfigPath: "/etc/moon.conf",
+}
 
 // AppConfig holds the application configuration.
 // It is designed to be immutable after initialization.
 type AppConfig struct {
 	Server   ServerConfig   `mapstructure:"server"`
 	Database DatabaseConfig `mapstructure:"database"`
+	Logging  LoggingConfig  `mapstructure:"logging"`
 	JWT      JWTConfig      `mapstructure:"jwt"`
 	APIKey   APIKeyConfig   `mapstructure:"apikey"`
 }
@@ -25,16 +90,22 @@ type ServerConfig struct {
 
 // DatabaseConfig holds database connection configuration.
 type DatabaseConfig struct {
-	ConnectionString string `mapstructure:"connection_string"`
-	MaxOpenConns     int    `mapstructure:"max_open_conns"`
-	MaxIdleConns     int    `mapstructure:"max_idle_conns"`
-	ConnMaxLifetime  int    `mapstructure:"conn_max_lifetime"` // in seconds
+	Connection string `mapstructure:"connection"` // database type: sqlite, postgres, mysql
+	Database   string `mapstructure:"database"`   // database file/name
+	User       string `mapstructure:"user"`
+	Password   string `mapstructure:"password"`
+	Host       string `mapstructure:"host"`
+}
+
+// LoggingConfig holds logging configuration.
+type LoggingConfig struct {
+	Path string `mapstructure:"path"` // log directory path
 }
 
 // JWTConfig holds JWT authentication configuration.
 type JWTConfig struct {
-	Secret     string `mapstructure:"secret"`
-	Expiration int    `mapstructure:"expiration"` // in seconds
+	Secret string `mapstructure:"secret"`
+	Expiry int    `mapstructure:"expiry"` // in seconds
 }
 
 // APIKeyConfig holds API key configuration.
@@ -46,32 +117,33 @@ type APIKeyConfig struct {
 var globalConfig *AppConfig
 
 // Load initializes and loads the application configuration.
-// It reads from config files (YAML/TOML) and environment variables.
-// Environment variables take precedence over file-based configuration.
+// It reads from YAML config files only.
+// No environment variable overrides are supported (YAML-only approach).
 func Load(configPath string) (*AppConfig, error) {
-	// Load .env file if it exists (ignore error if file doesn't exist)
-	_ = godotenv.Load()
-
 	v := viper.New()
 
-	// Set default values
-	v.SetDefault("server.port", 8080)
-	v.SetDefault("server.host", "0.0.0.0")
-	v.SetDefault("database.max_open_conns", 25)
-	v.SetDefault("database.max_idle_conns", 5)
-	v.SetDefault("database.conn_max_lifetime", 300)
-	v.SetDefault("jwt.expiration", 3600)
-	v.SetDefault("apikey.enabled", false)
-	v.SetDefault("apikey.header", "X-API-Key")
+	// Set default values from centralized Defaults struct
+	v.SetDefault("server.port", Defaults.Server.Port)
+	v.SetDefault("server.host", Defaults.Server.Host)
+	v.SetDefault("database.connection", Defaults.Database.Connection)
+	v.SetDefault("database.database", Defaults.Database.Database)
+	v.SetDefault("database.user", Defaults.Database.User)
+	v.SetDefault("database.password", Defaults.Database.Password)
+	v.SetDefault("database.host", Defaults.Database.Host)
+	v.SetDefault("logging.path", Defaults.Logging.Path)
+	v.SetDefault("jwt.expiry", Defaults.JWT.Expiry)
+	v.SetDefault("apikey.enabled", Defaults.APIKey.Enabled)
+	v.SetDefault("apikey.header", Defaults.APIKey.Header)
 
-	// Configure Viper to read from config file
+	// Configure Viper to read from YAML config file only
+	// Explicitly disable TOML support
+	v.SetConfigType("yaml")
+
 	if configPath != "" {
 		v.SetConfigFile(configPath)
 	} else {
-		v.SetConfigName("config")
-		v.SetConfigType("yaml")
-		v.AddConfigPath(".")
-		v.AddConfigPath("./config")
+		// Use default config path
+		v.SetConfigFile(Defaults.ConfigPath)
 	}
 
 	// Read config file (optional - continue if file doesn't exist)
@@ -83,29 +155,11 @@ func Load(configPath string) (*AppConfig, error) {
 			}
 			return nil, fmt.Errorf("failed to read config file: %w", err)
 		}
-		// If we're searching for config files and none found, that's OK
+		// If using default path and file not found, that's OK - use defaults
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			return nil, fmt.Errorf("failed to read config file: %w", err)
 		}
 	}
-
-	// Enable environment variable override
-	v.SetEnvPrefix("MOON")
-	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	v.AutomaticEnv()
-
-	// Explicitly bind environment variables for keys we care about
-	// This is needed because Unmarshal doesn't automatically pick up env vars
-	v.BindEnv("server.port")
-	v.BindEnv("server.host")
-	v.BindEnv("database.connection_string")
-	v.BindEnv("database.max_open_conns")
-	v.BindEnv("database.max_idle_conns")
-	v.BindEnv("database.conn_max_lifetime")
-	v.BindEnv("jwt.secret")
-	v.BindEnv("jwt.expiration")
-	v.BindEnv("apikey.enabled")
-	v.BindEnv("apikey.header")
 
 	// Unmarshal configuration into struct
 	var cfg AppConfig
@@ -130,17 +184,22 @@ func validate(cfg *AppConfig) error {
 		return fmt.Errorf("invalid server port: %d", cfg.Server.Port)
 	}
 
-	// Database connection string is optional (defaults to SQLite)
-	// But if provided, it must not be empty
-	if cfg.Database.ConnectionString == "" {
-		// Set default SQLite connection
-		cfg.Database.ConnectionString = "sqlite://moon.db"
+	// Apply default database values if not provided
+	if cfg.Database.Connection == "" {
+		cfg.Database.Connection = Defaults.Database.Connection
+	}
+	if cfg.Database.Database == "" {
+		cfg.Database.Database = Defaults.Database.Database
+	}
+
+	// Apply default logging path if not provided
+	if cfg.Logging.Path == "" {
+		cfg.Logging.Path = Defaults.Logging.Path
 	}
 
 	// JWT secret is required for authentication
-	// In production, this should be set via environment variable
 	if cfg.JWT.Secret == "" {
-		return fmt.Errorf("JWT secret is required (set MOON_JWT_SECRET)")
+		return fmt.Errorf("JWT secret is required (set in config file under jwt.secret)")
 	}
 
 	return nil

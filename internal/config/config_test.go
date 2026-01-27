@@ -10,7 +10,7 @@ func TestLoad_DefaultValues(t *testing.T) {
 	// Create a temporary directory for test files
 	tmpDir := t.TempDir()
 
-	// Create an empty config file
+	// Create a minimal config file
 	configPath := filepath.Join(tmpDir, "config.yaml")
 	content := `jwt:
   secret: test-secret-key-for-testing
@@ -24,17 +24,25 @@ func TestLoad_DefaultValues(t *testing.T) {
 		t.Fatalf("Load() failed: %v", err)
 	}
 
-	// Check default values
-	if cfg.Server.Port != 8080 {
-		t.Errorf("Expected default port 8080, got %d", cfg.Server.Port)
+	// Check default values from Defaults struct
+	if cfg.Server.Port != Defaults.Server.Port {
+		t.Errorf("Expected default port %d, got %d", Defaults.Server.Port, cfg.Server.Port)
 	}
 
-	if cfg.Server.Host != "0.0.0.0" {
-		t.Errorf("Expected default host 0.0.0.0, got %s", cfg.Server.Host)
+	if cfg.Server.Host != Defaults.Server.Host {
+		t.Errorf("Expected default host %s, got %s", Defaults.Server.Host, cfg.Server.Host)
 	}
 
-	if cfg.Database.MaxOpenConns != 25 {
-		t.Errorf("Expected default max_open_conns 25, got %d", cfg.Database.MaxOpenConns)
+	if cfg.Database.Connection != Defaults.Database.Connection {
+		t.Errorf("Expected default connection %s, got %s", Defaults.Database.Connection, cfg.Database.Connection)
+	}
+
+	if cfg.Database.Database != Defaults.Database.Database {
+		t.Errorf("Expected default database %s, got %s", Defaults.Database.Database, cfg.Database.Database)
+	}
+
+	if cfg.Logging.Path != Defaults.Logging.Path {
+		t.Errorf("Expected default logging path %s, got %s", Defaults.Logging.Path, cfg.Logging.Path)
 	}
 }
 
@@ -46,11 +54,16 @@ func TestLoad_FromYAML(t *testing.T) {
   port: 9090
   host: 127.0.0.1
 database:
-  connection_string: postgres://user:pass@localhost/db
-  max_open_conns: 50
+  connection: postgres
+  database: testdb
+  user: testuser
+  password: testpass
+  host: localhost
+logging:
+  path: /tmp/logs
 jwt:
   secret: my-super-secret-key
-  expiration: 7200
+  expiry: 7200
 apikey:
   enabled: true
   header: X-Custom-Key
@@ -73,20 +86,28 @@ apikey:
 		t.Errorf("Expected host 127.0.0.1, got %s", cfg.Server.Host)
 	}
 
-	if cfg.Database.ConnectionString != "postgres://user:pass@localhost/db" {
-		t.Errorf("Expected postgres connection string, got %s", cfg.Database.ConnectionString)
+	if cfg.Database.Connection != "postgres" {
+		t.Errorf("Expected postgres connection, got %s", cfg.Database.Connection)
 	}
 
-	if cfg.Database.MaxOpenConns != 50 {
-		t.Errorf("Expected max_open_conns 50, got %d", cfg.Database.MaxOpenConns)
+	if cfg.Database.Database != "testdb" {
+		t.Errorf("Expected database testdb, got %s", cfg.Database.Database)
+	}
+
+	if cfg.Database.User != "testuser" {
+		t.Errorf("Expected user testuser, got %s", cfg.Database.User)
+	}
+
+	if cfg.Logging.Path != "/tmp/logs" {
+		t.Errorf("Expected logging path /tmp/logs, got %s", cfg.Logging.Path)
 	}
 
 	if cfg.JWT.Secret != "my-super-secret-key" {
 		t.Errorf("Expected JWT secret, got %s", cfg.JWT.Secret)
 	}
 
-	if cfg.JWT.Expiration != 7200 {
-		t.Errorf("Expected JWT expiration 7200, got %d", cfg.JWT.Expiration)
+	if cfg.JWT.Expiry != 7200 {
+		t.Errorf("Expected JWT expiry 7200, got %d", cfg.JWT.Expiry)
 	}
 
 	if !cfg.APIKey.Enabled {
@@ -98,62 +119,24 @@ apikey:
 	}
 }
 
-func TestLoad_EnvironmentOverride(t *testing.T) {
-	tmpDir := t.TempDir()
-	configPath := filepath.Join(tmpDir, "config.yaml")
-
-	content := `server:
-  port: 8080
-jwt:
-  secret: file-secret
-`
-
-	if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
-		t.Fatalf("Failed to write config file: %v", err)
-	}
-
-	// Set environment variables
-	os.Setenv("MOON_SERVER_PORT", "3000")
-	os.Setenv("MOON_JWT_SECRET", "env-secret")
-	defer os.Unsetenv("MOON_SERVER_PORT")
-	defer os.Unsetenv("MOON_JWT_SECRET")
-
-	cfg, err := Load(configPath)
-	if err != nil {
-		t.Fatalf("Load() failed: %v", err)
-	}
-
-	// Environment variables should override file config
-	if cfg.Server.Port != 3000 {
-		t.Errorf("Expected port 3000 from env, got %d", cfg.Server.Port)
-	}
-
-	if cfg.JWT.Secret != "env-secret" {
-		t.Errorf("Expected JWT secret from env, got %s", cfg.JWT.Secret)
-	}
-}
-
 func TestLoad_MissingJWTSecret(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.yaml")
 
 	content := `server:
-  port: 8080
+  port: 6006
 `
 
 	if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
 		t.Fatalf("Failed to write config file: %v", err)
 	}
-
-	// Ensure JWT secret is not in environment
-	os.Unsetenv("MOON_JWT_SECRET")
 
 	_, err := Load(configPath)
 	if err == nil {
 		t.Error("Expected error for missing JWT secret, got nil")
 	}
 
-	if err != nil && err.Error() != "config validation failed: JWT secret is required (set MOON_JWT_SECRET)" {
+	if err != nil && err.Error() != "config validation failed: JWT secret is required (set in config file under jwt.secret)" {
 		t.Errorf("Expected specific error message, got: %v", err)
 	}
 }
@@ -186,28 +169,20 @@ func TestLoad_NoConfigFile_SpecifiedPath(t *testing.T) {
 	}
 }
 
-func TestLoad_NoConfigFile_SearchPath(t *testing.T) {
+func TestLoad_NoConfigFile_DefaultPath(t *testing.T) {
 	// Reset global config for this test
 	globalConfig = nil
 
-	// Set required environment variables for the search test
-	os.Setenv("MOON_JWT_SECRET", "test-secret")
-	defer os.Unsetenv("MOON_JWT_SECRET")
-
-	// Try to load with empty path (searches for config files)
-	cfg, err := Load("")
-	if err != nil {
-		t.Fatalf("Load() should not fail when searching for config files: %v", err)
+	// Try to load with empty path (uses default path which likely doesn't exist)
+	_, err := Load("")
+	if err == nil {
+		// If default config exists, that's fine - skip this test
+		t.Skip("Default config file exists, skipping test")
 	}
 
-	// Should use default values
-	if cfg.Server.Port != 8080 {
-		t.Errorf("Expected default port 8080, got %d", cfg.Server.Port)
-	}
-
-	// JWT secret should be loaded from environment
-	if cfg.JWT.Secret != "test-secret" {
-		t.Errorf("Expected JWT secret from env, got %s", cfg.JWT.Secret)
+	// Should get error about missing config file
+	if err == nil {
+		t.Fatal("Expected error when default config file is missing")
 	}
 }
 
@@ -229,8 +204,12 @@ func TestLoad_DefaultSQLiteConnection(t *testing.T) {
 	}
 
 	// Should default to SQLite
-	if cfg.Database.ConnectionString != "sqlite://moon.db" {
-		t.Errorf("Expected default SQLite connection, got %s", cfg.Database.ConnectionString)
+	if cfg.Database.Connection != Defaults.Database.Connection {
+		t.Errorf("Expected default SQLite connection %s, got %s", Defaults.Database.Connection, cfg.Database.Connection)
+	}
+
+	if cfg.Database.Database != Defaults.Database.Database {
+		t.Errorf("Expected default database path %s, got %s", Defaults.Database.Database, cfg.Database.Database)
 	}
 }
 
@@ -272,3 +251,67 @@ jwt:
 		t.Errorf("Expected port 8888 from Get(), got %d", cfg.Server.Port)
 	}
 }
+
+func TestLoad_CustomConfigFlag(t *testing.T) {
+	tmpDir := t.TempDir()
+	customPath := filepath.Join(tmpDir, "custom-config.yaml")
+
+	content := `server:
+  port: 7777
+jwt:
+  secret: custom-secret
+`
+
+	if err := os.WriteFile(customPath, []byte(content), 0644); err != nil {
+		t.Fatalf("Failed to write config file: %v", err)
+	}
+
+	cfg, err := Load(customPath)
+	if err != nil {
+		t.Fatalf("Load() with custom path failed: %v", err)
+	}
+
+	if cfg.Server.Port != 7777 {
+		t.Errorf("Expected port 7777 from custom config, got %d", cfg.Server.Port)
+	}
+
+	if cfg.JWT.Secret != "custom-secret" {
+		t.Errorf("Expected custom-secret, got %s", cfg.JWT.Secret)
+	}
+}
+
+func TestDefaults(t *testing.T) {
+	// Verify that Defaults struct has correct values
+	if Defaults.Server.Port != 6006 {
+		t.Errorf("Expected default port 6006, got %d", Defaults.Server.Port)
+	}
+
+	if Defaults.Server.Host != "0.0.0.0" {
+		t.Errorf("Expected default host 0.0.0.0, got %s", Defaults.Server.Host)
+	}
+
+	if Defaults.Database.Connection != "sqlite" {
+		t.Errorf("Expected default connection sqlite, got %s", Defaults.Database.Connection)
+	}
+
+	if Defaults.Database.Database != "/opt/moon/sqlite.db" {
+		t.Errorf("Expected default database /opt/moon/sqlite.db, got %s", Defaults.Database.Database)
+	}
+
+	if Defaults.Logging.Path != "/var/log/moon" {
+		t.Errorf("Expected default logging path /var/log/moon, got %s", Defaults.Logging.Path)
+	}
+
+	if Defaults.JWT.Expiry != 3600 {
+		t.Errorf("Expected default JWT expiry 3600, got %d", Defaults.JWT.Expiry)
+	}
+
+	if Defaults.APIKey.Header != "X-API-KEY" {
+		t.Errorf("Expected default API key header X-API-KEY, got %s", Defaults.APIKey.Header)
+	}
+
+	if Defaults.ConfigPath != "/etc/moon.conf" {
+		t.Errorf("Expected default config path /etc/moon.conf, got %s", Defaults.ConfigPath)
+	}
+}
+

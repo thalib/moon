@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/thalib/moon/internal/config"
 	"github.com/thalib/moon/internal/database"
@@ -16,22 +15,24 @@ import (
 func setupTestServer(t *testing.T) *Server {
 	cfg := &config.AppConfig{
 		Server: config.ServerConfig{
-			Port: 8080,
+			Port: 6006,
 			Host: "0.0.0.0",
 		},
 		Database: config.DatabaseConfig{
-			ConnectionString: "sqlite://:memory:",
-			MaxOpenConns:     10,
-			MaxIdleConns:     5,
-			ConnMaxLifetime:  300,
+			Connection: "sqlite",
+			Database:   ":memory:",
+		},
+		Logging: config.LoggingConfig{
+			Path: "/tmp",
+		},
+		JWT: config.JWTConfig{
+			Secret: "test-secret",
+			Expiry: 3600,
 		},
 	}
 
 	dbConfig := database.Config{
-		ConnectionString: cfg.Database.ConnectionString,
-		MaxOpenConns:     cfg.Database.MaxOpenConns,
-		MaxIdleConns:     cfg.Database.MaxIdleConns,
-		ConnMaxLifetime:  time.Duration(cfg.Database.ConnMaxLifetime) * time.Second,
+		ConnectionString: "sqlite://:memory:",
 	}
 
 	driver, err := database.NewDriver(dbConfig)

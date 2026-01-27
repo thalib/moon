@@ -2,9 +2,9 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/thalib/moon/internal/config"
 	"github.com/thalib/moon/internal/database"
@@ -13,24 +13,25 @@ import (
 )
 
 func main() {
+	// Parse command-line flags
+	configPath := flag.String("config", "", "path to configuration file (default: /etc/moon.conf)")
+	flag.Parse()
+
 	fmt.Println("Moon - Dynamic Headless Engine")
 
 	// Load configuration
-	cfg, err := config.Load("")
+	cfg, err := config.Load(*configPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to load configuration: %v\n", err)
 		os.Exit(1)
 	}
 
 	fmt.Printf("Server will start on %s:%d\n", cfg.Server.Host, cfg.Server.Port)
-	fmt.Printf("Database: %s\n", cfg.Database.ConnectionString)
+	fmt.Printf("Database: %s (%s)\n", cfg.Database.Connection, cfg.Database.Database)
 
 	// Initialize database driver
 	dbConfig := database.Config{
-		ConnectionString: cfg.Database.ConnectionString,
-		MaxOpenConns:     cfg.Database.MaxOpenConns,
-		MaxIdleConns:     cfg.Database.MaxIdleConns,
-		ConnMaxLifetime:  time.Duration(cfg.Database.ConnMaxLifetime) * time.Second,
+		ConnectionString: buildConnectionString(cfg.Database),
 	}
 
 	driver, err := database.NewDriver(dbConfig)
@@ -61,4 +62,25 @@ func main() {
 	}
 
 	fmt.Println("Server stopped gracefully")
+}
+
+// buildConnectionString creates a database connection string from DatabaseConfig
+func buildConnectionString(db config.DatabaseConfig) string {
+	switch db.Connection {
+	case "sqlite":
+		return fmt.Sprintf("sqlite://%s", db.Database)
+	case "postgres":
+		if db.User != "" && db.Password != "" {
+			return fmt.Sprintf("postgres://%s:%s@%s/%s", db.User, db.Password, db.Host, db.Database)
+		}
+		return fmt.Sprintf("postgres://%s/%s", db.Host, db.Database)
+	case "mysql":
+		if db.User != "" && db.Password != "" {
+			return fmt.Sprintf("mysql://%s:%s@%s/%s", db.User, db.Password, db.Host, db.Database)
+		}
+		return fmt.Sprintf("mysql://%s/%s", db.Host, db.Database)
+	default:
+		// Default to SQLite
+		return fmt.Sprintf("sqlite://%s", db.Database)
+	}
 }

@@ -1,41 +1,24 @@
 # Moon - Dynamic Headless Engine Configuration
-# Copy this file to config.yaml and adjust values as needed
+# Development configuration file example
+# Copy this file to config.yaml for local development
 
 server:
-  # HTTP server host address
   host: "0.0.0.0"
-  
-  # HTTP server port
-  port: 8080
+  port: 6006
 
 database:
-  # Database connection string
-  # Supported formats:
-  # - SQLite: "sqlite://moon.db" or "moon.db" (default)
-  # - PostgreSQL: "postgres://user:password@localhost:5432/dbname"
-  # - MySQL: "mysql://user:password@localhost:3306/dbname"
-  connection_string: "sqlite://moon.db"
-  
-  # Maximum number of open connections to the database
-  max_open_conns: 25
-  
-  # Maximum number of idle connections
-  max_idle_conns: 5
-  
-  # Maximum connection lifetime in seconds
-  conn_max_lifetime: 300
+  connection: "sqlite"
+  database: "moon.db"
+
+logging:
+  path: "./logs"
 
 jwt:
-  # JWT secret for token signing (REQUIRED in production)
-  # Should be set via environment variable MOON_JWT_SECRET
-  secret: "your-secret-key-here-change-in-production"
-  
-  # Token expiration time in seconds (default: 3600 = 1 hour)
-  expiration: 3600
+  # For development only - use a secure secret in production
+  secret: "dev-secret-key-change-in-production"
+  expiry: 3600
 
 apikey:
-  # Enable API key authentication
   enabled: false
-  
-  # HTTP header name for API key
-  header: "X-API-Key"
+  header: "X-API-KEY"
+
