@@ -302,9 +302,11 @@ func GetAPIKeyInfo(ctx context.Context) (*APIKeyInfo, bool) {
 }
 
 // ValidateAPIKeyFormat validates that an API key has a proper format
+// Keys should be at least 40 characters (recommended: 64) for sufficient entropy
 func ValidateAPIKeyFormat(key string) bool {
-	// API keys should be at least 32 characters and contain only alphanumeric characters
-	if len(key) < 32 {
+	// API keys should be at least 40 characters for strong security
+	// (provides ~240 bits of entropy with base62 encoding)
+	if len(key) < 40 {
 		return false
 	}
 	for _, c := range key {

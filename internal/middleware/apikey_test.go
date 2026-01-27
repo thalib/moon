@@ -466,12 +466,13 @@ func TestValidateAPIKeyFormat(t *testing.T) {
 		key      string
 		expected bool
 	}{
-		{"Valid key", "abcdefghij1234567890ABCDEFGHIJ12", true},
-		{"Valid with dashes", "abc-def-ghi-123-456-789-0AB-CD-EF", true},
-		{"Valid with underscores", "abc_def_ghi_123_456_789_0AB_CD_EF", true},
+		{"Valid key 40 chars", "abcdefghij1234567890ABCDEFGHIJ1234567890", true},
+		{"Valid with dashes 40 chars", "abc-def-ghi-123-456-789-0AB-CD-EF-XYZ-123", true},
+		{"Valid with underscores 40 chars", "abc_def_ghi_123_456_789_0AB_CD_EF_XYZ_123", true},
+		{"Too short 32 chars", "abcdefghij1234567890ABCDEFGHIJ12", false},
 		{"Too short", "short", false},
-		{"Contains special chars", "abc!def@ghi#123$456%789^0AB&CD*EF", false},
-		{"Contains spaces", "abc def ghi 123 456 789 0AB CD EF", false},
+		{"Contains special chars", "abc!def@ghi#123$456%789^0AB&CD*EF!123456", false},
+		{"Contains spaces", "abc def ghi 123 456 789 0AB CD EF XYZ 123", false},
 		{"Empty", "", false},
 	}
 

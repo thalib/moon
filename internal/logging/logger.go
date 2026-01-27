@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -103,13 +104,13 @@ func NewLogger(config LoggerConfig) *Logger {
 		logger = logger.With().Str("version", config.Version).Logger()
 	}
 
-	// Build sensitive fields map
+	// Build sensitive fields map (case-insensitive)
 	sensitiveFields := make(map[string]bool)
 	for _, field := range config.SensitiveFields {
-		sensitiveFields[field] = true
+		sensitiveFields[strings.ToLower(field)] = true
 	}
 
-	// Add default sensitive fields
+	// Add default sensitive fields (lowercase for case-insensitive matching)
 	defaultSensitive := []string{"password", "token", "secret", "api_key", "apikey", "authorization"}
 	for _, field := range defaultSensitive {
 		sensitiveFields[field] = true
@@ -152,9 +153,9 @@ func (l *Logger) WithFields(fields map[string]any) *Logger {
 	return &newLogger
 }
 
-// maskSensitive masks sensitive field values
+// maskSensitive masks sensitive field values (case-insensitive)
 func (l *Logger) maskSensitive(key string, value any) any {
-	if l.sensitiveFields[key] {
+	if l.sensitiveFields[strings.ToLower(key)] {
 		return "***REDACTED***"
 	}
 	return value

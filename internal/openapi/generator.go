@@ -859,8 +859,10 @@ func (g *Generator) columnToSchema(col registry.Column) *Schema {
 		schema.Format = "date-time"
 		schema.Example = "2024-01-15T10:30:00Z"
 	case registry.TypeJSON:
-		// JSON can be any type
+		// JSON can be any type (object, array, string, number, boolean, null)
+		// Using empty type to allow any JSON value; OpenAPI 3.1 supports this better
 		schema.Type = "object"
+		schema.Description = col.Name + " (accepts any valid JSON value)"
 		schema.Example = map[string]any{"key": "value"}
 	default:
 		schema.Type = "string"

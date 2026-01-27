@@ -217,7 +217,7 @@ func GenerateToken(secret string, userID string, roles []string, expiration time
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(now.Add(expiration)),
 			IssuedAt:  jwt.NewNumericDate(now),
-			NotBefore: jwt.NewNumericDate(now),
+			NotBefore: jwt.NewNumericDate(now.Add(-30 * time.Second)), // Allow 30s clock skew
 		},
 	}
 

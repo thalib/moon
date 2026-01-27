@@ -2,9 +2,11 @@ package shutdown
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"sync"
@@ -261,7 +263,8 @@ func (gs *GracefulServer) Run() error {
 	serverErr := make(chan error, 1)
 	go func() {
 		err := gs.startFunc()
-		if err != nil && err.Error() != "http: Server closed" {
+		// http.Server.Shutdown() returns http.ErrServerClosed when closed gracefully
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			serverErr <- err
 		}
 		close(serverErr)

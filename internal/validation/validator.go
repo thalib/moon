@@ -282,14 +282,16 @@ func (v *SchemaValidator) validateType(fieldName string, value any, expectedType
 }
 
 // validateStringConstraints validates string-specific constraints
+// Note: MaxLength is a default value for VARCHAR; production use should
+// derive this from schema column definition or configuration
 func (v *SchemaValidator) validateStringConstraints(fieldName string, value string) *ValidationError {
-	// Default max length for VARCHAR(255)
-	const maxLength = 255
+	// Default max length for VARCHAR(255) - can be overridden via custom rules
+	const defaultMaxLength = 255
 
-	if len(value) > maxLength {
+	if len(value) > defaultMaxLength {
 		return &ValidationError{
 			Field:       fieldName,
-			Message:     fmt.Sprintf("field '%s' exceeds maximum length of %d characters", fieldName, maxLength),
+			Message:     fmt.Sprintf("field '%s' exceeds maximum length of %d characters", fieldName, defaultMaxLength),
 			ActualValue: len(value),
 			Code:        "STRING_TOO_LONG",
 		}
