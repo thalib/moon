@@ -5,12 +5,14 @@ After=network.target
 
 [Service]
 Type=simple
-User=root
-Group=root
+User=moon
+Group=moon
 WorkingDirectory=/usr/local/bin
 
 # Environment variables
-Environment="MOON_JWT_SECRET=change-this-secret-in-production"
+# IMPORTANT: Set MOON_JWT_SECRET before starting the service
+# You can set it by running: systemctl edit moon.service
+# Or by editing this file and adding: Environment="MOON_JWT_SECRET=your-secret-here"
 Environment="MOON_CONFIG=/etc/moon.conf"
 
 # Execute the Moon binary

@@ -52,6 +52,33 @@ check_root() {
     print_success "Running with root privileges"
 }
 
+# Create moon user if it doesn't exist
+create_user() {
+    print_info "Checking for moon user..."
+    if id "moon" &>/dev/null; then
+        print_info "moon user already exists"
+    else
+        print_info "Creating moon system user..."
+        useradd --system --no-create-home --shell /bin/false moon
+        print_success "moon user created"
+    fi
+}
+
+# Create required directories
+create_directories() {
+    print_info "Creating required directories..."
+    
+    if [ ! -d "/var/lib/moon" ]; then
+        mkdir -p /var/lib/moon
+        chown moon:moon /var/lib/moon
+        chmod 755 /var/lib/moon
+        print_success "Created /var/lib/moon directory"
+    else
+        print_info "/var/lib/moon directory already exists"
+        chown moon:moon /var/lib/moon
+    fi
+}
+
 # Check for moon binary in current directory
 check_binary() {
     print_info "Checking for moon binary in current directory..."
@@ -168,7 +195,9 @@ install_service() {
         chmod 644 "$dest"
         print_success "Service file installed to $dest"
         echo ""
-        print_warning "IMPORTANT: Edit $dest and set your MOON_JWT_SECRET environment variable"
+        print_warning "IMPORTANT: Set MOON_JWT_SECRET environment variable before starting the service"
+        print_warning "Run: sudo systemctl edit moon.service"
+        print_warning "Then add: Environment=\"MOON_JWT_SECRET=your-secret-here\""
     else
         print_warning "Skipped installing service file"
     fi
@@ -221,8 +250,9 @@ print_completion() {
     echo "Moon has been successfully installed and started."
     echo ""
     echo "Next steps:"
-    echo "  1. Edit /etc/moon.conf and configure your settings"
-    echo "  2. Edit /etc/systemd/system/moon.service and set MOON_JWT_SECRET"
+    echo "  1. Set the JWT secret: sudo systemctl edit moon.service"
+    echo "     Add: Environment=\"MOON_JWT_SECRET=your-secret-here\""
+    echo "  2. Edit /etc/moon.conf and configure your settings (optional)"
     echo "  3. Restart the service: sudo systemctl restart moon.service"
     echo "  4. Check logs: sudo journalctl -u moon.service -f"
     echo ""
@@ -245,6 +275,8 @@ main() {
     # Run all checks and installation steps
     check_root
     check_binary
+    create_user
+    create_directories
     stop_service
     install_binary
     install_config
