@@ -91,7 +91,7 @@ check_binary() {
         echo "  go build -o moon ./cmd/moon"
         echo ""
         echo "Or use Docker to build (run from project root directory):"
-        echo '  docker run --rm --user $(id -u):$(id -g) -v "$(pwd):/app" -w /app golang:latest sh -c "go build -buildvcs=false -o moon ./cmd/moon"'
+        echo '  sudo docker run --rm -v "$(pwd):/app" -v "$(pwd)/.gocache:/gocache" -w /app -e GOCACHE=/gocache golang:latest sh -c "go build -buildvcs=false -o moon ./cmd/moon"'
         echo ""
         exit 1
     fi
