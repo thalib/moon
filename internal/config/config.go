@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/spf13/viper"
 )
@@ -190,6 +191,15 @@ func validate(cfg *AppConfig) error {
 	}
 	if cfg.Database.Database == "" {
 		cfg.Database.Database = Defaults.Database.Database
+	}
+
+	// For SQLite, normalize database path to absolute
+	if cfg.Database.Connection == Defaults.Database.Connection && !filepath.IsAbs(cfg.Database.Database) {
+		absPath, err := filepath.Abs(cfg.Database.Database)
+		if err != nil {
+			return fmt.Errorf("failed to resolve database path: %w", err)
+		}
+		cfg.Database.Database = absPath
 	}
 
 	// Apply default logging path if not provided
