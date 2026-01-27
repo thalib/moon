@@ -167,19 +167,9 @@ func runPreflightChecks(cfg *config.AppConfig, isDaemon bool) error {
 	})
 
 	// For SQLite, check database file parent directory and create if needed
-	if cfg.Database.Connection == "sqlite" {
-		// Ensure we have an absolute path for the database
-		dbPath := cfg.Database.Database
-		if !filepath.IsAbs(dbPath) {
-			// Convert relative path to absolute
-			absPath, err := filepath.Abs(dbPath)
-			if err != nil {
-				return fmt.Errorf("failed to resolve database path: %w", err)
-			}
-			dbPath = absPath
-		}
-
-		dbDir := filepath.Dir(dbPath)
+	// Database path is already normalized to absolute in config.validate()
+	if cfg.Database.Connection == config.Defaults.Database.Connection {
+		dbDir := filepath.Dir(cfg.Database.Database)
 		checks = append(checks, preflight.FileCheck{
 			Path:      dbDir,
 			IsDir:     true,

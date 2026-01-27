@@ -81,7 +81,7 @@ func ValidateAndCreate(checks []FileCheck) ([]CheckResult, error) {
 							fatalErrors = append(fatalErrors, result.Error)
 						}
 					} else {
-						f.Close()
+						defer f.Close()
 						result.Created = true
 					}
 				}
