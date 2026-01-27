@@ -168,7 +168,18 @@ func runPreflightChecks(cfg *config.AppConfig, isDaemon bool) error {
 
 	// For SQLite, check database file parent directory and create if needed
 	if cfg.Database.Connection == "sqlite" {
-		dbDir := filepath.Dir(cfg.Database.Database)
+		// Ensure we have an absolute path for the database
+		dbPath := cfg.Database.Database
+		if !filepath.IsAbs(dbPath) {
+			// Convert relative path to absolute
+			absPath, err := filepath.Abs(dbPath)
+			if err != nil {
+				return fmt.Errorf("failed to resolve database path: %w", err)
+			}
+			dbPath = absPath
+		}
+
+		dbDir := filepath.Dir(dbPath)
 		checks = append(checks, preflight.FileCheck{
 			Path:      dbDir,
 			IsDir:     true,
@@ -199,7 +210,7 @@ func runPreflightChecks(cfg *config.AppConfig, isDaemon bool) error {
 	if isDaemon {
 		logFile := filepath.Join(cfg.Logging.Path, "main.log")
 		fmt.Printf("Truncating log file: %s\n", logFile)
-		if err := preflight.TruncateFile(logFile); err != nil {
+		if err := preflight.CreateOrTruncateFile(logFile); err != nil {
 			return fmt.Errorf("failed to truncate log file: %w", err)
 		}
 	}

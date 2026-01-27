@@ -244,13 +244,13 @@ func TestValidateAndCreate_NonFatalError(t *testing.T) {
 	}
 }
 
-func TestTruncateFile_NewFile(t *testing.T) {
+func TestCreateOrTruncateFile_NewFile(t *testing.T) {
 	tmpDir := t.TempDir()
 	filePath := filepath.Join(tmpDir, "new", "test.log")
 
-	err := TruncateFile(filePath)
+	err := CreateOrTruncateFile(filePath)
 	if err != nil {
-		t.Errorf("TruncateFile() failed: %v", err)
+		t.Errorf("CreateOrTruncateFile() failed: %v", err)
 	}
 
 	// Verify file was created
@@ -264,7 +264,7 @@ func TestTruncateFile_NewFile(t *testing.T) {
 	}
 }
 
-func TestTruncateFile_ExistingFile(t *testing.T) {
+func TestCreateOrTruncateFile_ExistingFile(t *testing.T) {
 	tmpDir := t.TempDir()
 	filePath := filepath.Join(tmpDir, "existing.log")
 
@@ -281,9 +281,9 @@ func TestTruncateFile_ExistingFile(t *testing.T) {
 	}
 
 	// Truncate the file
-	err := TruncateFile(filePath)
+	err := CreateOrTruncateFile(filePath)
 	if err != nil {
-		t.Errorf("TruncateFile() failed: %v", err)
+		t.Errorf("CreateOrTruncateFile() failed: %v", err)
 	}
 
 	// Verify file was truncated
@@ -297,13 +297,13 @@ func TestTruncateFile_ExistingFile(t *testing.T) {
 	}
 }
 
-func TestTruncateFile_CreateParentDirs(t *testing.T) {
+func TestCreateOrTruncateFile_CreateParentDirs(t *testing.T) {
 	tmpDir := t.TempDir()
 	filePath := filepath.Join(tmpDir, "nested", "deep", "dirs", "file.log")
 
-	err := TruncateFile(filePath)
+	err := CreateOrTruncateFile(filePath)
 	if err != nil {
-		t.Errorf("TruncateFile() failed: %v", err)
+		t.Errorf("CreateOrTruncateFile() failed: %v", err)
 	}
 
 	// Verify file was created

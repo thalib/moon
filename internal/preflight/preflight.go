@@ -73,8 +73,8 @@ func ValidateAndCreate(checks []FileCheck) ([]CheckResult, error) {
 						fatalErrors = append(fatalErrors, result.Error)
 					}
 				} else {
-					// Create empty file (touch)
-					f, err := os.OpenFile(check.Path, os.O_CREATE|os.O_WRONLY, 0644)
+					// Create empty file (touch) - O_EXCL ensures we don't overwrite
+					f, err := os.OpenFile(check.Path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
 					if err != nil {
 						result.Error = fmt.Errorf("failed to create file %s: %w", check.Path, err)
 						if check.FailFatal {
@@ -105,9 +105,10 @@ func ValidateAndCreate(checks []FileCheck) ([]CheckResult, error) {
 	return results, nil
 }
 
-// TruncateFile truncates a file to zero length
-// If the file doesn't exist, it creates it
-func TruncateFile(path string) error {
+// CreateOrTruncateFile creates a new file or truncates an existing file to zero length.
+// If the file doesn't exist, it creates it. If it exists, it truncates it.
+// This ensures the file is empty and ready for new content.
+func CreateOrTruncateFile(path string) error {
 	// Ensure parent directory exists
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0755); err != nil {
@@ -117,7 +118,7 @@ func TruncateFile(path string) error {
 	// Truncate the file (create if doesn't exist)
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
-		return fmt.Errorf("failed to truncate file %s: %w", path, err)
+		return fmt.Errorf("failed to create or truncate file %s: %w", path, err)
 	}
 	defer f.Close()
 
