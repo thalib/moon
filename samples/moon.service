@@ -7,7 +7,7 @@ After=network.target
 Type=simple
 User=moon
 Group=moon
-WorkingDirectory=/usr/local/bin
+WorkingDirectory=/var/lib/moon
 
 # Environment variables
 # IMPORTANT: Set MOON_JWT_SECRET before starting the service
@@ -30,6 +30,10 @@ SyslogIdentifier=moon
 # Security settings
 NoNewPrivileges=true
 PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/moon
+PrivateDevices=true
 
 [Install]
 WantedBy=multi-user.target

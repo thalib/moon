@@ -90,7 +90,7 @@ check_binary() {
         echo "Build commands:"
         echo "  go build -o moon ./cmd/moon"
         echo ""
-        echo "Or use Docker to build:"
+        echo "Or use Docker to build (run from project root directory):"
         echo '  docker run --rm -v "$(pwd):/app" -w /app golang:latest sh -c "go build -buildvcs=false -o moon ./cmd/moon"'
         echo ""
         exit 1
@@ -223,16 +223,24 @@ start_service() {
     print_info "Starting moon service..."
     systemctl start moon.service
     
-    # Wait a moment for the service to start
-    sleep 2
+    # Wait for the service to start with retry logic
+    print_info "Waiting for service to start..."
+    local max_attempts=10
+    local attempt=1
     
-    if systemctl is-active --quiet moon.service; then
-        print_success "moon service started successfully"
-    else
-        print_error "Failed to start moon service"
-        print_warning "Check the status with: systemctl status moon.service"
-        exit 1
-    fi
+    while [ $attempt -le $max_attempts ]; do
+        if systemctl is-active --quiet moon.service; then
+            print_success "moon service started successfully"
+            return 0
+        fi
+        sleep 1
+        attempt=$((attempt + 1))
+    done
+    
+    print_error "Failed to start moon service (timed out after ${max_attempts} seconds)"
+    print_warning "Check the status with: systemctl status moon.service"
+    print_warning "Check logs with: journalctl -u moon.service -n 50"
+    exit 1
 }
 
 # Show service status
