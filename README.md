@@ -14,6 +14,7 @@ Moon is a high-performance, API-first headless backend built in Go that enables 
 - **📊 Dynamic OpenAPI Documentation** - Auto-generated from the current database schema
 - **💾 Resource Efficient** - Memory footprint under 50MB, optimized for cloud and edge deployments
 - **🔒 Built-in Security** - JWT authentication and optional API key support
+- **🆔 ULID Identifiers** - Lexicographically sortable, 26-character unique identifiers for all records
 
 ## 🚀 Quick Start
 
@@ -88,17 +89,25 @@ curl -X POST http://localhost:6006/api/v1/products:create \
     }
   }'
 
-# List all products
-curl http://localhost:6006/api/v1/products:list
+# List all products with pagination
+curl "http://localhost:6006/api/v1/products:list?limit=20"
 
-# Update a product
+# List products with cursor-based pagination
+curl "http://localhost:6006/api/v1/products:list?limit=20&after=01ARZ3NDEKTSV4RRFFQ69G5FAV"
+
+# Get a specific product by ULID
+curl "http://localhost:6006/api/v1/products:get?id=01ARZ3NDEKTSV4RRFFQ69G5FAV"
+
+# Update a product (using ULID)
 curl -X POST http://localhost:6006/api/v1/products:update \
   -H "Content-Type: application/json" \
   -d '{
-    "id": 1,
+    "id": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
     "data": {"price": 1199.99}
   }'
 ```
+
+**Note:** All records are identified by ULIDs (Universally Unique Lexicographically Sortable Identifiers), which are 26-character, URL-safe strings. ULIDs are automatically generated when creating records and are used for all operations (get, update, delete).
 
 **For more examples, see the [Usage Guide](USAGE.md) or run the [API demo script](samples/api-demo.sh).**
 
