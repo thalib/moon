@@ -220,8 +220,9 @@ api_call "GET" "/collections:get?name=products" "" "Retrieving 'products' collec
 
 # 4. Create a record
 print_header "4. Create a Record"
-api_call "POST" "/products:create" \
-    '{
+response=$(curl -s -X "POST" \
+    -H "Content-Type: application/json" \
+    -d '{
         "data": {
             "name": "Laptop",
             "description": "High-performance laptop",
@@ -229,12 +230,21 @@ api_call "POST" "/products:create" \
             "stock": 50
         }
     }' \
-    "Creating a product record"
+    "$API_BASE/products:create")
+
+echo -e "${GREEN}Creating a product record${NC}"
+echo "Request: POST $API_BASE/products:create"
+echo "$response" | jq '.' 2>/dev/null || echo "$response"
+
+# Extract ULID from response
+PRODUCT_ID_1=$(echo "$response" | jq -r '.data.id')
+echo -e "\n${BLUE}Captured Product ID 1: $PRODUCT_ID_1${NC}"
 
 # 5. Create another record
 print_header "5. Create Another Record"
-api_call "POST" "/products:create" \
-    '{
+response=$(curl -s -X "POST" \
+    -H "Content-Type: application/json" \
+    -d '{
         "data": {
             "name": "Mouse",
             "description": "Wireless mouse",
@@ -242,43 +252,64 @@ api_call "POST" "/products:create" \
             "stock": 200
         }
     }' \
-    "Creating another product record"
+    "$API_BASE/products:create")
+
+echo -e "${GREEN}Creating another product record${NC}"
+echo "Request: POST $API_BASE/products:create"
+echo "$response" | jq '.' 2>/dev/null || echo "$response"
+
+# Extract ULID from response
+PRODUCT_ID_2=$(echo "$response" | jq -r '.data.id')
+echo -e "\n${BLUE}Captured Product ID 2: $PRODUCT_ID_2${NC}"
 
 # 6. List all records
 print_header "6. List All Records"
 api_call "GET" "/products:list" "" "Listing all products"
 
-# 7. List records with pagination
-print_header "7. List Records with Pagination"
-api_call "GET" "/products:list?limit=1&offset=0" "" "Listing products (limit=1, offset=0)"
+# 7. List records with cursor-based pagination
+print_header "7. List Records with Cursor-Based Pagination"
+response=$(curl -s -X "GET" "$API_BASE/products:list?limit=1")
+echo -e "${GREEN}Listing products (limit=1)${NC}"
+echo "Request: GET $API_BASE/products:list?limit=1"
+echo "$response" | jq '.' 2>/dev/null || echo "$response"
+
+# Extract cursor for next page
+NEXT_CURSOR=$(echo "$response" | jq -r '.pagination.next_cursor // empty')
+if [ -n "$NEXT_CURSOR" ] && [ "$NEXT_CURSOR" != "null" ]; then
+    echo -e "\n${BLUE}Next page cursor: $NEXT_CURSOR${NC}"
+    echo -e "\n${GREEN}Fetching next page using cursor${NC}"
+    echo "Request: GET $API_BASE/products:list?limit=1&after=$NEXT_CURSOR"
+    curl -s -X "GET" "$API_BASE/products:list?limit=1&after=$NEXT_CURSOR" | jq '.' 2>/dev/null || echo "$response"
+fi
+echo -e "\n"
 
 # 8. Get a specific record
 print_header "8. Get Specific Record"
-api_call "GET" "/products:get?id=1" "" "Getting product with ID=1"
+api_call "GET" "/products:get?id=$PRODUCT_ID_1" "" "Getting product with ID=$PRODUCT_ID_1"
 
 # 9. Update a record
 print_header "9. Update a Record"
 api_call "POST" "/products:update" \
-    '{
-        "id": 1,
-        "data": {
-            "price": 1199.99,
-            "stock": 45
+    "{
+        \"id\": \"$PRODUCT_ID_1\",
+        \"data\": {
+            \"price\": 1199.99,
+            \"stock\": 45
         }
-    }' \
-    "Updating product ID=1 (new price and stock)"
+    }" \
+    "Updating product ID=$PRODUCT_ID_1 (new price and stock)"
 
 # 10. Verify update
 print_header "10. Verify Update"
-api_call "GET" "/products:get?id=1" "" "Getting updated product with ID=1"
+api_call "GET" "/products:get?id=$PRODUCT_ID_1" "" "Getting updated product with ID=$PRODUCT_ID_1"
 
 # 11. Delete a record
 print_header "11. Delete a Record"
 api_call "POST" "/products:destroy" \
-    '{
-        "id": 2
-    }' \
-    "Deleting product ID=2"
+    "{
+        \"id\": \"$PRODUCT_ID_2\"
+    }" \
+    "Deleting product ID=$PRODUCT_ID_2"
 
 # 12. Verify deletion
 print_header "12. Verify Deletion"

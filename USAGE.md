@@ -25,6 +25,14 @@ Moon is a dynamic headless engine that provides a migration-less database manage
 - **RESTful API:** Follows AIP-136 custom action pattern
 - **Dynamic OpenAPI Documentation:** Auto-generated from schema cache
 - **Lightweight:** Memory footprint under 50MB
+- **ULID Identifiers:** Uses 26-character, URL-safe, lexicographically sortable ULIDs (Universally Unique Lexicographically Sortable Identifiers) for record IDs
+
+### ULID Format
+
+Moon uses ULIDs for all record identifiers:
+- **Format:** 26 uppercase alphanumeric characters (Base32 Crockford encoding)
+- **Example:** `01ARZ3NDEKTSV4RRFFQ69G5FAV`
+- **Benefits:** URL-safe, case-insensitive, lexicographically sortable, timestamp-ordered
 
 ### API Pattern
 
@@ -142,7 +150,7 @@ Retrieves the schema for a specific collection.
   "collection": {
     "name": "users",
     "columns": [
-      {"name": "id", "type": "integer", "required": true},
+      {"name": "id", "type": "string", "required": true},
       {"name": "email", "type": "text", "required": true},
       {"name": "name", "type": "text", "required": true},
       {"name": "age", "type": "integer", "required": false}
@@ -258,7 +266,7 @@ Retrieves all records from a collection.
 **Query Parameters:**
 
 - `limit` (optional): Number of records to return (default: no limit)
-- `offset` (optional): Number of records to skip (default: 0)
+- `after` (optional): Cursor for pagination - ULID of the last record from the previous page
 
 **Example:**
 
@@ -266,8 +274,9 @@ Retrieves all records from a collection.
 # List all products
 curl http://localhost:8080/api/v1/products:list
 
-# List with pagination
-curl http://localhost:8080/api/v1/products:list?limit=10&offset=0
+# List with cursor-based pagination
+curl http://localhost:8080/api/v1/products:list?limit=10
+curl http://localhost:8080/api/v1/products:list?limit=10&after=01ARZ3NDEKTSV4RRFFQ69G5FAV
 ```
 
 **Response:**
@@ -275,12 +284,12 @@ curl http://localhost:8080/api/v1/products:list?limit=10&offset=0
 ```json
 {
   "data": [
-    {"id": 1, "name": "Laptop", "price": 1299.99},
-    {"id": 2, "name": "Mouse", "price": 29.99}
+    {"id": "01ARZ3NDEKTSV4RRFFQ69G5FAV", "name": "Laptop", "price": 1299.99},
+    {"id": "01ARZ3NDEKTSV4RRFFQ69G5FBW", "name": "Mouse", "price": 29.99}
   ],
   "count": 2,
   "limit": 10,
-  "offset": 0
+  "next_cursor": "01ARZ3NDEKTSV4RRFFQ69G5FBW"
 }
 ```
 
@@ -294,12 +303,12 @@ Retrieves a single record by ID.
 
 **Parameters:**
 
-- `id` (query, required): Record ID
+- `id` (query, required): Record ID (ULID format)
 
 **Example:**
 
 ```bash
-curl http://localhost:8080/api/v1/products:get?id=1
+curl http://localhost:8080/api/v1/products:get?id=01ARZ3NDEKTSV4RRFFQ69G5FAV
 ```
 
 **Response:**
@@ -307,7 +316,7 @@ curl http://localhost:8080/api/v1/products:get?id=1
 ```json
 {
   "data": {
-    "id": 1,
+    "id": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
     "name": "Laptop",
     "price": 1299.99,
     "description": "High-performance laptop"
@@ -340,7 +349,7 @@ Inserts a new record into the collection.
 ```json
 {
   "data": {
-    "id": 3,
+    "id": "01ARZ3NDEKTSV4RRFFQ69G5FBX",
     "name": "Keyboard",
     "price": 79.99,
     "description": "Mechanical keyboard"
@@ -361,7 +370,7 @@ Updates an existing record.
 
 ```json
 {
-  "id": 1,
+  "id": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
   "data": {
     "price": 1199.99,
     "description": "Discounted laptop"
@@ -376,7 +385,7 @@ Only the fields provided in `data` will be updated; other fields remain unchange
 ```json
 {
   "data": {
-    "id": 1,
+    "id": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
     "name": "Laptop",
     "price": 1199.99,
     "description": "Discounted laptop"
@@ -397,7 +406,7 @@ Deletes a record from the collection.
 
 ```json
 {
-  "id": 3
+  "id": "01ARZ3NDEKTSV4RRFFQ69G5FBX"
 }
 ```
 
@@ -456,13 +465,13 @@ curl -X POST http://localhost:8080/api/v1/posts:create \
 curl http://localhost:8080/api/v1/posts:list
 
 # 4. Get a specific post
-curl http://localhost:8080/api/v1/posts:get?id=1
+curl http://localhost:8080/api/v1/posts:get?id=01ARZ3NDEKTSV4RRFFQ69G5FAV
 
 # 5. Update a post
 curl -X POST http://localhost:8080/api/v1/posts:update \
   -H "Content-Type: application/json" \
   -d '{
-    "id": 2,
+    "id": "01ARZ3NDEKTSV4RRFFQ69G5FBW",
     "data": {
       "published": true
     }
@@ -481,7 +490,7 @@ curl -X POST http://localhost:8080/api/v1/collections:update \
 # 7. Delete a post
 curl -X POST http://localhost:8080/api/v1/posts:destroy \
   -H "Content-Type: application/json" \
-  -d '{"id": 1}'
+  -d '{"id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"}'
 
 # 8. Clean up - destroy the collection
 curl -X POST http://localhost:8080/api/v1/collections:destroy \

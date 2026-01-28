@@ -11,6 +11,7 @@ import (
 	"github.com/thalib/moon/cmd/moon/internal/constants"
 	"github.com/thalib/moon/cmd/moon/internal/database"
 	"github.com/thalib/moon/cmd/moon/internal/registry"
+	moonulid "github.com/thalib/moon/cmd/moon/internal/ulid"
 )
 
 // DataHandler handles CRUD operations on collection data
@@ -30,16 +31,15 @@ func NewDataHandler(db database.Driver, reg *registry.SchemaRegistry) *DataHandl
 // DataListRequest represents query parameters for list operation
 type DataListRequest struct {
 	Limit  int               `json:"limit"`
-	Offset int               `json:"offset"`
+	After  string            `json:"after,omitempty"` // ULID cursor for pagination
 	Filter map[string]string `json:"filter,omitempty"`
 }
 
 // DataListResponse represents response for list operation
 type DataListResponse struct {
-	Data   []map[string]any `json:"data"`
-	Count  int              `json:"count"`
-	Limit  int              `json:"limit"`
-	Offset int              `json:"offset"`
+	Data       []map[string]any `json:"data"`
+	NextCursor *string          `json:"next_cursor"` // Next ULID cursor, null if no more data
+	Limit      int              `json:"limit"`
 }
 
 // DataGetResponse represents response for get operation
@@ -60,7 +60,7 @@ type CreateDataResponse struct {
 
 // UpdateDataRequest represents request for update operation
 type UpdateDataRequest struct {
-	ID   int            `json:"id"`
+	ID   string         `json:"id"` // ULID
 	Data map[string]any `json:"data"`
 }
 
@@ -72,7 +72,7 @@ type UpdateDataResponse struct {
 
 // DestroyDataRequest represents request for destroy operation
 type DestroyDataRequest struct {
-	ID int `json:"id"`
+	ID string `json:"id"` // ULID
 }
 
 // DestroyDataResponse represents response for destroy operation
@@ -91,7 +91,7 @@ func (h *DataHandler) List(w http.ResponseWriter, r *http.Request, collectionNam
 
 	// Parse query parameters
 	limitStr := r.URL.Query().Get(constants.QueryParamLimit)
-	offsetStr := r.URL.Query().Get(constants.QueryParamOffset)
+	after := r.URL.Query().Get("after") // ULID cursor
 
 	limit := constants.DefaultPaginationLimit
 	if limitStr != "" {
@@ -100,20 +100,35 @@ func (h *DataHandler) List(w http.ResponseWriter, r *http.Request, collectionNam
 		}
 	}
 
-	offset := constants.DefaultPaginationOffset
-	if offsetStr != "" {
-		if o, err := strconv.Atoi(offsetStr); err == nil && o >= 0 {
-			offset = o
+	// Validate after cursor if provided
+	if after != "" {
+		if err := validateULID(after); err != nil {
+			writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid cursor: %v", err))
+			return
 		}
 	}
 
-	// Build SELECT query with pagination
-	query := fmt.Sprintf("SELECT * FROM %s LIMIT ? OFFSET ?", collectionName)
-	args := []any{limit, offset}
+	// Build SELECT query with ULID-based pagination
+	var query string
+	var args []any
+
+	if after == "" {
+		// No cursor, start from beginning
+		query = fmt.Sprintf("SELECT * FROM %s ORDER BY ulid ASC LIMIT ?", collectionName)
+		args = []any{limit + 1} // Fetch one extra to determine if there's more data
+	} else {
+		// With cursor, fetch records after the cursor
+		query = fmt.Sprintf("SELECT * FROM %s WHERE ulid > ? ORDER BY ulid ASC LIMIT ?", collectionName)
+		args = []any{after, limit + 1}
+	}
 
 	// Adjust placeholder style based on dialect
 	if h.db.Dialect() == database.DialectPostgres {
-		query = fmt.Sprintf("SELECT * FROM %s LIMIT $1 OFFSET $2", collectionName)
+		if after == "" {
+			query = fmt.Sprintf("SELECT * FROM %s ORDER BY ulid ASC LIMIT $1", collectionName)
+		} else {
+			query = fmt.Sprintf("SELECT * FROM %s WHERE ulid > $1 ORDER BY ulid ASC LIMIT $2", collectionName)
+		}
 	}
 
 	// Execute query
@@ -132,11 +147,22 @@ func (h *DataHandler) List(w http.ResponseWriter, r *http.Request, collectionNam
 		return
 	}
 
+	// Determine next cursor
+	var nextCursor *string
+	if len(data) > limit {
+		// More data available, use the ULID of the last item as cursor
+		lastItem := data[len(data)-1]
+		if ulidVal, ok := lastItem["ulid"].(string); ok {
+			nextCursor = &ulidVal
+		}
+		// Remove the extra item we fetched
+		data = data[:limit]
+	}
+
 	response := DataListResponse{
-		Data:   data,
-		Count:  len(data),
-		Limit:  limit,
-		Offset: offset,
+		Data:       data,
+		NextCursor: nextCursor,
+		Limit:      limit,
 	}
 
 	writeJSON(w, http.StatusOK, response)
@@ -151,26 +177,26 @@ func (h *DataHandler) Get(w http.ResponseWriter, r *http.Request, collectionName
 		return
 	}
 
-	// Get ID from query parameter
+	// Get ID from query parameter (ULID)
 	idStr := r.URL.Query().Get(constants.QueryParamID)
 	if idStr == "" {
 		writeError(w, http.StatusBadRequest, "id parameter is required")
 		return
 	}
 
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid id parameter")
+	// Validate ULID format
+	if err := validateULID(idStr); err != nil {
+		writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid id: %v", err))
 		return
 	}
 
-	// Build SELECT query
-	query := fmt.Sprintf("SELECT * FROM %s WHERE id = ?", collectionName)
-	args := []any{id}
+	// Build SELECT query using ULID
+	query := fmt.Sprintf("SELECT * FROM %s WHERE ulid = ?", collectionName)
+	args := []any{idStr}
 
 	// Adjust placeholder style based on dialect
 	if h.db.Dialect() == database.DialectPostgres {
-		query = fmt.Sprintf("SELECT * FROM %s WHERE id = $1", collectionName)
+		query = fmt.Sprintf("SELECT * FROM %s WHERE ulid = $1", collectionName)
 	}
 
 	// Execute query
@@ -190,7 +216,7 @@ func (h *DataHandler) Get(w http.ResponseWriter, r *http.Request, collectionName
 	}
 
 	if len(data) == 0 {
-		writeError(w, http.StatusNotFound, fmt.Sprintf("record with id %d not found", id))
+		writeError(w, http.StatusNotFound, fmt.Sprintf("record with id %s not found", idStr))
 		return
 	}
 
@@ -223,11 +249,21 @@ func (h *DataHandler) Create(w http.ResponseWriter, r *http.Request, collectionN
 		return
 	}
 
-	// Build INSERT query
-	columns := []string{}
+	// Generate ULID for the new record
+	ulid := generateULID()
+
+	// Build INSERT query including ULID
+	columns := []string{"ulid"}
 	placeholders := []string{}
-	values := []any{}
+	values := []any{ulid}
 	i := 1
+
+	if h.db.Dialect() == database.DialectPostgres {
+		placeholders = append(placeholders, fmt.Sprintf("$%d", i))
+	} else {
+		placeholders = append(placeholders, "?")
+	}
+	i++
 
 	for _, col := range collection.Columns {
 		if val, ok := req.Data[col.Name]; ok {
@@ -252,29 +288,22 @@ func (h *DataHandler) Create(w http.ResponseWriter, r *http.Request, collectionN
 
 	// Execute insert
 	ctx := r.Context()
-	result, err := h.db.Exec(ctx, query, values...)
+	_, err := h.db.Exec(ctx, query, values...)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to insert data: %v", err))
 		return
 	}
 
-	// Get last inserted ID
-	lastID, err := result.LastInsertId()
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to get last insert id: %v", err))
-		return
-	}
-
-	// Add ID to response data
+	// Add ULID to response data (API field name is "id" but value is ULID)
 	responseData := make(map[string]any)
+	responseData["id"] = ulid
 	for k, v := range req.Data {
 		responseData[k] = v
 	}
-	responseData["id"] = lastID
 
 	response := CreateDataResponse{
 		Data:    responseData,
-		Message: fmt.Sprintf("Record created successfully with id %d", lastID),
+		Message: fmt.Sprintf("Record created successfully with id %s", ulid),
 	}
 
 	writeJSON(w, http.StatusCreated, response)
@@ -296,8 +325,14 @@ func (h *DataHandler) Update(w http.ResponseWriter, r *http.Request, collectionN
 		return
 	}
 
-	if req.ID <= 0 {
-		writeError(w, http.StatusBadRequest, "valid id is required")
+	if req.ID == "" {
+		writeError(w, http.StatusBadRequest, "id is required")
+		return
+	}
+
+	// Validate ULID format
+	if err := validateULID(req.ID); err != nil {
+		writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid id: %v", err))
 		return
 	}
 
@@ -329,17 +364,17 @@ func (h *DataHandler) Update(w http.ResponseWriter, r *http.Request, collectionN
 		return
 	}
 
-	// Add ID to values
+	// Add ULID to values
 	values = append(values, req.ID)
 
 	var query string
 	if h.db.Dialect() == database.DialectPostgres {
-		query = fmt.Sprintf("UPDATE %s SET %s WHERE id = $%d",
+		query = fmt.Sprintf("UPDATE %s SET %s WHERE ulid = $%d",
 			collectionName,
 			strings.Join(setClauses, ", "),
 			i)
 	} else {
-		query = fmt.Sprintf("UPDATE %s SET %s WHERE id = ?",
+		query = fmt.Sprintf("UPDATE %s SET %s WHERE ulid = ?",
 			collectionName,
 			strings.Join(setClauses, ", "))
 	}
@@ -360,20 +395,20 @@ func (h *DataHandler) Update(w http.ResponseWriter, r *http.Request, collectionN
 	}
 
 	if rowsAffected == 0 {
-		writeError(w, http.StatusNotFound, fmt.Sprintf("record with id %d not found", req.ID))
+		writeError(w, http.StatusNotFound, fmt.Sprintf("record with id %s not found", req.ID))
 		return
 	}
 
-	// Add ID to response data
+	// Add ULID to response data (API field name is "id" but value is ULID)
 	responseData := make(map[string]any)
+	responseData["id"] = req.ID
 	for k, v := range req.Data {
 		responseData[k] = v
 	}
-	responseData["id"] = req.ID
 
 	response := UpdateDataResponse{
 		Data:    responseData,
-		Message: fmt.Sprintf("Record %d updated successfully", req.ID),
+		Message: fmt.Sprintf("Record %s updated successfully", req.ID),
 	}
 
 	writeJSON(w, http.StatusOK, response)
@@ -395,18 +430,24 @@ func (h *DataHandler) Destroy(w http.ResponseWriter, r *http.Request, collection
 		return
 	}
 
-	if req.ID <= 0 {
-		writeError(w, http.StatusBadRequest, "valid id is required")
+	if req.ID == "" {
+		writeError(w, http.StatusBadRequest, "id is required")
 		return
 	}
 
-	// Build DELETE query
-	query := fmt.Sprintf("DELETE FROM %s WHERE id = ?", collectionName)
+	// Validate ULID format
+	if err := validateULID(req.ID); err != nil {
+		writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid id: %v", err))
+		return
+	}
+
+	// Build DELETE query using ULID
+	query := fmt.Sprintf("DELETE FROM %s WHERE ulid = ?", collectionName)
 	args := []any{req.ID}
 
 	// Adjust placeholder style based on dialect
 	if h.db.Dialect() == database.DialectPostgres {
-		query = fmt.Sprintf("DELETE FROM %s WHERE id = $1", collectionName)
+		query = fmt.Sprintf("DELETE FROM %s WHERE ulid = $1", collectionName)
 	}
 
 	// Execute delete
@@ -425,12 +466,12 @@ func (h *DataHandler) Destroy(w http.ResponseWriter, r *http.Request, collection
 	}
 
 	if rowsAffected == 0 {
-		writeError(w, http.StatusNotFound, fmt.Sprintf("record with id %d not found", req.ID))
+		writeError(w, http.StatusNotFound, fmt.Sprintf("record with id %s not found", req.ID))
 		return
 	}
 
 	response := DestroyDataResponse{
-		Message: fmt.Sprintf("Record %d deleted successfully", req.ID),
+		Message: fmt.Sprintf("Record %s deleted successfully", req.ID),
 	}
 
 	writeJSON(w, http.StatusOK, response)
@@ -466,7 +507,17 @@ func parseRows(rows *sql.Rows, collection *registry.Collection) ([]map[string]an
 				val = string(b)
 			}
 
-			rowData[col] = val
+			// Map internal 'id' column to nothing (never expose it)
+			// Map 'ulid' column to 'id' in API response (per PRD requirement)
+			if col == "id" {
+				// Skip internal SQL id
+				continue
+			} else if col == "ulid" {
+				// Expose ulid as 'id' in API
+				rowData["id"] = val
+			} else {
+				rowData[col] = val
+			}
 		}
 
 		result = append(result, rowData)
@@ -535,4 +586,14 @@ func validateFieldType(fieldName string, value any, expectedType registry.Column
 	}
 
 	return nil
+}
+
+// generateULID generates a new ULID
+func generateULID() string {
+	return moonulid.Generate()
+}
+
+// validateULID validates a ULID string
+func validateULID(id string) error {
+	return moonulid.Validate(id)
 }
