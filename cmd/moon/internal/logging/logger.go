@@ -1,10 +1,11 @@
 // Package logging provides structured logging with zerolog.
-// It supports JSON and console formats, log levels, file output,
+// It supports simple text and console formats, log levels, file output,
 // request ID tracking, and automatic masking of sensitive fields.
 package logging
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -16,6 +17,33 @@ import (
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 )
+
+// simpleWriter is a custom writer that formats logs as: [LEVEL](TIMESTAMP): {MESSAGE}
+type simpleWriter struct {
+	out io.Writer
+}
+
+func (sw *simpleWriter) Write(p []byte) (n int, err error) {
+	var logEntry map[string]any
+	if err := json.Unmarshal(p, &logEntry); err != nil {
+		// If not JSON, just write as-is
+		return sw.out.Write(p)
+	}
+
+	// Extract fields
+	level, _ := logEntry["level"].(string)
+	timestamp, _ := logEntry["time"].(string)
+	message, _ := logEntry["message"].(string)
+
+	// Format as [LEVEL](TIMESTAMP): {MESSAGE}
+	formatted := fmt.Sprintf("[%s](%s): %s\n",
+		strings.ToUpper(level),
+		timestamp,
+		message,
+	)
+
+	return sw.out.Write([]byte(formatted))
+}
 
 // Level represents logging levels
 type Level string
@@ -115,18 +143,16 @@ func NewLogger(config LoggerConfig) *Logger {
 	var logger zerolog.Logger
 
 	// Configure output format
-	if config.Format == "console" {
-		consoleOutput := zerolog.ConsoleWriter{
-			Out:        output,
-			TimeFormat: time.RFC3339,
-		}
-		logger = zerolog.New(consoleOutput).Level(zeroLevel).With().Timestamp().Logger()
-	} else {
-		// Default to JSON format
+	if config.Format == "json" {
+		// JSON format for testing/debugging
 		logger = zerolog.New(output).Level(zeroLevel).With().Timestamp().Logger()
+	} else {
+		// Default to simple text format: [LEVEL](TIMESTAMP): {MESSAGE}
+		simpleOut := &simpleWriter{out: output}
+		logger = zerolog.New(simpleOut).Level(zeroLevel).With().Timestamp().Logger()
 	}
 
-	// Add service context
+	// Add service context (will be in JSON but filtered by simpleWriter in simple format)
 	if config.ServiceName != "" {
 		logger = logger.With().Str("service", config.ServiceName).Logger()
 	}
