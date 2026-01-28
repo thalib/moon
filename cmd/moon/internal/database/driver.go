@@ -186,7 +186,7 @@ func detectDialect(connectionString string) (DialectType, string, error) {
 	}
 
 	// Check for file-based connection strings (SQLite)
-	if strings.HasSuffix(lower, ".db") || strings.HasSuffix(lower, ".sqlite") || strings.HasSuffix(lower, ".sqlite3") {
+	if lower == ":memory:" || strings.HasSuffix(lower, ".db") || strings.HasSuffix(lower, ".sqlite") || strings.HasSuffix(lower, ".sqlite3") {
 		return DialectSQLite, connectionString, nil
 	}
 

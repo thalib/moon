@@ -90,6 +90,11 @@ func TestDetectDialect_SQLite(t *testing.T) {
 			expectedDialect: DialectSQLite,
 		},
 		{
+			name:            ":memory: in-memory database",
+			connStr:         ":memory:",
+			expectedDialect: DialectSQLite,
+		},
+		{
 			name:            ".db file",
 			connStr:         "test.db",
 			expectedDialect: DialectSQLite,

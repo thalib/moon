@@ -538,7 +538,7 @@ func TestDataHandler_Create_UnknownField(t *testing.T) {
 func TestDataHandler_Integration_SQLite(t *testing.T) {
 	// Create in-memory SQLite database
 	dbConfig := database.Config{
-		ConnectionString: "test.db",
+		ConnectionString: ":memory:",
 		MaxOpenConns:     5,
 		MaxIdleConns:     2,
 	}
@@ -553,11 +553,6 @@ func TestDataHandler_Integration_SQLite(t *testing.T) {
 		t.Fatalf("failed to connect: %v", err)
 	}
 	defer driver.Close()
-	defer func() {
-		// Clean up test database
-		driver.Close()
-		context.Background()
-	}()
 
 	// Create a test table
 	createTableSQL := `
