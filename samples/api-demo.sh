@@ -10,11 +10,125 @@ API_BASE="$BASE_URL/api/v1"
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 RED='\033[0;31m'
+YELLOW='\033[0;33m'
 NC='\033[0m' # No Color
+
+# Temporary files for demo
+DEMO_DIR="/tmp/moon-api-demo-$$"
+DEMO_CONFIG="$DEMO_DIR/moon.conf"
+DEMO_DB="$DEMO_DIR/moon.db"
+DEMO_LOG_DIR="$DEMO_DIR/logs"
+MOON_PID=""
+MOON_BINARY=""
+CLEANUP_ON_EXIT=true
+
+# Cleanup function
+cleanup() {
+    if [ "$CLEANUP_ON_EXIT" = true ]; then
+        echo -e "\n${YELLOW}Cleaning up...${NC}"
+        
+        # Stop Moon server if we started it
+        if [ -n "$MOON_PID" ]; then
+            echo "Stopping Moon server (PID: $MOON_PID)..."
+            kill $MOON_PID 2>/dev/null || true
+            wait $MOON_PID 2>/dev/null || true
+        fi
+        
+        # Remove temporary files
+        if [ -d "$DEMO_DIR" ]; then
+            echo "Removing temporary files: $DEMO_DIR"
+            rm -rf "$DEMO_DIR"
+        fi
+        
+        echo -e "${GREEN}✓ Cleanup complete${NC}"
+    fi
+}
+
+# Set trap to cleanup on exit
+trap cleanup EXIT INT TERM
 
 # Helper function for printing section headers
 print_header() {
     echo -e "\n${BLUE}=== $1 ===${NC}\n"
+}
+
+# Setup demo environment
+setup_demo_environment() {
+    print_header "Setup"
+    
+    # Create temporary directory structure
+    echo "Creating temporary demo environment..."
+    mkdir -p "$DEMO_DIR" "$DEMO_LOG_DIR"
+    
+    # Create demo configuration
+    cat > "$DEMO_CONFIG" << EOF
+server:
+  host: "0.0.0.0"
+  port: 6006
+
+database:
+  connection: "sqlite"
+  database: "$DEMO_DB"
+
+logging:
+  path: "$DEMO_LOG_DIR"
+
+jwt:
+  secret: "demo-secret-key-for-testing-only"
+  expiry: 3600
+
+apikey:
+  enabled: false
+  header: "X-API-KEY"
+EOF
+    
+    echo -e "${GREEN}✓ Demo environment created${NC}"
+    echo "  Config: $DEMO_CONFIG"
+    echo "  Database: $DEMO_DB"
+    echo "  Logs: $DEMO_LOG_DIR"
+}
+
+# Find or start Moon server
+start_moon_server() {
+    # Look for moon binary
+    if [ -f "./moon" ]; then
+        MOON_BINARY="./moon"
+    elif [ -f "../moon" ]; then
+        MOON_BINARY="../moon"
+    elif command -v moon &> /dev/null; then
+        MOON_BINARY="moon"
+    else
+        echo -e "${RED}Error: Moon binary not found${NC}"
+        echo "Please build Moon first:"
+        echo "  go build -o moon ./cmd/moon"
+        exit 1
+    fi
+    
+    echo "Starting Moon server..."
+    echo "Command: $MOON_BINARY --config $DEMO_CONFIG"
+    
+    # Start server in background
+    $MOON_BINARY --config "$DEMO_CONFIG" > "$DEMO_LOG_DIR/server.log" 2>&1 &
+    MOON_PID=$!
+    
+    # Wait for server to be ready
+    echo "Waiting for server to start (PID: $MOON_PID)..."
+    MAX_WAIT=10
+    WAIT_COUNT=0
+    while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
+        if curl -s "$BASE_URL/health" > /dev/null 2>&1; then
+            echo -e "${GREEN}✓ Server is running${NC}"
+            return 0
+        fi
+        sleep 1
+        WAIT_COUNT=$((WAIT_COUNT + 1))
+        echo -n "."
+    done
+    
+    echo -e "\n${RED}Error: Server failed to start${NC}"
+    echo "Check logs at: $DEMO_LOG_DIR/server.log"
+    cat "$DEMO_LOG_DIR/server.log"
+    exit 1
 }
 
 # Helper function for API calls
@@ -52,11 +166,16 @@ api_call() {
 print_header "Health Check"
 echo "Checking if Moon server is running..."
 if ! curl -s "$BASE_URL/health" > /dev/null; then
-    echo -e "${RED}Error: Moon server is not running at $BASE_URL${NC}"
-    echo "Please start the server first with: ./moon"
-    exit 1
+    echo -e "${YELLOW}Server not running, will start one for the demo${NC}"
+    
+    # Setup and start server
+    setup_demo_environment
+    start_moon_server
+else
+    echo -e "${GREEN}✓ Server is already running${NC}"
+    echo -e "${YELLOW}Note: Using existing server. Demo will NOT clean up automatically.${NC}"
+    CLEANUP_ON_EXIT=false
 fi
-echo -e "${GREEN}✓ Server is running${NC}"
 
 # 1. List all collections (should be empty initially)
 print_header "1. List Collections"
@@ -163,9 +282,18 @@ api_call "GET" "/collections:get?name=products" "" "Retrieving updated 'products
 
 # 15. Clean up - destroy collection
 print_header "15. Clean Up"
-read -p "Do you want to delete the 'products' collection? (y/N) " -n 1 -r
-echo
-if [[ $REPLY =~ ^[Yy]$ ]]; then
+
+# Only prompt if we're using an existing server
+if [ "$CLEANUP_ON_EXIT" = false ]; then
+    read -p "Do you want to delete the 'products' collection? (y/N) " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        api_call "POST" "/collections:destroy" \
+            '{"name": "products"}' \
+            "Destroying 'products' collection"
+    fi
+else
+    # If we started our own server, always clean up the collection
     api_call "POST" "/collections:destroy" \
         '{"name": "products"}' \
         "Destroying 'products' collection"
@@ -173,4 +301,6 @@ fi
 
 print_header "Demo Complete"
 echo "All operations completed successfully!"
-echo "For more information, see docs/USAGE.md"
+echo "For more information, see USAGE.md"
+
+# Note: cleanup() will be called automatically on exit due to trap
