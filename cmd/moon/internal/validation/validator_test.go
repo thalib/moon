@@ -655,3 +655,54 @@ func TestValidationError_Error(t *testing.T) {
 		t.Errorf("Expected 'email: invalid format', got '%s'", err.Error())
 	}
 }
+
+func TestULIDRule(t *testing.T) {
+	tests := []struct {
+		name    string
+		value   any
+		wantErr bool
+	}{
+		{
+			name:    "Valid ULID",
+			value:   "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+			wantErr: false,
+		},
+		{
+			name:    "Invalid ULID - too short",
+			value:   "01ARZ3NDEKTSV4RRFFQ69G5",
+			wantErr: true,
+		},
+		{
+			name:    "Invalid ULID - empty string",
+			value:   "",
+			wantErr: true,
+		},
+		{
+			name:    "Invalid ULID - invalid characters",
+			value:   "ZZZZZZZZZZZZZZZZZZZZZZZZZZ",
+			wantErr: true,
+		},
+		{
+			name:    "Not a string",
+			value:   12345,
+			wantErr: false, // Type validation will catch this
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rule := ULIDRule("id")
+			err := rule(tt.value)
+
+			if tt.wantErr && err == nil {
+				t.Error("expected error, got nil")
+			}
+			if !tt.wantErr && err != nil {
+				t.Errorf("expected no error, got %v", err)
+			}
+			if err != nil && err.Code != "INVALID_ULID" {
+				t.Errorf("expected error code INVALID_ULID, got %s", err.Code)
+			}
+		})
+	}
+}

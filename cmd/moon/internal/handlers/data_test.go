@@ -125,13 +125,13 @@ func TestDataHandler_Create_Success(t *testing.T) {
 	var response CreateDataResponse
 	json.NewDecoder(w.Body).Decode(&response)
 
-	// ID comes as float64 from JSON decoder
-	idFloat, ok := response.Data["id"].(float64)
+	// ID is now a ULID string
+	idStr, ok := response.Data["id"].(string)
 	if !ok {
-		t.Fatalf("expected id to be float64, got %T", response.Data["id"])
+		t.Fatalf("expected id to be string, got %T", response.Data["id"])
 	}
-	if int64(idFloat) != int64(42) {
-		t.Errorf("expected id 42, got %v", idFloat)
+	if len(idStr) != 26 {
+		t.Errorf("expected ULID (26 chars), got %d chars: %v", len(idStr), idStr)
 	}
 }
 
@@ -219,7 +219,7 @@ func TestDataHandler_Update_Success(t *testing.T) {
 	handler := NewDataHandler(driver, reg)
 
 	reqBody := UpdateDataRequest{
-		ID: 42,
+		ID: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
 		Data: map[string]any{
 			"name":  "Updated Product",
 			"price": 29.99,
@@ -256,7 +256,7 @@ func TestDataHandler_Update_NotFound(t *testing.T) {
 	handler := NewDataHandler(driver, reg)
 
 	reqBody := UpdateDataRequest{
-		ID: 999,
+		ID: "01ARZ3NDEKTSV4RRFFQ69G5FBX",
 		Data: map[string]any{
 			"name": "Updated Product",
 		},
@@ -290,7 +290,7 @@ func TestDataHandler_Destroy_Success(t *testing.T) {
 	handler := NewDataHandler(driver, reg)
 
 	reqBody := DestroyDataRequest{
-		ID: 42,
+		ID: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
 	}
 	body, _ := json.Marshal(reqBody)
 
@@ -321,7 +321,7 @@ func TestDataHandler_Destroy_NotFound(t *testing.T) {
 	handler := NewDataHandler(driver, reg)
 
 	reqBody := DestroyDataRequest{
-		ID: 999,
+		ID: "01ARZ3NDEKTSV4RRFFQ69G5FBX",
 	}
 	body, _ := json.Marshal(reqBody)
 
@@ -557,7 +557,7 @@ func TestDataHandler_Integration_SQLite(t *testing.T) {
 	// Create a test table
 	createTableSQL := `
 		CREATE TABLE products (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			ulid TEXT PRIMARY KEY,
 			name TEXT NOT NULL,
 			price REAL NOT NULL
 		)
@@ -579,6 +579,8 @@ func TestDataHandler_Integration_SQLite(t *testing.T) {
 
 	handler := NewDataHandler(driver, reg)
 
+	var createdULID string
+
 	// Test Create
 	t.Run("Create", func(t *testing.T) {
 		reqBody := CreateDataRequest{
@@ -596,6 +598,12 @@ func TestDataHandler_Integration_SQLite(t *testing.T) {
 
 		if w.Code != http.StatusCreated {
 			t.Errorf("expected status %d, got %d. Body: %s", http.StatusCreated, w.Code, w.Body.String())
+		}
+
+		var response CreateDataResponse
+		json.NewDecoder(w.Body).Decode(&response)
+		if idStr, ok := response.Data["id"].(string); ok {
+			createdULID = idStr
 		}
 	})
 
@@ -620,7 +628,7 @@ func TestDataHandler_Integration_SQLite(t *testing.T) {
 
 	// Test Get
 	t.Run("Get", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/products:get?id=1", nil)
+		req := httptest.NewRequest(http.MethodGet, "/products:get?id="+createdULID, nil)
 		w := httptest.NewRecorder()
 
 		handler.Get(w, req, "products")
@@ -633,7 +641,7 @@ func TestDataHandler_Integration_SQLite(t *testing.T) {
 	// Test Update
 	t.Run("Update", func(t *testing.T) {
 		reqBody := UpdateDataRequest{
-			ID: 1,
+			ID: createdULID,
 			Data: map[string]any{
 				"name":  "Updated Product",
 				"price": 29.99,
@@ -654,7 +662,7 @@ func TestDataHandler_Integration_SQLite(t *testing.T) {
 	// Test Destroy
 	t.Run("Destroy", func(t *testing.T) {
 		reqBody := DestroyDataRequest{
-			ID: 1,
+			ID: createdULID,
 		}
 		body, _ := json.Marshal(reqBody)
 
