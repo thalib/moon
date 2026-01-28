@@ -56,6 +56,7 @@ curl http://localhost:6006/health
 ```
 
 Expected response:
+
 ```json
 {"status":"healthy"}
 ```
@@ -114,6 +115,7 @@ GET /api/v1/collections:list
 Lists all managed collections.
 
 **Response:**
+
 ```json
 {
   "collections": ["users", "products", "orders"],
@@ -130,9 +132,11 @@ GET /api/v1/collections:get?name={collectionName}
 Retrieves the schema for a specific collection.
 
 **Parameters:**
+
 - `name` (query, required): Collection name
 
 **Response:**
+
 ```json
 {
   "collection": {
@@ -156,6 +160,7 @@ POST /api/v1/collections:create
 Creates a new collection (table) in the database.
 
 **Request Body:**
+
 ```json
 {
   "name": "products",
@@ -168,6 +173,7 @@ Creates a new collection (table) in the database.
 ```
 
 **Column Types:**
+
 - `string`: Short string values
 - `text`: Long text values
 - `integer`: Whole numbers
@@ -177,6 +183,7 @@ Creates a new collection (table) in the database.
 - `json`: JSON data
 
 **Response:**
+
 ```json
 {
   "collection": { /* collection schema */ },
@@ -193,6 +200,7 @@ POST /api/v1/collections:update
 Modifies a collection schema (adds columns).
 
 **Request Body:**
+
 ```json
 {
   "name": "products",
@@ -203,6 +211,7 @@ Modifies a collection schema (adds columns).
 ```
 
 **Response:**
+
 ```json
 {
   "collection": { /* updated schema */ },
@@ -219,6 +228,7 @@ POST /api/v1/collections:destroy
 Drops a collection and all its data.
 
 **Request Body:**
+
 ```json
 {
   "name": "products"
@@ -226,6 +236,7 @@ Drops a collection and all its data.
 ```
 
 **Response:**
+
 ```json
 {
   "message": "Collection destroyed successfully"
@@ -245,10 +256,12 @@ GET /api/v1/{collectionName}:list
 Retrieves all records from a collection.
 
 **Query Parameters:**
+
 - `limit` (optional): Number of records to return (default: no limit)
 - `offset` (optional): Number of records to skip (default: 0)
 
 **Example:**
+
 ```bash
 # List all products
 curl http://localhost:8080/api/v1/products:list
@@ -258,6 +271,7 @@ curl http://localhost:8080/api/v1/products:list?limit=10&offset=0
 ```
 
 **Response:**
+
 ```json
 {
   "data": [
@@ -279,14 +293,17 @@ GET /api/v1/{collectionName}:get?id={id}
 Retrieves a single record by ID.
 
 **Parameters:**
+
 - `id` (query, required): Record ID
 
 **Example:**
+
 ```bash
 curl http://localhost:8080/api/v1/products:get?id=1
 ```
 
 **Response:**
+
 ```json
 {
   "data": {
@@ -307,6 +324,7 @@ POST /api/v1/{collectionName}:create
 Inserts a new record into the collection.
 
 **Request Body:**
+
 ```json
 {
   "data": {
@@ -318,6 +336,7 @@ Inserts a new record into the collection.
 ```
 
 **Response:**
+
 ```json
 {
   "data": {
@@ -339,6 +358,7 @@ POST /api/v1/{collectionName}:update
 Updates an existing record.
 
 **Request Body:**
+
 ```json
 {
   "id": 1,
@@ -352,6 +372,7 @@ Updates an existing record.
 Only the fields provided in `data` will be updated; other fields remain unchanged.
 
 **Response:**
+
 ```json
 {
   "data": {
@@ -373,6 +394,7 @@ POST /api/v1/{collectionName}:destroy
 Deletes a record from the collection.
 
 **Request Body:**
+
 ```json
 {
   "id": 3
@@ -380,6 +402,7 @@ Deletes a record from the collection.
 ```
 
 **Response:**
+
 ```json
 {
   "message": "Record deleted successfully"
@@ -495,6 +518,7 @@ The API demo script demonstrates all Moon operations:
 ```
 
 The script will:
+
 1. Create a products collection
 2. Insert sample data
 3. Demonstrate pagination
@@ -683,6 +707,7 @@ curl -H "X-API-Key: your-api-key" http://localhost:8080/api/v1/collections:list
 **Problem:** `Failed to load configuration: JWT secret is required`
 
 **Solution:**
+
 ```bash
 export MOON_JWT_SECRET=your-secret-key
 ./moon
@@ -693,6 +718,7 @@ export MOON_JWT_SECRET=your-secret-key
 **Problem:** `Failed to connect to database`
 
 **Solutions:**
+
 1. Check connection string format
 2. Ensure database server is running
 3. Verify credentials and permissions
@@ -703,6 +729,7 @@ export MOON_JWT_SECRET=your-secret-key
 **Problem:** Endpoint not found
 
 **Solutions:**
+
 1. Check URL pattern: `/api/v1/{collection}:{action}`
 2. Verify collection exists: `GET /api/v1/collections:list`
 3. Ensure proper HTTP method (GET vs POST)
@@ -712,6 +739,7 @@ export MOON_JWT_SECRET=your-secret-key
 **Problem:** `Invalid column type` or `Required field missing`
 
 **Solutions:**
+
 1. Check column types: `string`, `text`, `integer`, `float`, `boolean`, `datetime`, `json`
 2. Ensure required fields are provided
 3. Get collection schema: `GET /api/v1/collections:get?name={collection}`

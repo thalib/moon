@@ -48,19 +48,23 @@ apikey:
 ### Running Modes
 
 #### Console Mode (Default)
+
 ```bash
 moon --config /etc/moon.conf
 ```
+
 - Runs in foreground attached to terminal
 - Logs output to stdout/stderr
 - Process terminates when terminal closes or Ctrl+C is pressed
 
 #### Daemon Mode
+
 ```bash
 moon --daemon --config /etc/moon.conf
 # or shorthand
 moon -d --config /etc/moon.conf
 ```
+
 - Runs as background daemon process
 - Logs written to `/var/log/moon/main.log` (or path specified in config)
 - PID file written to `/var/run/moon.pid`

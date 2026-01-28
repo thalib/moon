@@ -202,11 +202,13 @@ database:
 ### Running Modes
 
 **Console Mode (Default)** - Foreground with stdout logging:
+
 ```bash
 ./moon --config /etc/moon.conf
 ```
 
 **Daemon Mode** - Background with file logging:
+
 ```bash
 ./moon --daemon --config /etc/moon.conf
 # or shorthand
@@ -214,6 +216,7 @@ database:
 ```
 
 **Systemd Service** - Production deployment:
+
 ```bash
 sudo systemctl start moon
 sudo systemctl enable moon

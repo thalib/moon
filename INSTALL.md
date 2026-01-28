@@ -226,6 +226,7 @@ database:
 ```
 
 SQLite is used by default if no database is configured. Perfect for:
+
 - Development and testing
 - Single-server deployments  
 - Embedded applications
@@ -290,6 +291,7 @@ Run as a background daemon with file-based logging:
 ```
 
 Daemon mode features:
+
 - Detaches from terminal and runs in background
 - Logs written to `/var/log/moon/main.log` (or path specified in config)
 - PID file written to `/var/run/moon.pid`
@@ -520,6 +522,7 @@ docker-compose up -d
 **Problem:** CGO-related errors with SQLite
 
 **Solution:** Ensure you have a C compiler installed:
+
 ```bash
 # Ubuntu/Debian
 sudo apt-get install build-essential
@@ -533,6 +536,7 @@ xcode-select --install
 **Problem:** `Failed to load configuration: JWT secret is required`
 
 **Solution:** Set `jwt.secret` in your configuration file:
+
 ```yaml
 jwt:
   secret: "your-secure-secret-key"
@@ -545,6 +549,7 @@ jwt:
 **Problem:** Permission denied when accessing SQLite database
 
 **Solution:** Ensure the Moon process has write permissions to the database file and its directory:
+
 ```bash
 chmod 755 /path/to/database/directory
 chmod 644 /path/to/database/moon.db
@@ -553,6 +558,7 @@ chmod 644 /path/to/database/moon.db
 **Problem:** Permission denied writing PID file in daemon mode
 
 **Solution:** Ensure the moon user has write permissions to `/var/run`:
+
 ```bash
 sudo chown moon:moon /var/run
 # Or run as root (not recommended)
@@ -563,12 +569,14 @@ sudo chown moon:moon /var/run
 **Problem:** `bind: address already in use`
 
 **Solution:** Change the port in your configuration file:
+
 ```yaml
 server:
   port: 9090
 ```
 
 Or find and stop the conflicting process:
+
 ```bash
 lsof -i :6006
 kill <PID>
