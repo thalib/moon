@@ -20,7 +20,7 @@ check_root() {
     echo "Running with root privileges"
 }
 
-check_root
+#check_root
 
 echo 'git pull'
 git pull
