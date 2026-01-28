@@ -1,3 +1,6 @@
+// Package server provides HTTP server setup and routing.
+// It configures the HTTP router with all API endpoints following
+// the AIP-136 custom actions pattern defined in SPEC.md.
 package server
 
 import (

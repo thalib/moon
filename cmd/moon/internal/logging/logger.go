@@ -1,3 +1,6 @@
+// Package logging provides structured logging with zerolog.
+// It supports JSON and console formats, log levels, file output,
+// request ID tracking, and automatic masking of sensitive fields.
 package logging
 
 import (

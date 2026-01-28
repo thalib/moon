@@ -1,3 +1,6 @@
+// Package preflight provides startup validation and checks.
+// It verifies configuration, permissions, and dependencies before
+// the server starts to fail fast on misconfiguration.
 package preflight
 
 import (

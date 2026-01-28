@@ -1,3 +1,6 @@
+// Package shutdown provides graceful shutdown management for the application.
+// It listens for OS signals and coordinates orderly cleanup of resources,
+// HTTP servers, and database connections with configurable timeouts.
 package shutdown
 
 import (
@@ -142,10 +145,11 @@ func (h *Handler) Trigger() {
 		return
 	}
 	h.shuttingDown = true
+	started := h.started
 	h.mu.Unlock()
 
 	// If not started, start and immediately shutdown
-	if !h.started {
+	if !started {
 		go h.performShutdown()
 		return
 	}

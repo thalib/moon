@@ -1,3 +1,6 @@
+// Package openapi provides dynamic OpenAPI/Swagger specification generation.
+// It generates API documentation from the in-memory schema registry, ensuring
+// the documentation always reflects the current database structure.
 package openapi
 
 import (

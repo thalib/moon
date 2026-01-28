@@ -1,3 +1,6 @@
+// Package health provides health check endpoints for monitoring.
+// It checks database connectivity and registry status to report
+// application health for load balancers and monitoring systems.
 package health
 
 import (

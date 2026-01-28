@@ -1,3 +1,6 @@
+// Package middleware provides HTTP middleware for authentication, authorization,
+// request logging, and error handling. It supports both JWT and API key authentication
+// as specified in SPEC.md configuration.
 package middleware
 
 import (
