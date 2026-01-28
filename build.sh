@@ -13,7 +13,7 @@ check_root() {
         echo "This script must be run as root."
         echo ""
         echo "Please run this script with sudo:"
-        echo "  sudo ./install.sh"
+        echo "  sudo ./build.sh"
         echo ""
         exit 1
     fi
@@ -21,6 +21,9 @@ check_root() {
 }
 
 check_root
+
+echo 'git pull'
+git pull
 
 echo 'sudo docker run --rm -v "$(pwd):/app" -v "$(pwd)/.gocache:/gocache" -w /app -e GOCACHE=/gocache golang:latest sh -c "go build -buildvcs=false -o moon ./cmd/moon"'
 
