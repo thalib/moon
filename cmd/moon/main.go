@@ -66,7 +66,7 @@ func main() {
 		logFile := filepath.Join(cfg.Logging.Path, "main.log")
 		logging.Init(logging.LoggerConfig{
 			Level:       logging.LevelInfo,
-			Format:      "json",
+			Format:      "simple",
 			FilePath:    logFile,
 			ServiceName: "moon",
 		})

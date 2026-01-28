@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -37,38 +38,35 @@ func TestNewLogger(t *testing.T) {
 	})
 }
 
-func TestLogger_JSONFormat(t *testing.T) {
+func TestLogger_SimpleFormat(t *testing.T) {
 	var buf bytes.Buffer
 
 	logger := NewLogger(LoggerConfig{
 		Level:  LevelInfo,
-		Format: "json",
+		Format: "simple",
 		Output: &buf,
 	})
 
 	logger.Info("Test message")
 
-	// Parse JSON output
-	var logEntry map[string]any
-	if err := json.Unmarshal(buf.Bytes(), &logEntry); err != nil {
-		t.Fatalf("Failed to parse JSON log: %v\nOutput: %s", err, buf.String())
+	// Check simple format: [LEVEL](TIMESTAMP): {MESSAGE}
+	output := buf.String()
+	if !strings.Contains(output, "[INFO]") {
+		t.Errorf("Expected output to contain '[INFO]', got '%s'", output)
 	}
-
-	if logEntry["message"] != "Test message" {
-		t.Errorf("Expected message 'Test message', got '%v'", logEntry["message"])
+	if !strings.Contains(output, "Test message") {
+		t.Errorf("Expected output to contain 'Test message', got '%s'", output)
 	}
-
-	if logEntry["level"] != "info" {
-		t.Errorf("Expected level 'info', got '%v'", logEntry["level"])
+	if !strings.Contains(output, "): ") {
+		t.Errorf("Expected output to contain '): ', got '%s'", output)
 	}
 }
 
-func TestLogger_ConsoleFormat(t *testing.T) {
+func TestLogger_DefaultFormat(t *testing.T) {
 	var buf bytes.Buffer
 
 	logger := NewLogger(LoggerConfig{
 		Level:  LevelInfo,
-		Format: "console",
 		Output: &buf,
 	})
 
@@ -89,22 +87,22 @@ func TestLogger_Levels(t *testing.T) {
 		{
 			level:         LevelDebug,
 			logFunc:       func(l *Logger) { l.Debug("debug msg") },
-			expectedLevel: "debug",
+			expectedLevel: "DEBUG",
 		},
 		{
 			level:         LevelInfo,
 			logFunc:       func(l *Logger) { l.Info("info msg") },
-			expectedLevel: "info",
+			expectedLevel: "INFO",
 		},
 		{
 			level:         LevelWarn,
 			logFunc:       func(l *Logger) { l.Warn("warn msg") },
-			expectedLevel: "warn",
+			expectedLevel: "WARN",
 		},
 		{
 			level:         LevelError,
 			logFunc:       func(l *Logger) { l.Error("error msg") },
-			expectedLevel: "error",
+			expectedLevel: "ERROR",
 		},
 	}
 
@@ -114,17 +112,15 @@ func TestLogger_Levels(t *testing.T) {
 
 			logger := NewLogger(LoggerConfig{
 				Level:  LevelDebug, // Allow all levels
-				Format: "json",
 				Output: &buf,
 			})
 
 			tc.logFunc(logger)
 
-			var logEntry map[string]any
-			json.Unmarshal(buf.Bytes(), &logEntry)
-
-			if logEntry["level"] != tc.expectedLevel {
-				t.Errorf("Expected level '%s', got '%v'", tc.expectedLevel, logEntry["level"])
+			output := buf.String()
+			expectedPrefix := fmt.Sprintf("[%s]", tc.expectedLevel)
+			if !strings.Contains(output, expectedPrefix) {
+				t.Errorf("Expected output to contain '%s', got '%s'", expectedPrefix, output)
 			}
 		})
 	}
@@ -135,7 +131,6 @@ func TestLogger_LevelFiltering(t *testing.T) {
 
 	logger := NewLogger(LoggerConfig{
 		Level:  LevelWarn, // Only warn and above
-		Format: "json",
 		Output: &buf,
 	})
 
