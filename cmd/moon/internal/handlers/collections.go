@@ -344,6 +344,9 @@ func generateCreateTableDDL(tableName string, columns []registry.Column, dialect
 		sb.WriteString("\n  id INTEGER PRIMARY KEY AUTOINCREMENT")
 	}
 
+	// Add ulid column (unique, not null)
+	sb.WriteString(",\n  ulid CHAR(26) NOT NULL UNIQUE")
+
 	// Add user-defined columns
 	for _, col := range columns {
 		sb.WriteString(",\n  ")

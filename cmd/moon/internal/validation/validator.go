@@ -11,6 +11,7 @@ import (
 
 	"github.com/thalib/moon/cmd/moon/internal/constants"
 	"github.com/thalib/moon/cmd/moon/internal/registry"
+	moonulid "github.com/thalib/moon/cmd/moon/internal/ulid"
 )
 
 // ValidationMode determines how the validator handles unknown fields
@@ -455,6 +456,26 @@ func EnumRule(fieldName string, allowedValues []string) func(value any) *Validat
 				Message:     fmt.Sprintf("field '%s' must be one of: %v", fieldName, allowedValues),
 				ActualValue: str,
 				Code:        "INVALID_ENUM",
+			}
+		}
+		return nil
+	}
+}
+
+// ULIDRule creates a validation rule for ULID fields
+func ULIDRule(fieldName string) func(value any) *ValidationError {
+	return func(value any) *ValidationError {
+		str, ok := value.(string)
+		if !ok {
+			return nil // Type validation will catch this
+		}
+
+		if err := moonulid.Validate(str); err != nil {
+			return &ValidationError{
+				Field:       fieldName,
+				Message:     fmt.Sprintf("field '%s' must be a valid ULID", fieldName),
+				ActualValue: str,
+				Code:        "INVALID_ULID",
 			}
 		}
 		return nil
