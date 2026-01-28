@@ -36,7 +36,7 @@ return nil
 }
 
 // First fork - create child process
-pid, err := syscall.ForkExec(
+_, err := syscall.ForkExec(
 os.Args[0],
 os.Args,
 &syscall.ProcAttr{
@@ -54,11 +54,9 @@ return fmt.Errorf("failed to fork process: %w", err)
 }
 
 // Parent process exits, child continues
-if pid > 0 {
+// ForkExec always returns pid > 0 in parent, so this always exits
 os.Exit(0)
-}
-
-return nil
+return nil // Unreachable but required for type-checker
 }
 
 // WritePIDFile writes the current process ID to the PID file
@@ -84,8 +82,8 @@ return fmt.Errorf("daemon already running with PID %d", pid)
 }
 }
 }
-// Remove stale PID file
-os.Remove(pidFile)
+// Remove stale PID file (ignore errors as it's cleanup)
+_ = os.Remove(pidFile)
 }
 
 // Write current PID to file

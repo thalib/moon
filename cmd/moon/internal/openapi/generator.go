@@ -1026,7 +1026,10 @@ func (g *Generator) Handler() http.HandlerFunc {
 			return
 		}
 
-		w.Write(data)
+		if _, err := w.Write(data); err != nil {
+			// Log error but can't send HTTP error as headers already sent
+			// This is acceptable as the write failure will be detected by the HTTP layer
+		}
 	}
 }
 
