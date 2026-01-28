@@ -4,23 +4,26 @@ This directory contains example configuration files and scripts to help you get 
 
 ## Configuration Files
 
-### config.example.yaml
+### moon.conf
 
-Example YAML configuration file showing all available options. Copy this to `config.yaml` in the project root and customize as needed:
-
-```bash
-cp samples/config.example.yaml config.yaml
-```
-
-### .env.example
-
-Example environment variables file. Environment variables take precedence over config file settings. Copy this to `.env` in the project root:
+Minimal quick-start configuration file showing essential options. Copy this to `/etc/moon.conf` for production use:
 
 ```bash
-cp samples/.env.example .env
+sudo cp samples/moon.conf /etc/moon.conf
+sudo nano /etc/moon.conf  # Edit and set jwt.secret
 ```
 
-**Important:** Make sure to change the `MOON_JWT_SECRET` to a secure random string in production!
+### moon-full.conf
+
+Comprehensive configuration file with all available options documented. Use this as a reference for advanced configuration:
+
+```bash
+# For reference and advanced setup
+cat samples/moon-full.conf
+```
+
+**Important:** Always change the `jwt.secret` to a secure random string in production!
+Generate with: `openssl rand -base64 32`
 
 ## Scripts
 

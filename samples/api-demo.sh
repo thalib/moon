@@ -30,8 +30,25 @@ cleanup() {
         # Stop Moon server if we started it
         if [ -n "$MOON_PID" ]; then
             echo "Stopping Moon server (PID: $MOON_PID)..."
-            kill $MOON_PID 2>/dev/null || true
-            wait $MOON_PID 2>/dev/null || true
+            kill "$MOON_PID" 2>/dev/null || true
+            
+            # Wait for graceful shutdown (max 5 seconds)
+            WAIT_COUNT=0
+            while [ $WAIT_COUNT -lt 5 ]; do
+                if ! kill -0 "$MOON_PID" 2>/dev/null; then
+                    break
+                fi
+                sleep 1
+                WAIT_COUNT=$((WAIT_COUNT + 1))
+            done
+            
+            # Force kill if still running
+            if kill -0 "$MOON_PID" 2>/dev/null; then
+                echo "Force stopping server..."
+                kill -9 "$MOON_PID" 2>/dev/null || true
+            fi
+            
+            wait "$MOON_PID" 2>/dev/null || true
         fi
         
         # Remove temporary files
@@ -63,7 +80,7 @@ setup_demo_environment() {
     # Create demo configuration
     cat > "$DEMO_CONFIG" << EOF
 server:
-  host: "0.0.0.0"
+  host: "127.0.0.1"  # Bind to localhost only for security
   port: 6006
 
 database:
@@ -74,6 +91,8 @@ logging:
   path: "$DEMO_LOG_DIR"
 
 jwt:
+  # WARNING: This secret is for demo purposes only!
+  # NEVER use this in production - generate a secure secret with: openssl rand -base64 32
   secret: "demo-secret-key-for-testing-only"
   expiry: 3600
 
@@ -108,7 +127,7 @@ start_moon_server() {
     echo "Command: $MOON_BINARY --config $DEMO_CONFIG"
     
     # Start server in background
-    $MOON_BINARY --config "$DEMO_CONFIG" > "$DEMO_LOG_DIR/server.log" 2>&1 &
+    "$MOON_BINARY" --config "$DEMO_CONFIG" > "$DEMO_LOG_DIR/server.log" 2>&1 &
     MOON_PID=$!
     
     # Wait for server to be ready

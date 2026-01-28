@@ -378,8 +378,8 @@ docker run --rm -v "$(pwd):/app" -w /app golang:1.24 \
 After installation, verify Moon is working:
 
 ```bash
-# Console mode
-./moon --config config.yaml &
+# Console mode (for local development/testing)
+./moon --config /path/to/moon.conf &
 
 # Check health endpoint
 curl http://localhost:6006/health
@@ -400,7 +400,7 @@ For manual verification with a running server:
 
 ```bash
 # Start Moon in one terminal (console mode)
-./moon --config config.yaml
+./moon --config /path/to/moon.conf
 
 # Check health endpoint in another terminal
 curl http://localhost:6006/health
