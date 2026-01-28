@@ -63,3 +63,11 @@ SQLite is the default database. For most development and testing, no connection 
 - Aim for 90% test coverage
 - Unless explicitly asked to create new documentation you should never create new documentation files
 - Always keep the existing documentation, scripts and samples: `INSTALL.MD`, `README.md`, `USAGE.md`, `install.sh` and `samples/*` in sync with code changes
+
+### Format All Go Files
+
+Format all Go files in the project using `gofmt` for consistent style:
+
+1. Find all `*.go` files (including subdirectories).
+2. Run `gofmt -w` on each file.
+3. Fix any remaining formatting issues if needed.
