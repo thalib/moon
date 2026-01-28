@@ -4,16 +4,13 @@ Documentation=https://github.com/thalib/moon
 After=network.target
 
 [Service]
-Type=forking
+Type=simple
 User=moon
 Group=moon
 WorkingDirectory=/opt/moon
 
-# Path to the moon binary with daemon flag
-ExecStart=/usr/local/bin/moon --daemon --config /etc/moon.conf
-
-# PID file location
-PIDFile=/var/run/moon.pid
+# Path to the moon binary (systemd manages the process, no daemon flag needed)
+ExecStart=/usr/local/bin/moon --config /etc/moon.conf
 
 # Restart policy
 Restart=on-failure

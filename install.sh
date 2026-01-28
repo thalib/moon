@@ -68,6 +68,7 @@ create_user() {
 create_directories() {
     print_info "Creating required directories..."
     
+    # Create /var/lib/moon directory
     if [ ! -d "/var/lib/moon" ]; then
         mkdir -p /var/lib/moon
         chown moon:moon /var/lib/moon
@@ -76,6 +77,28 @@ create_directories() {
     else
         print_info "/var/lib/moon directory already exists"
         chown moon:moon /var/lib/moon
+    fi
+    
+    # Create /opt/moon directory (working directory for systemd service)
+    if [ ! -d "/opt/moon" ]; then
+        mkdir -p /opt/moon
+        chown moon:moon /opt/moon
+        chmod 755 /opt/moon
+        print_success "Created /opt/moon directory"
+    else
+        print_info "/opt/moon directory already exists"
+        chown moon:moon /opt/moon
+    fi
+    
+    # Create /var/log/moon directory (for log files)
+    if [ ! -d "/var/log/moon" ]; then
+        mkdir -p /var/log/moon
+        chown moon:moon /var/log/moon
+        chmod 755 /var/log/moon
+        print_success "Created /var/log/moon directory"
+    else
+        print_info "/var/log/moon directory already exists"
+        chown moon:moon /var/log/moon
     fi
 }
 
