@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/thalib/moon/cmd/moon/internal/database"
+	"github.com/thalib/moon/cmd/moon/internal/query"
 	"github.com/thalib/moon/cmd/moon/internal/registry"
 )
 
@@ -991,4 +992,212 @@ func findSubstring(s, substr string) bool {
 		}
 	}
 	return false
+}
+
+// PRD 022: Sorting Support Tests
+
+func TestParseSort(t *testing.T) {
+	tests := []struct {
+		name          string
+		url           string
+		expectedCount int
+		expectedSorts []sortField
+	}{
+		{
+			name:          "No sort parameter",
+			url:           "/products:list",
+			expectedCount: 0,
+			expectedSorts: []sortField{},
+		},
+		{
+			name:          "Single field ascending",
+			url:           "/products:list?sort=price",
+			expectedCount: 1,
+			expectedSorts: []sortField{{column: "price", direction: "ASC"}},
+		},
+		{
+			name:          "Single field descending",
+			url:           "/products:list?sort=-price",
+			expectedCount: 1,
+			expectedSorts: []sortField{{column: "price", direction: "DESC"}},
+		},
+		{
+			name:          "Single field explicit ascending",
+			url:           "/products:list?sort=+price",
+			expectedCount: 1,
+			expectedSorts: []sortField{{column: "price", direction: "ASC"}},
+		},
+		{
+			name:          "Multiple fields",
+			url:           "/products:list?sort=-created_at,name",
+			expectedCount: 2,
+			expectedSorts: []sortField{
+				{column: "created_at", direction: "DESC"},
+				{column: "name", direction: "ASC"},
+			},
+		},
+		{
+			name:          "Multiple fields mixed directions",
+			url:           "/products:list?sort=category,-price,+name",
+			expectedCount: 3,
+			expectedSorts: []sortField{
+				{column: "category", direction: "ASC"},
+				{column: "price", direction: "DESC"},
+				{column: "name", direction: "ASC"},
+			},
+		},
+		{
+			name:          "Sort with spaces",
+			url:           "/products:list?sort=-price,name",
+			expectedCount: 2,
+			expectedSorts: []sortField{
+				{column: "price", direction: "DESC"},
+				{column: "name", direction: "ASC"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, tt.url, nil)
+			sorts, err := parseSort(req)
+			if err != nil {
+				t.Fatalf("parseSort() error = %v", err)
+			}
+
+			if len(sorts) != tt.expectedCount {
+				t.Errorf("expected %d sort fields, got %d", tt.expectedCount, len(sorts))
+			}
+
+			for i, expected := range tt.expectedSorts {
+				if i >= len(sorts) {
+					t.Errorf("missing sort field at index %d", i)
+					continue
+				}
+				if sorts[i].column != expected.column {
+					t.Errorf("sort[%d].column: expected %s, got %s", i, expected.column, sorts[i].column)
+				}
+				if sorts[i].direction != expected.direction {
+					t.Errorf("sort[%d].direction: expected %s, got %s", i, expected.direction, sorts[i].direction)
+				}
+			}
+		})
+	}
+}
+
+func TestBuildOrderBy(t *testing.T) {
+	// Create test collection
+	collection := &registry.Collection{
+		Name: "products",
+		Columns: []registry.Column{
+			{Name: "name", Type: registry.TypeString},
+			{Name: "price", Type: registry.TypeFloat},
+			{Name: "created_at", Type: registry.TypeDatetime},
+		},
+	}
+
+	tests := []struct {
+		name        string
+		sorts       []sortField
+		dialect     database.DialectType
+		expected    string
+		wantErr     bool
+		errContains string
+	}{
+		{
+			name:     "No sorts - default",
+			sorts:    []sortField{},
+			dialect:  database.DialectSQLite,
+			expected: "ulid ASC",
+			wantErr:  false,
+		},
+		{
+			name: "Single field ascending - SQLite",
+			sorts: []sortField{
+				{column: "price", direction: "ASC"},
+			},
+			dialect:  database.DialectSQLite,
+			expected: "price ASC",
+			wantErr:  false,
+		},
+		{
+			name: "Single field descending - SQLite",
+			sorts: []sortField{
+				{column: "price", direction: "DESC"},
+			},
+			dialect:  database.DialectSQLite,
+			expected: "price DESC",
+			wantErr:  false,
+		},
+		{
+			name: "Single field - Postgres",
+			sorts: []sortField{
+				{column: "price", direction: "ASC"},
+			},
+			dialect:  database.DialectPostgres,
+			expected: `"price" ASC`,
+			wantErr:  false,
+		},
+		{
+			name: "Single field - MySQL",
+			sorts: []sortField{
+				{column: "price", direction: "DESC"},
+			},
+			dialect:  database.DialectMySQL,
+			expected: "`price` DESC",
+			wantErr:  false,
+		},
+		{
+			name: "Multiple fields",
+			sorts: []sortField{
+				{column: "created_at", direction: "DESC"},
+				{column: "name", direction: "ASC"},
+			},
+			dialect:  database.DialectSQLite,
+			expected: "created_at DESC, name ASC",
+			wantErr:  false,
+		},
+		{
+			name: "Sort by ulid",
+			sorts: []sortField{
+				{column: "ulid", direction: "DESC"},
+			},
+			dialect:  database.DialectSQLite,
+			expected: "ulid DESC",
+			wantErr:  false,
+		},
+		{
+			name: "Invalid column",
+			sorts: []sortField{
+				{column: "nonexistent", direction: "ASC"},
+			},
+			dialect:     database.DialectSQLite,
+			wantErr:     true,
+			errContains: "invalid sort column",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			builder := query.NewBuilder(tt.dialect)
+			orderBy, err := buildOrderBy(tt.sorts, collection, builder)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Error("expected error but got none")
+				} else if tt.errContains != "" && !contains(err.Error(), tt.errContains) {
+					t.Errorf("error should contain %q, got %q", tt.errContains, err.Error())
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if orderBy != tt.expected {
+				t.Errorf("expected ORDER BY %q, got %q", tt.expected, orderBy)
+			}
+		})
+	}
 }

@@ -136,13 +136,27 @@ func (h *DataHandler) List(w http.ResponseWriter, r *http.Request, collectionNam
 	// Create query builder
 	builder := query.NewBuilder(h.db.Dialect())
 
-	// Build SELECT query with filters and pagination
+	// Parse sort parameters
+	sorts, err := parseSort(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid sort parameter: %v", err))
+		return
+	}
+
+	// Build ORDER BY clause
+	orderBy, err := buildOrderBy(sorts, collection, builder)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	// Build SELECT query with filters, sorting, and pagination
 	sql, args := builder.Select(
 		collectionName,
 		nil, // Select all columns
 		conditions,
-		"ulid ASC", // Default order by ULID
-		limit+1,    // Fetch one extra to determine if there's more data
+		orderBy,
+		limit+1, // Fetch one extra to determine if there's more data
 		0,
 	)
 
@@ -630,6 +644,87 @@ func convertValue(value string, colType registry.ColumnType) (any, error) {
 	default:
 		return value, nil
 	}
+}
+
+// sortField represents a parsed sort field with direction
+type sortField struct {
+	column    string
+	direction string // "ASC" or "DESC"
+}
+
+// parseSort parses the sort query parameter
+// Supports: ?sort=field (ASC), ?sort=-field (DESC), ?sort=field1,-field2 (multiple)
+func parseSort(r *http.Request) ([]sortField, error) {
+	sortParam := r.URL.Query().Get("sort")
+	if sortParam == "" {
+		return nil, nil
+	}
+
+	var fields []sortField
+	parts := strings.Split(sortParam, ",")
+
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+
+		var field sortField
+		if strings.HasPrefix(part, "-") {
+			// Descending
+			field.column = part[1:]
+			field.direction = "DESC"
+		} else if strings.HasPrefix(part, "+") {
+			// Explicit ascending
+			field.column = part[1:]
+			field.direction = "ASC"
+		} else {
+			// Default ascending
+			field.column = part
+			field.direction = "ASC"
+		}
+
+		fields = append(fields, field)
+	}
+
+	return fields, nil
+}
+
+// buildOrderBy constructs ORDER BY clause from sort fields
+func buildOrderBy(sorts []sortField, collection *registry.Collection, builder query.Builder) (string, error) {
+	if len(sorts) == 0 {
+		// Default sorting by ulid
+		return "ulid ASC", nil
+	}
+
+	// Create a map of valid column names
+	validColumns := make(map[string]bool)
+	for _, col := range collection.Columns {
+		validColumns[col.Name] = true
+	}
+	// Also allow sorting by ulid
+	validColumns["ulid"] = true
+
+	var orderParts []string
+	for _, sort := range sorts {
+		// Validate column exists
+		if !validColumns[sort.column] {
+			return "", fmt.Errorf("invalid sort column: %s", sort.column)
+		}
+
+		// Escape identifier based on dialect
+		escapedCol := sort.column
+		switch builder.Dialect() {
+		case database.DialectPostgres:
+			escapedCol = fmt.Sprintf(`"%s"`, sort.column)
+		case database.DialectMySQL:
+			escapedCol = fmt.Sprintf("`%s`", sort.column)
+		}
+
+		orderParts = append(orderParts, fmt.Sprintf("%s %s", escapedCol, sort.direction))
+	}
+
+	return strings.Join(orderParts, ", "), nil
 }
 
 // parseRows parses SQL rows into a slice of maps
