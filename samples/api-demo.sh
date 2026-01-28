@@ -4,8 +4,7 @@
 
 # Configuration
 BASE_URL="${MOON_URL:-http://localhost:6006}"
-API_VERSION="v1"
-API_BASE="$BASE_URL/api/$API_VERSION"
+API_BASE="$BASE_URL/api/v1"
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -30,6 +29,8 @@ api_call() {
     
     if [ -n "$data" ]; then
         echo "Data: $data"
+        echo -n "Command: "
+        echo "curl -X \"$method\" -H \"Content-Type: application/json\" -d '$data' \"$API_BASE$endpoint\" -w \"\nHTTP Status: %{http_code}\n\""
         curl -X "$method" \
             -H "Content-Type: application/json" \
             -d "$data" \
@@ -37,6 +38,8 @@ api_call() {
             -w "\nHTTP Status: %{http_code}\n" \
             2>/dev/null
     else
+        echo -n "Command: "
+        echo "curl -X \"$method\" \"$API_BASE$endpoint\" -w \"\nHTTP Status: %{http_code}\n\""
         curl -X "$method" \
             "$API_BASE$endpoint" \
             -w "\nHTTP Status: %{http_code}\n" \
