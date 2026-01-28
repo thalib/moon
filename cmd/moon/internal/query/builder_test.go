@@ -1,6 +1,7 @@
 package query
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -357,5 +358,371 @@ func TestSQLInjectionPrevention(t *testing.T) {
 	// Verify we're using placeholders
 	if !strings.Contains(sql, "$1") {
 		t.Error("expected parameterized placeholder")
+	}
+}
+
+// PRD 020: Query Builder Enhancements Tests
+
+func TestValidateOperator(t *testing.T) {
+	tests := []struct {
+		name     string
+		operator string
+		wantErr  bool
+	}{
+		{"Equal operator", OpEqual, false},
+		{"Not equal operator", OpNotEqual, false},
+		{"Greater than", OpGreaterThan, false},
+		{"Less than", OpLessThan, false},
+		{"Greater than or equal", OpGreaterThanOrEqual, false},
+		{"Less than or equal", OpLessThanOrEqual, false},
+		{"LIKE operator", OpLike, false},
+		{"IN operator", OpIn, false},
+		{"Invalid operator", "INVALID", true},
+		{"SQL injection attempt", "; DROP TABLE", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateOperator(tt.operator)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidateOperator() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestSelect_ComparisonOperators(t *testing.T) {
+	tests := []struct {
+		name     string
+		operator string
+		value    any
+		dialect  database.DialectType
+	}{
+		{"Equal", OpEqual, "value", database.DialectSQLite},
+		{"Not equal", OpNotEqual, "value", database.DialectSQLite},
+		{"Greater than", OpGreaterThan, 100, database.DialectSQLite},
+		{"Less than", OpLessThan, 50, database.DialectSQLite},
+		{"Greater than or equal", OpGreaterThanOrEqual, 75, database.DialectPostgres},
+		{"Less than or equal", OpLessThanOrEqual, 25, database.DialectMySQL},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			builder := NewBuilder(tt.dialect)
+			where := []Condition{
+				{Column: "field", Operator: tt.operator, Value: tt.value},
+			}
+
+			sql, args := builder.Select("table", nil, where, "", 0, 0)
+
+			if !strings.Contains(sql, "WHERE") {
+				t.Error("expected WHERE clause")
+			}
+			if !strings.Contains(sql, tt.operator) {
+				t.Errorf("expected operator %s in SQL", tt.operator)
+			}
+			if len(args) != 1 || args[0] != tt.value {
+				t.Errorf("expected args [%v], got %v", tt.value, args)
+			}
+		})
+	}
+}
+
+func TestSelect_LikeOperator(t *testing.T) {
+	tests := []struct {
+		name          string
+		value         string
+		expectedValue string
+		dialect       database.DialectType
+	}{
+		{
+			name:          "Normal string",
+			value:         "moon",
+			expectedValue: "moon",
+			dialect:       database.DialectSQLite,
+		},
+		{
+			name:          "String with percent wildcard",
+			value:         "test%value",
+			expectedValue: `test\%value`,
+			dialect:       database.DialectSQLite,
+		},
+		{
+			name:          "String with underscore wildcard",
+			value:         "test_value",
+			expectedValue: `test\_value`,
+			dialect:       database.DialectPostgres,
+		},
+		{
+			name:          "String with both wildcards",
+			value:         "test%_value",
+			expectedValue: `test\%\_value`,
+			dialect:       database.DialectMySQL,
+		},
+		{
+			name:          "String with backslash",
+			value:         `test\value`,
+			expectedValue: `test\\value`,
+			dialect:       database.DialectSQLite,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			builder := NewBuilder(tt.dialect)
+			where := []Condition{
+				{Column: "name", Operator: OpLike, Value: tt.value},
+			}
+
+			sql, args := builder.Select("table", nil, where, "", 0, 0)
+
+			if !strings.Contains(sql, "WHERE") {
+				t.Error("expected WHERE clause")
+			}
+			if !strings.Contains(sql, "LIKE") {
+				t.Error("expected LIKE operator")
+			}
+			if len(args) != 1 {
+				t.Errorf("expected 1 arg, got %d", len(args))
+			}
+			if args[0] != tt.expectedValue {
+				t.Errorf("expected escaped value %q, got %q", tt.expectedValue, args[0])
+			}
+		})
+	}
+}
+
+func TestSelect_InOperator(t *testing.T) {
+	tests := []struct {
+		name    string
+		value   any
+		dialect database.DialectType
+	}{
+		{
+			name:    "Multiple values",
+			value:   []any{"a", "b", "c"},
+			dialect: database.DialectSQLite,
+		},
+		{
+			name:    "Single value as slice",
+			value:   []any{"single"},
+			dialect: database.DialectPostgres,
+		},
+		{
+			name:    "Integer values",
+			value:   []any{1, 2, 3, 4, 5},
+			dialect: database.DialectMySQL,
+		},
+		{
+			name:    "Mixed types",
+			value:   []any{"string", 123, 45.67},
+			dialect: database.DialectSQLite,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			builder := NewBuilder(tt.dialect)
+			where := []Condition{
+				{Column: "status", Operator: OpIn, Value: tt.value},
+			}
+
+			sql, args := builder.Select("table", nil, where, "", 0, 0)
+
+			if !strings.Contains(sql, "WHERE") {
+				t.Error("expected WHERE clause")
+			}
+			if !strings.Contains(sql, "IN") {
+				t.Error("expected IN operator")
+			}
+			if !strings.Contains(sql, "(") || !strings.Contains(sql, ")") {
+				t.Error("expected parentheses for IN clause")
+			}
+
+			values := tt.value.([]any)
+			if len(args) != len(values) {
+				t.Errorf("expected %d args, got %d", len(values), len(args))
+			}
+
+			// Verify correct number of placeholders
+			switch tt.dialect {
+			case database.DialectPostgres:
+				for i := 1; i <= len(values); i++ {
+					placeholder := fmt.Sprintf("$%d", i)
+					if !strings.Contains(sql, placeholder) {
+						t.Errorf("expected placeholder %s", placeholder)
+					}
+				}
+			case database.DialectMySQL, database.DialectSQLite:
+				expectedPlaceholders := strings.Repeat("?, ", len(values)-1) + "?"
+				if !strings.Contains(sql, expectedPlaceholders) {
+					t.Errorf("expected placeholders %s", expectedPlaceholders)
+				}
+			}
+		})
+	}
+}
+
+func TestSelect_InOperator_NonSliceValue(t *testing.T) {
+	builder := NewBuilder(database.DialectSQLite)
+	where := []Condition{
+		{Column: "id", Operator: OpIn, Value: "single_value"},
+	}
+
+	sql, args := builder.Select("table", nil, where, "", 0, 0)
+
+	if !strings.Contains(sql, "IN") {
+		t.Error("expected IN operator")
+	}
+	if len(args) != 1 {
+		t.Errorf("expected 1 arg for single value, got %d", len(args))
+	}
+	if args[0] != "single_value" {
+		t.Errorf("expected 'single_value', got %v", args[0])
+	}
+}
+
+func TestSelect_MultipleOperators(t *testing.T) {
+	builder := NewBuilder(database.DialectPostgres)
+	where := []Condition{
+		{Column: "price", Operator: OpGreaterThan, Value: 100},
+		{Column: "name", Operator: OpLike, Value: "product%"},
+		{Column: "category", Operator: OpIn, Value: []any{"electronics", "gadgets"}},
+		{Column: "status", Operator: OpEqual, Value: "active"},
+	}
+
+	sql, args := builder.Select("products", nil, where, "", 0, 0)
+
+	if !strings.Contains(sql, "WHERE") {
+		t.Error("expected WHERE clause")
+	}
+	if !strings.Contains(sql, ">") {
+		t.Error("expected > operator")
+	}
+	if !strings.Contains(sql, "LIKE") {
+		t.Error("expected LIKE operator")
+	}
+	if !strings.Contains(sql, "IN") {
+		t.Error("expected IN operator")
+	}
+	if !strings.Contains(sql, "=") {
+		t.Error("expected = operator")
+	}
+
+	// Should have 5 args: price, escaped LIKE value, 2 IN values, status
+	if len(args) != 5 {
+		t.Errorf("expected 5 args, got %d", len(args))
+	}
+}
+
+func TestUpdate_WithSpecialOperators(t *testing.T) {
+	builder := NewBuilder(database.DialectSQLite)
+	updates := map[string]any{
+		"name": "New Name",
+	}
+	where := []Condition{
+		{Column: "status", Operator: OpIn, Value: []any{"pending", "active"}},
+	}
+
+	sql, args := builder.Update("table", updates, where)
+
+	if !strings.Contains(sql, "UPDATE") {
+		t.Error("expected UPDATE clause")
+	}
+	if !strings.Contains(sql, "WHERE") {
+		t.Error("expected WHERE clause")
+	}
+	if !strings.Contains(sql, "IN") {
+		t.Error("expected IN operator")
+	}
+
+	// 1 for SET clause, 2 for IN clause
+	if len(args) != 3 {
+		t.Errorf("expected 3 args, got %d", len(args))
+	}
+}
+
+func TestDelete_WithSpecialOperators(t *testing.T) {
+	builder := NewBuilder(database.DialectPostgres)
+	where := []Condition{
+		{Column: "name", Operator: OpLike, Value: "test%"},
+		{Column: "age", Operator: OpLessThan, Value: 18},
+	}
+
+	sql, args := builder.Delete("users", where)
+
+	if !strings.Contains(sql, "DELETE FROM") {
+		t.Error("expected DELETE FROM clause")
+	}
+	if !strings.Contains(sql, "WHERE") {
+		t.Error("expected WHERE clause")
+	}
+	if !strings.Contains(sql, "LIKE") {
+		t.Error("expected LIKE operator")
+	}
+	if !strings.Contains(sql, "<") {
+		t.Error("expected < operator")
+	}
+
+	// Should have 2 args (escaped LIKE value and age)
+	if len(args) != 2 {
+		t.Errorf("expected 2 args, got %d", len(args))
+	}
+
+	// Verify LIKE value is escaped
+	if !strings.Contains(args[0].(string), `\%`) {
+		t.Error("expected escaped % in LIKE value")
+	}
+}
+
+func TestDialect_SpecificBehavior(t *testing.T) {
+	tests := []struct {
+		name              string
+		dialect           database.DialectType
+		expectedFirstPH   string
+		expectedSecondPH  string
+		expectedThirdPH   string
+	}{
+		{
+			name:             "PostgreSQL placeholders",
+			dialect:          database.DialectPostgres,
+			expectedFirstPH:  "$1",
+			expectedSecondPH: "$2",
+			expectedThirdPH:  "$3",
+		},
+		{
+			name:             "MySQL placeholders",
+			dialect:          database.DialectMySQL,
+			expectedFirstPH:  "?",
+			expectedSecondPH: "?",
+			expectedThirdPH:  "?",
+		},
+		{
+			name:             "SQLite placeholders",
+			dialect:          database.DialectSQLite,
+			expectedFirstPH:  "?",
+			expectedSecondPH: "?",
+			expectedThirdPH:  "?",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			builder := NewBuilder(tt.dialect)
+			where := []Condition{
+				{Column: "a", Operator: OpEqual, Value: 1},
+				{Column: "b", Operator: OpGreaterThan, Value: 2},
+				{Column: "c", Operator: OpLike, Value: "test"},
+			}
+
+			sql, args := builder.Select("table", nil, where, "", 0, 0)
+
+			if !strings.Contains(sql, tt.expectedFirstPH) {
+				t.Errorf("expected placeholder %s", tt.expectedFirstPH)
+			}
+			if len(args) != 3 {
+				t.Errorf("expected 3 args, got %d", len(args))
+			}
+		})
 	}
 }

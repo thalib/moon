@@ -11,6 +11,38 @@ import (
 	"github.com/thalib/moon/cmd/moon/internal/registry"
 )
 
+// Operator constants for safe SQL operations
+const (
+	OpEqual              = "="
+	OpNotEqual           = "!="
+	OpGreaterThan        = ">"
+	OpLessThan           = "<"
+	OpGreaterThanOrEqual = ">="
+	OpLessThanOrEqual    = "<="
+	OpLike               = "LIKE"
+	OpIn                 = "IN"
+)
+
+// validOperators contains all supported SQL operators
+var validOperators = map[string]bool{
+	OpEqual:              true,
+	OpNotEqual:           true,
+	OpGreaterThan:        true,
+	OpLessThan:           true,
+	OpGreaterThanOrEqual: true,
+	OpLessThanOrEqual:    true,
+	OpLike:               true,
+	OpIn:                 true,
+}
+
+// ValidateOperator checks if an operator is valid and safe to use
+func ValidateOperator(op string) error {
+	if !validOperators[op] {
+		return fmt.Errorf("invalid operator: %s", op)
+	}
+	return nil
+}
+
 // Builder provides methods for building SQL queries
 type Builder interface {
 	// DDL operations
@@ -147,20 +179,7 @@ func (b *builder) Select(tableName string, columns []string, where []Condition, 
 	sb.WriteString(b.escapeIdentifier(tableName))
 
 	// WHERE clause
-	if len(where) > 0 {
-		sb.WriteString(" WHERE ")
-		for i, cond := range where {
-			if i > 0 {
-				sb.WriteString(" AND ")
-			}
-			sb.WriteString(b.escapeIdentifier(cond.Column))
-			sb.WriteString(" ")
-			sb.WriteString(cond.Operator)
-			sb.WriteString(" ")
-			sb.WriteString(b.placeholder(len(args) + 1))
-			args = append(args, cond.Value)
-		}
-	}
+	args = b.buildWhereClause(&sb, where, args)
 
 	// ORDER BY clause
 	if orderBy != "" {
@@ -238,20 +257,7 @@ func (b *builder) Update(tableName string, updates map[string]any, where []Condi
 	}
 
 	// WHERE clause
-	if len(where) > 0 {
-		sb.WriteString(" WHERE ")
-		for i, cond := range where {
-			if i > 0 {
-				sb.WriteString(" AND ")
-			}
-			sb.WriteString(b.escapeIdentifier(cond.Column))
-			sb.WriteString(" ")
-			sb.WriteString(cond.Operator)
-			sb.WriteString(" ")
-			sb.WriteString(b.placeholder(len(args) + 1))
-			args = append(args, cond.Value)
-		}
-	}
+	args = b.buildWhereClause(&sb, where, args)
 
 	return sb.String(), args
 }
@@ -265,20 +271,7 @@ func (b *builder) Delete(tableName string, where []Condition) (string, []any) {
 	sb.WriteString(b.escapeIdentifier(tableName))
 
 	// WHERE clause
-	if len(where) > 0 {
-		sb.WriteString(" WHERE ")
-		for i, cond := range where {
-			if i > 0 {
-				sb.WriteString(" AND ")
-			}
-			sb.WriteString(b.escapeIdentifier(cond.Column))
-			sb.WriteString(" ")
-			sb.WriteString(cond.Operator)
-			sb.WriteString(" ")
-			sb.WriteString(b.placeholder(len(args) + 1))
-			args = append(args, cond.Value)
-		}
-	}
+	args = b.buildWhereClause(&sb, where, args)
 
 	return sb.String(), args
 }
@@ -310,6 +303,69 @@ func (b *builder) placeholder(position int) string {
 	default:
 		return "?"
 	}
+}
+
+// escapeLikeValue escapes special characters in LIKE patterns to prevent unintended wildcard matches
+func (b *builder) escapeLikeValue(value any) any {
+	str, ok := value.(string)
+	if !ok {
+		return value
+	}
+
+	// Escape LIKE wildcards: % and _
+	// Use backslash as escape character (standard SQL)
+	str = strings.ReplaceAll(str, `\`, `\\`)
+	str = strings.ReplaceAll(str, `%`, `\%`)
+	str = strings.ReplaceAll(str, `_`, `\_`)
+
+	return str
+}
+
+// buildWhereClause builds a WHERE clause from conditions and returns the updated args slice
+func (b *builder) buildWhereClause(sb *strings.Builder, where []Condition, args []any) []any {
+	if len(where) == 0 {
+		return args
+	}
+
+	sb.WriteString(" WHERE ")
+	for i, cond := range where {
+		if i > 0 {
+			sb.WriteString(" AND ")
+		}
+		sb.WriteString(b.escapeIdentifier(cond.Column))
+		sb.WriteString(" ")
+		sb.WriteString(cond.Operator)
+		sb.WriteString(" ")
+
+		// Handle special operators
+		if cond.Operator == OpIn {
+			// IN operator expects a slice of values
+			values, ok := cond.Value.([]any)
+			if !ok {
+				// If not a slice, treat as single value
+				values = []any{cond.Value}
+			}
+			sb.WriteString("(")
+			for j, v := range values {
+				if j > 0 {
+					sb.WriteString(", ")
+				}
+				sb.WriteString(b.placeholder(len(args) + 1))
+				args = append(args, v)
+			}
+			sb.WriteString(")")
+		} else if cond.Operator == OpLike {
+			// LIKE operator - escape special characters in value
+			sb.WriteString(b.placeholder(len(args) + 1))
+			args = append(args, b.escapeLikeValue(cond.Value))
+		} else {
+			// Standard operators
+			sb.WriteString(b.placeholder(len(args) + 1))
+			args = append(args, cond.Value)
+		}
+	}
+
+	return args
 }
 
 // mapColumnTypeToSQL maps ColumnType to SQL type for the dialect
