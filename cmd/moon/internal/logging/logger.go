@@ -46,6 +46,35 @@ func (sw *simpleWriter) Write(p []byte) (n int, err error) {
 	return sw.out.Write([]byte(formatted))
 }
 
+// dualWriter writes JSON logs to two outputs with different formatting:
+// - consoleWriter: uses zerolog.ConsoleWriter for colorized output
+// - fileWriter: uses simpleWriter for file logging
+type dualWriter struct {
+	consoleWriter io.Writer
+	fileWriter    io.Writer
+}
+
+func (dw *dualWriter) Write(p []byte) (n int, err error) {
+	// Write to both outputs
+	// Console writer (first, as it's the primary output for console mode)
+	n1, err1 := dw.consoleWriter.Write(p)
+
+	// File writer (always attempt, even if console fails)
+	n2, err2 := dw.fileWriter.Write(p)
+
+	// Return the larger byte count and first error encountered
+	if n1 > n2 {
+		n = n1
+	} else {
+		n = n2
+	}
+
+	if err1 != nil {
+		return n, err1
+	}
+	return n, err2
+}
+
 // Level represents logging levels
 type Level string
 
@@ -69,6 +98,10 @@ type LoggerConfig struct {
 
 	// FilePath is the path to the log file (if specified, Output is ignored)
 	FilePath string
+
+	// DualOutput enables dual logging: stdout (console format) + file (simple format)
+	// When true, logs are written to both stdout and FilePath
+	DualOutput bool
 
 	// ServiceName is the name of the service
 	ServiceName string
@@ -94,18 +127,42 @@ type Logger struct {
 func NewLogger(config LoggerConfig) *Logger {
 	var output io.Writer
 
-	// If FilePath is specified, open/create log file
-	if config.FilePath != "" {
-		// Ensure log directory exists
+	// Handle dual output mode (console + file)
+	if config.DualOutput && config.FilePath != "" {
+		// Dual output: stdout (console format) + file (simple format)
+		// We need to use a custom multi-writer that can handle different formats
+
+		// Try to open the log file
 		dir := filepath.Dir(config.FilePath)
 		if err := os.MkdirAll(dir, constants.DirPermissions); err != nil {
-			// If we can't create directory, fall back to stdout
+			fmt.Fprintf(os.Stderr, "Failed to create log directory %s: %v\n", dir, err)
+			// Fall back to stdout only
+			output = os.Stdout
+		} else {
+			file, err := os.OpenFile(config.FilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, constants.FilePermissions)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to open log file %s: %v\n", config.FilePath, err)
+				// Fall back to stdout only
+				output = os.Stdout
+			} else {
+				// Create dual writer: stdout gets console format, file gets simple format
+				consoleOut := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RFC3339}
+				fileOut := &simpleWriter{out: file}
+				output = &dualWriter{
+					consoleWriter: consoleOut,
+					fileWriter:    fileOut,
+				}
+			}
+		}
+	} else if config.FilePath != "" {
+		// Single output to file only
+		dir := filepath.Dir(config.FilePath)
+		if err := os.MkdirAll(dir, constants.DirPermissions); err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to create log directory %s: %v\n", dir, err)
 			output = os.Stdout
 		} else {
 			file, err := os.OpenFile(config.FilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, constants.FilePermissions)
 			if err != nil {
-				// If we can't open file, fall back to stdout
 				fmt.Fprintf(os.Stderr, "Failed to open log file %s: %v\n", config.FilePath, err)
 				output = os.Stdout
 			} else {
@@ -144,9 +201,16 @@ func NewLogger(config LoggerConfig) *Logger {
 	var logger zerolog.Logger
 
 	// Configure output format
-	if config.Format == "json" {
+	if config.DualOutput {
+		// For dual output, the dualWriter handles formatting internally
+		logger = zerolog.New(output).Level(zeroLevel).With().Timestamp().Logger()
+	} else if config.Format == "json" {
 		// JSON format for testing/debugging
 		logger = zerolog.New(output).Level(zeroLevel).With().Timestamp().Logger()
+	} else if config.Format == "console" {
+		// Console format (colorized)
+		consoleOut := zerolog.ConsoleWriter{Out: output, TimeFormat: time.RFC3339}
+		logger = zerolog.New(consoleOut).Level(zeroLevel).With().Timestamp().Logger()
 	} else {
 		// Default to simple text format: [LEVEL](TIMESTAMP): {MESSAGE}
 		simpleOut := &simpleWriter{out: output}

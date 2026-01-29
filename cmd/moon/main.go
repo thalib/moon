@@ -75,10 +75,13 @@ func main() {
 		logging.Infof("PID file: %s", daemonCfg.PIDFile)
 		logging.Infof("Log file: %s", logFile)
 	} else {
-		// Console mode - log to stdout
+		// Console mode - log to stdout AND file (dual output)
+		logFile := filepath.Join(cfg.Logging.Path, "main.log")
 		logging.Init(logging.LoggerConfig{
 			Level:       logging.LevelInfo,
 			Format:      "console",
+			FilePath:    logFile,
+			DualOutput:  true,
 			ServiceName: "moon",
 		})
 	}
@@ -228,4 +231,3 @@ func logConfigSummary(cfg *config.AppConfig) {
 	}
 	logging.Info("============================")
 }
-

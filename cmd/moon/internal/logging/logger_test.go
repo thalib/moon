@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -634,4 +636,186 @@ func TestResponseWriter(t *testing.T) {
 	if rw.bytesWritten != len(data) {
 		t.Errorf("Expected bytesWritten %d, got %d", len(data), rw.bytesWritten)
 	}
+}
+
+func TestDualWriter(t *testing.T) {
+	t.Run("Writes to both outputs", func(t *testing.T) {
+		var consoleOut bytes.Buffer
+		var fileOut bytes.Buffer
+
+		dw := &dualWriter{
+			consoleWriter: &consoleOut,
+			fileWriter:    &fileOut,
+		}
+
+		testData := []byte("test log message")
+		n, err := dw.Write(testData)
+
+		if err != nil {
+			t.Errorf("Unexpected error: %v", err)
+		}
+
+		if n != len(testData) {
+			t.Errorf("Expected %d bytes written, got %d", len(testData), n)
+		}
+
+		if consoleOut.Len() == 0 {
+			t.Error("Console output is empty")
+		}
+
+		if fileOut.Len() == 0 {
+			t.Error("File output is empty")
+		}
+	})
+
+	t.Run("Continues to file even if console fails", func(t *testing.T) {
+		var fileOut bytes.Buffer
+
+		// Create a failing writer for console
+		failWriter := &failingWriter{shouldFail: true}
+
+		dw := &dualWriter{
+			consoleWriter: failWriter,
+			fileWriter:    &fileOut,
+		}
+
+		testData := []byte("test log message")
+		_, err := dw.Write(testData)
+
+		// Should return error from console writer
+		if err == nil {
+			t.Error("Expected error from console writer")
+		}
+
+		// But file should still have been written
+		if fileOut.Len() == 0 {
+			t.Error("File output should not be empty even when console fails")
+		}
+	})
+}
+
+// failingWriter is a test writer that can be configured to fail
+type failingWriter struct {
+	shouldFail bool
+}
+
+func (fw *failingWriter) Write(p []byte) (n int, err error) {
+	if fw.shouldFail {
+		return 0, fmt.Errorf("write failed")
+	}
+	return len(p), nil
+}
+
+func TestLogger_DualOutput(t *testing.T) {
+	t.Run("Dual output mode with file and stdout", func(t *testing.T) {
+		// Create temp directory for log file
+		tmpDir := t.TempDir()
+		logFile := filepath.Join(tmpDir, "test.log")
+
+		// Create logger with dual output
+		logger := NewLogger(LoggerConfig{
+			Level:      LevelInfo,
+			FilePath:   logFile,
+			DualOutput: true,
+		})
+
+		logger.Info("Test dual output message")
+
+		// Verify file was created and contains the message
+		data, err := os.ReadFile(logFile)
+		if err != nil {
+			t.Fatalf("Failed to read log file: %v", err)
+		}
+
+		content := string(data)
+		if !strings.Contains(content, "Test dual output message") {
+			t.Errorf("Expected log file to contain message, got: %s", content)
+		}
+
+		// Verify simple format in file
+		if !strings.Contains(content, "[INFO]") {
+			t.Errorf("Expected log file to contain [INFO], got: %s", content)
+		}
+	})
+
+	t.Run("Falls back to stdout on file open failure", func(t *testing.T) {
+		// Try to create logger with invalid path
+		logger := NewLogger(LoggerConfig{
+			Level:      LevelInfo,
+			FilePath:   "/invalid/path/that/does/not/exist/test.log",
+			DualOutput: true,
+		})
+
+		// Should not panic and should create a logger
+		if logger == nil {
+			t.Fatal("Expected logger to be created even with invalid file path")
+		}
+
+		// Logger should still work (logging to stdout)
+		logger.Info("This should go to stdout only")
+	})
+
+	t.Run("Appends to existing log file", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		logFile := filepath.Join(tmpDir, "append.log")
+
+		// Write initial content
+		err := os.WriteFile(logFile, []byte("[INFO](2024-01-01T00:00:00Z): Initial message\n"), 0644)
+		if err != nil {
+			t.Fatalf("Failed to write initial content: %v", err)
+		}
+
+		// Create logger that should append
+		logger := NewLogger(LoggerConfig{
+			Level:      LevelInfo,
+			FilePath:   logFile,
+			DualOutput: true,
+		})
+
+		logger.Info("Appended message")
+
+		// Read file and verify both messages
+		data, err := os.ReadFile(logFile)
+		if err != nil {
+			t.Fatalf("Failed to read log file: %v", err)
+		}
+
+		content := string(data)
+		if !strings.Contains(content, "Initial message") {
+			t.Error("Expected initial message to be preserved")
+		}
+		if !strings.Contains(content, "Appended message") {
+			t.Error("Expected appended message to be present")
+		}
+	})
+}
+
+func TestLogger_ConsoleFormat(t *testing.T) {
+	t.Run("Console format for stdout in dual mode", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		logFile := filepath.Join(tmpDir, "console.log")
+
+		logger := NewLogger(LoggerConfig{
+			Level:      LevelInfo,
+			Format:     "console",
+			FilePath:   logFile,
+			DualOutput: true,
+		})
+
+		logger.Info("Console format test")
+
+		// File should have simple format
+		data, err := os.ReadFile(logFile)
+		if err != nil {
+			t.Fatalf("Failed to read log file: %v", err)
+		}
+
+		content := string(data)
+		if !strings.Contains(content, "[INFO]") {
+			t.Errorf("Expected [INFO] in file, got: %s", content)
+		}
+		if !strings.Contains(content, "Console format test") {
+			t.Errorf("Expected message in file, got: %s", content)
+		}
+	})
 }
