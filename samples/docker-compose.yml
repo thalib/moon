@@ -1,0 +1,10 @@
+services:
+  moon:
+    build: .
+    ports:
+      - "6006:6006"
+    volumes:
+      - ./moon.conf:/etc/moon.conf
+      - ./data:/opt/moon
+      - ./log/:/var/log/moon
+    restart: unless-stopped

@@ -32,4 +32,4 @@ COPY --from=builder /build/moon /usr/local/bin/moon
 EXPOSE 6006
 
 # Run moon in foreground (daemon mode)
-CMD ["/usr/local/bin/moon", "-d"]
+CMD ["/usr/local/bin/moon"]
