@@ -726,3 +726,152 @@ func TestDialect_SpecificBehavior(t *testing.T) {
 		})
 	}
 }
+
+func TestCount(t *testing.T) {
+	tests := []struct {
+		name       string
+		dialect    database.DialectType
+		table      string
+		conditions []Condition
+		wantSQL    string
+		wantArgs   int
+	}{
+		{
+			name:     "count all - postgres",
+			dialect:  database.DialectPostgres,
+			table:    "orders",
+			wantSQL:  `SELECT COUNT(*) FROM "orders"`,
+			wantArgs: 0,
+		},
+		{
+			name:     "count all - sqlite",
+			dialect:  database.DialectSQLite,
+			table:    "orders",
+			wantSQL:  "SELECT COUNT(*) FROM orders",
+			wantArgs: 0,
+		},
+		{
+			name:    "count with filter - postgres",
+			dialect: database.DialectPostgres,
+			table:   "orders",
+			conditions: []Condition{
+				{Column: "status", Operator: OpEqual, Value: "completed"},
+			},
+			wantSQL:  `SELECT COUNT(*) FROM "orders" WHERE "status" = $1`,
+			wantArgs: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			builder := NewBuilder(tt.dialect)
+			sql, args := builder.Count(tt.table, tt.conditions)
+
+			if sql != tt.wantSQL {
+				t.Errorf("Count() sql = %v, want %v", sql, tt.wantSQL)
+			}
+			if len(args) != tt.wantArgs {
+				t.Errorf("Count() args count = %d, want %d", len(args), tt.wantArgs)
+			}
+		})
+	}
+}
+
+func TestSum(t *testing.T) {
+	tests := []struct {
+		name       string
+		dialect    database.DialectType
+		table      string
+		field      string
+		conditions []Condition
+		wantSQL    string
+		wantArgs   int
+	}{
+		{
+			name:     "sum - postgres",
+			dialect:  database.DialectPostgres,
+			table:    "orders",
+			field:    "total",
+			wantSQL:  `SELECT SUM("total") FROM "orders"`,
+			wantArgs: 0,
+		},
+		{
+			name:     "sum - sqlite",
+			dialect:  database.DialectSQLite,
+			table:    "orders",
+			field:    "total",
+			wantSQL:  "SELECT SUM(total) FROM orders",
+			wantArgs: 0,
+		},
+		{
+			name:    "sum with filter - postgres",
+			dialect: database.DialectPostgres,
+			table:   "orders",
+			field:   "total",
+			conditions: []Condition{
+				{Column: "status", Operator: OpEqual, Value: "completed"},
+			},
+			wantSQL:  `SELECT SUM("total") FROM "orders" WHERE "status" = $1`,
+			wantArgs: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			builder := NewBuilder(tt.dialect)
+			sql, args := builder.Sum(tt.table, tt.field, tt.conditions)
+
+			if sql != tt.wantSQL {
+				t.Errorf("Sum() sql = %v, want %v", sql, tt.wantSQL)
+			}
+			if len(args) != tt.wantArgs {
+				t.Errorf("Sum() args count = %d, want %d", len(args), tt.wantArgs)
+			}
+		})
+	}
+}
+
+func TestAvg(t *testing.T) {
+	builder := NewBuilder(database.DialectPostgres)
+	sql, args := builder.Avg("orders", "total", nil)
+
+	if !strings.Contains(sql, "SELECT AVG") {
+		t.Error("expected AVG function")
+	}
+	if !strings.Contains(sql, `"total"`) {
+		t.Error("expected quoted field name")
+	}
+	if len(args) != 0 {
+		t.Errorf("expected 0 args, got %d", len(args))
+	}
+}
+
+func TestMin(t *testing.T) {
+	builder := NewBuilder(database.DialectPostgres)
+	sql, args := builder.Min("orders", "total", nil)
+
+	if !strings.Contains(sql, "SELECT MIN") {
+		t.Error("expected MIN function")
+	}
+	if !strings.Contains(sql, `"total"`) {
+		t.Error("expected quoted field name")
+	}
+	if len(args) != 0 {
+		t.Errorf("expected 0 args, got %d", len(args))
+	}
+}
+
+func TestMax(t *testing.T) {
+	builder := NewBuilder(database.DialectPostgres)
+	sql, args := builder.Max("orders", "total", nil)
+
+	if !strings.Contains(sql, "SELECT MAX") {
+		t.Error("expected MAX function")
+	}
+	if !strings.Contains(sql, `"total"`) {
+		t.Error("expected quoted field name")
+	}
+	if len(args) != 0 {
+		t.Errorf("expected 0 args, got %d", len(args))
+	}
+}

@@ -56,6 +56,13 @@ type Builder interface {
 	Update(tableName string, updates map[string]any, where []Condition) (string, []any)
 	Delete(tableName string, where []Condition) (string, []any)
 
+	// Aggregation operations
+	Count(tableName string, where []Condition) (string, []any)
+	Sum(tableName string, field string, where []Condition) (string, []any)
+	Avg(tableName string, field string, where []Condition) (string, []any)
+	Min(tableName string, field string, where []Condition) (string, []any)
+	Max(tableName string, field string, where []Condition) (string, []any)
+
 	// Dialect returns the database dialect
 	Dialect() database.DialectType
 }
@@ -443,4 +450,82 @@ func mapColumnTypeToSQLite(colType registry.ColumnType) string {
 	default:
 		return "TEXT"
 	}
+}
+
+// Count generates COUNT(*) aggregation query with optional WHERE clause
+func (b *builder) Count(tableName string, where []Condition) (string, []any) {
+	var sb strings.Builder
+	args := []any{}
+
+	sb.WriteString("SELECT COUNT(*) FROM ")
+	sb.WriteString(b.escapeIdentifier(tableName))
+
+	// WHERE clause
+	args = b.buildWhereClause(&sb, where, args)
+
+	return sb.String(), args
+}
+
+// Sum generates SUM(field) aggregation query with optional WHERE clause
+func (b *builder) Sum(tableName string, field string, where []Condition) (string, []any) {
+	var sb strings.Builder
+	args := []any{}
+
+	sb.WriteString("SELECT SUM(")
+	sb.WriteString(b.escapeIdentifier(field))
+	sb.WriteString(") FROM ")
+	sb.WriteString(b.escapeIdentifier(tableName))
+
+	// WHERE clause
+	args = b.buildWhereClause(&sb, where, args)
+
+	return sb.String(), args
+}
+
+// Avg generates AVG(field) aggregation query with optional WHERE clause
+func (b *builder) Avg(tableName string, field string, where []Condition) (string, []any) {
+	var sb strings.Builder
+	args := []any{}
+
+	sb.WriteString("SELECT AVG(")
+	sb.WriteString(b.escapeIdentifier(field))
+	sb.WriteString(") FROM ")
+	sb.WriteString(b.escapeIdentifier(tableName))
+
+	// WHERE clause
+	args = b.buildWhereClause(&sb, where, args)
+
+	return sb.String(), args
+}
+
+// Min generates MIN(field) aggregation query with optional WHERE clause
+func (b *builder) Min(tableName string, field string, where []Condition) (string, []any) {
+	var sb strings.Builder
+	args := []any{}
+
+	sb.WriteString("SELECT MIN(")
+	sb.WriteString(b.escapeIdentifier(field))
+	sb.WriteString(") FROM ")
+	sb.WriteString(b.escapeIdentifier(tableName))
+
+	// WHERE clause
+	args = b.buildWhereClause(&sb, where, args)
+
+	return sb.String(), args
+}
+
+// Max generates MAX(field) aggregation query with optional WHERE clause
+func (b *builder) Max(tableName string, field string, where []Condition) (string, []any) {
+	var sb strings.Builder
+	args := []any{}
+
+	sb.WriteString("SELECT MAX(")
+	sb.WriteString(b.escapeIdentifier(field))
+	sb.WriteString(") FROM ")
+	sb.WriteString(b.escapeIdentifier(tableName))
+
+	// WHERE clause
+	args = b.buildWhereClause(&sb, where, args)
+
+	return sb.String(), args
 }

@@ -61,6 +61,9 @@ func (s *Server) setupRoutes() {
 	// Create data handler
 	dataHandler := handlers.NewDataHandler(s.db, s.registry)
 
+	// Create aggregation handler
+	aggregationHandler := handlers.NewAggregationHandler(s.db, s.registry)
+
 	// Health check endpoint
 	s.mux.HandleFunc("GET /health", s.loggingMiddleware(s.healthHandler))
 
@@ -72,7 +75,7 @@ func (s *Server) setupRoutes() {
 	s.mux.HandleFunc("POST /api/v1/collections:destroy", s.loggingMiddleware(collectionsHandler.Destroy))
 
 	// Data access endpoints (dynamic collections with :action pattern)
-	s.mux.HandleFunc("/api/v1/", s.loggingMiddleware(s.dynamicDataHandler(dataHandler)))
+	s.mux.HandleFunc("/api/v1/", s.loggingMiddleware(s.dynamicDataHandler(dataHandler, aggregationHandler)))
 	// Catch-all for 404
 	s.mux.HandleFunc("/", s.loggingMiddleware(s.notFoundHandler))
 }
@@ -202,7 +205,7 @@ func (s *Server) writeError(w http.ResponseWriter, statusCode int, message strin
 
 // Data handler wrappers that extract collection name from URL path
 
-func (s *Server) dynamicDataHandler(dataHandler *handlers.DataHandler) http.HandlerFunc {
+func (s *Server) dynamicDataHandler(dataHandler *handlers.DataHandler, aggregationHandler *handlers.AggregationHandler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Parse path: /api/v1/{name}:{action}
 		path := strings.TrimPrefix(r.URL.Path, "/api/v1/")
@@ -255,6 +258,36 @@ func (s *Server) dynamicDataHandler(dataHandler *handlers.DataHandler) http.Hand
 				return
 			}
 			dataHandler.Destroy(w, r, collectionName)
+		case "count":
+			if r.Method != http.MethodGet {
+				s.writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
+				return
+			}
+			aggregationHandler.Count(w, r, collectionName)
+		case "sum":
+			if r.Method != http.MethodGet {
+				s.writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
+				return
+			}
+			aggregationHandler.Sum(w, r, collectionName)
+		case "avg":
+			if r.Method != http.MethodGet {
+				s.writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
+				return
+			}
+			aggregationHandler.Avg(w, r, collectionName)
+		case "min":
+			if r.Method != http.MethodGet {
+				s.writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
+				return
+			}
+			aggregationHandler.Min(w, r, collectionName)
+		case "max":
+			if r.Method != http.MethodGet {
+				s.writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
+				return
+			}
+			aggregationHandler.Max(w, r, collectionName)
 		default:
 			s.writeError(w, http.StatusNotFound, "Unknown action")
 		}

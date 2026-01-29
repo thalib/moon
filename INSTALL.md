@@ -138,3 +138,127 @@ This script:
 - Copies configuration to `/etc/moon.conf`
 - Installs and enables systemd service
 - Starts Moon service
+
+## Docker Deployment
+
+Moon can be run in a Docker container for consistent, portable deployments.
+
+### Build Docker Image
+
+From the repository root:
+
+```bash
+docker build -t moon:latest .
+```
+
+This creates a minimal Docker image using a multi-stage build:
+- Builder stage compiles the Go binary
+- Runtime stage uses `scratch` base (minimal footprint)
+- Final image is ~20MB
+
+### Run with Docker
+
+#### Basic Usage
+
+```bash
+docker run -d \
+  --name moon \
+  -p 6006:6006 \
+  -v /path/to/moon.conf:/etc/moon.conf \
+  -v /path/to/data:/opt/moon \
+  moon:latest
+```
+
+#### Example with Local Directories
+
+```bash
+# Create local directories
+mkdir -p ./moon-data ./moon-config
+
+# Create a config file
+cat > ./moon-config/moon.conf << EOF
+server:
+  host: "0.0.0.0"
+  port: 6006
+
+database:
+  connection: "sqlite"
+  database: "/opt/moon/sqlite.db"
+
+logging:
+  path: "/var/log/moon"
+
+jwt:
+  secret: "your-secret-key-change-in-production"
+  expiry: 3600
+
+apikey:
+  enabled: false
+  header: "X-API-KEY"
+EOF
+
+# Run Moon container
+docker run -d \
+  --name moon \
+  -p 6006:6006 \
+  -v $(pwd)/moon-config/moon.conf:/etc/moon.conf \
+  -v $(pwd)/moon-data:/opt/moon \
+  moon:latest
+
+# Check status
+curl http://localhost:6006/health
+```
+
+#### Docker Compose (Optional)
+
+Create `docker-compose.yml`:
+
+```yaml
+version: '3.8'
+
+services:
+  moon:
+    build: .
+    ports:
+      - "6006:6006"
+    volumes:
+      - ./moon.conf:/etc/moon.conf
+      - ./data:/opt/moon
+    restart: unless-stopped
+```
+
+Run with:
+
+```bash
+docker-compose up -d
+```
+
+### Volume Mounts
+
+- **Config:** Mount your YAML config at `/etc/moon.conf`
+- **Data:** Mount a persistent volume at `/opt/moon/` for SQLite database
+- **Logs:** Internal logs are written to `/var/log/moon` (optional mount)
+
+### Environment
+
+The Docker container:
+- Runs Moon in console mode (foreground)
+- Uses YAML-only configuration (no environment variables)
+- Exposes port 6006 by default
+- Requires a valid config file at `/etc/moon.conf`
+- Persists SQLite data via volume mount to `/opt/moon/`
+
+### Verification
+
+Test the running container:
+
+```bash
+# Check container logs
+docker logs moon
+
+# Test health endpoint
+curl http://localhost:6006/health
+
+# Check collections
+curl http://localhost:6006/api/v1/collections:list
+```
