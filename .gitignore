@@ -172,3 +172,4 @@ config.yaml
 config.toml
 .env
 .env.local
+.gocache
