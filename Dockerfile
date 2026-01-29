@@ -31,5 +31,5 @@ COPY --from=builder /build/moon /usr/local/bin/moon
 # Expose default port
 EXPOSE 6006
 
-# Run moon in foreground (console mode)
-CMD ["/usr/local/bin/moon", "--config", "/etc/moon.conf"]
+# Run moon in foreground (daemon mode)
+CMD ["/usr/local/bin/moon", "-d"]
