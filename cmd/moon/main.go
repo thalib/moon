@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/thalib/moon/cmd/moon/internal/config"
+	"github.com/thalib/moon/cmd/moon/internal/consistency"
 	"github.com/thalib/moon/cmd/moon/internal/daemon"
 	"github.com/thalib/moon/cmd/moon/internal/database"
 	"github.com/thalib/moon/cmd/moon/internal/logging"
@@ -117,6 +118,13 @@ func main() {
 
 	// Initialize schema registry
 	reg := registry.NewSchemaRegistry()
+
+	// Run consistency check and repair if needed
+	fmt.Println("Running consistency check...")
+	if err := runConsistencyCheck(ctx, driver, reg, &cfg.Recovery); err != nil {
+		fmt.Fprintf(os.Stderr, "Consistency check failed: %v\n", err)
+		os.Exit(1)
+	}
 
 	// Create and start HTTP server
 	srv := server.New(cfg, driver, reg)
@@ -230,4 +238,56 @@ func logConfigSummary(cfg *config.AppConfig) {
 		logging.Infof("API Key Header: %s", cfg.APIKey.Header)
 	}
 	logging.Info("============================")
+}
+
+// runConsistencyCheck performs startup consistency check and repair
+func runConsistencyCheck(ctx context.Context, driver database.Driver, reg *registry.SchemaRegistry, cfg *config.RecoveryConfig) error {
+	checker := consistency.NewChecker(driver, reg, cfg)
+
+	result, err := checker.Check(ctx)
+	if err != nil {
+		return fmt.Errorf("consistency check error: %w", err)
+	}
+
+	if result.TimedOut {
+		logging.Warn("Consistency check timed out")
+		return fmt.Errorf("consistency check timed out after %v", result.Duration)
+	}
+
+	if result.Consistent {
+		logging.Info("✓ Consistency check passed")
+		fmt.Println("✓ Consistency check passed")
+		return nil
+	}
+
+	// Found issues
+	logging.Warnf("Found %d consistency issue(s)", len(result.Issues))
+	fmt.Printf("Found %d consistency issue(s):\n", len(result.Issues))
+
+	allRepaired := true
+	for _, issue := range result.Issues {
+		status := "✗"
+		if issue.Repaired {
+			status = "✓"
+		} else {
+			allRepaired = false
+		}
+		fmt.Printf("  %s %s: %s\n", status, issue.Type, issue.Name)
+		logging.Infof("  %s %s: %s", status, issue.Type, issue.Name)
+	}
+
+	if allRepaired {
+		fmt.Println("✓ All issues repaired automatically")
+		logging.Info("All issues repaired automatically")
+		return nil
+	}
+
+	// Some issues not repaired
+	if cfg.AutoRepair {
+		logging.Error("Some issues could not be repaired automatically")
+		return fmt.Errorf("consistency check failed: some issues could not be repaired")
+	}
+
+	logging.Error("Inconsistencies detected. Enable auto_repair in config to fix automatically")
+	return fmt.Errorf("consistency check failed: inconsistencies detected (auto_repair disabled)")
 }
