@@ -43,6 +43,53 @@ jwt:
 apikey:
   enabled: false       # Default: false
   header: "X-API-KEY"  # Default: X-API-KEY
+
+recovery:
+  auto_repair: true    # Default: true - automatically repair consistency issues
+  drop_orphans: false  # Default: false - drop orphaned tables (if false, register them)
+  check_timeout: 5     # Default: 5 seconds - timeout for consistency checks
+```
+
+### Recovery and Consistency Checking
+
+Moon includes robust consistency checking and recovery logic that ensures the in-memory schema registry remains synchronized with the physical database tables across restarts and failures.
+
+**On Startup:**
+- Moon performs an automatic consistency check comparing the registry with physical database tables
+- If inconsistencies are detected, they are logged with detailed information
+- With `auto_repair: true` (default), Moon automatically repairs inconsistencies:
+  - **Orphaned registry entries** (registered but table doesn't exist): Removed from registry
+  - **Orphaned tables** (table exists but not registered): 
+    - If `drop_orphans: false` (default): Table schema is inferred and registered
+    - If `drop_orphans: true`: Table is dropped from database
+
+**Consistency Check:**
+- Runs within the configured timeout (default 5 seconds)
+- Non-blocking with configurable timeout to prevent indefinite startup delays
+- Results are logged and displayed during startup
+- Startup fails if critical issues cannot be repaired
+
+**Health Endpoint:**
+- The `/health` endpoint includes consistency status
+- Returns `"consistency": "ok"` when synchronized
+- Returns `"consistency": "inconsistent"` with details when issues are detected
+- Performs a quick 2-second consistency check on each health request
+
+**Example health response with consistency issue:**
+```json
+{
+  "status": "healthy",
+  "database": "sqlite",
+  "collections": 5,
+  "consistency": "inconsistent",
+  "details": [
+    {
+      "type": "orphaned_table",
+      "name": "old_table",
+      "repaired": "false"
+    }
+  ]
+}
 ```
 
 ### Running Modes
