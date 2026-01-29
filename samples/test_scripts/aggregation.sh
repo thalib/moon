@@ -31,7 +31,7 @@ curl -s -X POST "http://localhost:6006/api/v1/orders:create" \
 			"total": 125.00,
 			"subtotal": 112.50,
 			"tax": 12.50,
-			"products": {"items": 1}
+			"products": "{\"items\": 1}"
 		}
 	}' > /dev/null
 curl -s -X POST "http://localhost:6006/api/v1/orders:create" \
@@ -43,7 +43,7 @@ curl -s -X POST "http://localhost:6006/api/v1/orders:create" \
 			"total": 150.00,
 			"subtotal": 135.00,
 			"tax": 15.00,
-			"products": {"items": 2}
+			"products": "{\"items\": 2}"
 		}
 	}' > /dev/null
 curl -s -X POST "http://localhost:6006/api/v1/orders:create" \
@@ -55,7 +55,7 @@ curl -s -X POST "http://localhost:6006/api/v1/orders:create" \
 			"total": 175.00,
 			"subtotal": 157.50,
 			"tax": 17.50,
-			"products": {"items": 3}
+			"products": "{\"items\": 3}"
 		}
 	}' > /dev/null
 curl -s -X POST "http://localhost:6006/api/v1/orders:create" \
@@ -67,7 +67,7 @@ curl -s -X POST "http://localhost:6006/api/v1/orders:create" \
 			"total": 200.00,
 			"subtotal": 180.00,
 			"tax": 20.00,
-			"products": {"items": 4}
+			"products": "{\"items\": 4}"
 		}
 	}' > /dev/null
 curl -s -X POST "http://localhost:6006/api/v1/orders:create" \
@@ -79,7 +79,7 @@ curl -s -X POST "http://localhost:6006/api/v1/orders:create" \
 			"total": 225.00,
 			"subtotal": 202.50,
 			"tax": 22.50,
-			"products": {"items": 5}
+			"products": "{\"items\": 5}"
 		}
 	}' > /dev/null
 echo "✓ Created 5 orders"
