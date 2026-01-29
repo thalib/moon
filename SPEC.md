@@ -270,6 +270,116 @@ GET /orders:max?field=total
 - Invalid field or missing field parameter returns `400 Bad Request`
 - Unknown collection returns `404 Not Found`
 
+### D. Collection Column Operations
+
+The `POST /collections:update` endpoint supports comprehensive column lifecycle management through four operation types that can be combined in a single request.
+
+**Operation Order:**
+Operations are executed in the following order: rename → modify → add → remove
+
+**Request Body Structure:**
+```json
+{
+  "name": "collection_name",
+  "add_columns": [...],      // Optional: Add new columns
+  "remove_columns": [...],   // Optional: Remove existing columns
+  "rename_columns": [...],   // Optional: Rename existing columns
+  "modify_columns": [...]    // Optional: Modify column types/constraints
+}
+```
+
+**Add Columns:**
+```json
+{
+  "name": "products",
+  "add_columns": [
+    {
+      "name": "category",
+      "type": "string",
+      "nullable": true,
+      "unique": false,
+      "default_value": null
+    }
+  ]
+}
+```
+
+**Remove Columns:**
+```json
+{
+  "name": "products",
+  "remove_columns": ["old_field", "deprecated_column"]
+}
+```
+- Cannot remove system columns (`id`, `ulid`)
+- Column must exist in collection
+
+**Rename Columns:**
+```json
+{
+  "name": "products",
+  "rename_columns": [
+    {
+      "old_name": "description",
+      "new_name": "details"
+    }
+  ]
+}
+```
+- Cannot rename system columns (`id`, `ulid`)
+- New name must not conflict with existing columns
+- Old column must exist
+
+**Modify Columns:**
+```json
+{
+  "name": "products",
+  "modify_columns": [
+    {
+      "name": "price",
+      "type": "float",
+      "nullable": false,
+      "unique": false,
+      "default_value": "0.0"
+    }
+  ]
+}
+```
+- Cannot modify system columns (`id`, `ulid`)
+- Column must exist
+- Type changes should be compatible with existing data
+
+**Combined Operations Example:**
+```json
+{
+  "name": "products",
+  "rename_columns": [
+    {"old_name": "stock", "new_name": "quantity"}
+  ],
+  "modify_columns": [
+    {"name": "price", "type": "float", "nullable": false}
+  ],
+  "add_columns": [
+    {"name": "brand", "type": "string", "nullable": true}
+  ],
+  "remove_columns": ["deprecated_field"]
+}
+```
+
+**Validation & Error Handling:**
+- All operations are validated before execution
+- Registry is atomically updated only after successful DDL execution
+- On failure, registry is rolled back to previous state
+- System columns (`id`, `ulid`) are protected from modification
+- Descriptive errors returned for invalid operations
+
+**Database Dialect Support:**
+- SQLite: DROP COLUMN (3.35.0+), RENAME COLUMN (3.25.0+)
+- PostgreSQL: Full support for all operations
+- MySQL: Full support for all operations
+- Note: SQLite MODIFY COLUMN has limited support and may require table recreation
+
+
 ## 3. Architecture: The Dynamic Data Flow
 
 The server acts as a "Smart Bridge" between the user and the database.
