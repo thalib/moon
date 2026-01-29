@@ -64,6 +64,18 @@ func (m *mockAggDriver) DB() *sql.DB {
 	return nil
 }
 
+func (m *mockAggDriver) ListTables(ctx context.Context) ([]string, error) {
+	return nil, nil
+}
+
+func (m *mockAggDriver) GetTableInfo(ctx context.Context, tableName string) (*database.TableInfo, error) {
+	return nil, nil
+}
+
+func (m *mockAggDriver) TableExists(ctx context.Context, tableName string) (bool, error) {
+	return false, nil
+}
+
 func TestValidateNumericField(t *testing.T) {
 	collection := &registry.Collection{
 		Name: "orders",

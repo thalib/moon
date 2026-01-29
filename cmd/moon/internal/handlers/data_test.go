@@ -56,6 +56,18 @@ func (m *mockDataDriver) QueryRow(ctx context.Context, query string, args ...any
 	return nil
 }
 
+func (m *mockDataDriver) ListTables(ctx context.Context) ([]string, error) {
+	return nil, nil
+}
+
+func (m *mockDataDriver) GetTableInfo(ctx context.Context, tableName string) (*database.TableInfo, error) {
+	return nil, nil
+}
+
+func (m *mockDataDriver) TableExists(ctx context.Context, tableName string) (bool, error) {
+	return false, nil
+}
+
 // mockResult implements sql.Result
 type mockResult struct {
 	lastInsertID int64
