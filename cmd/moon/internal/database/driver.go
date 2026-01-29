@@ -52,6 +52,15 @@ type Driver interface {
 
 	// DB returns the underlying *sql.DB instance
 	DB() *sql.DB
+
+	// ListTables returns a list of all user tables in the database
+	ListTables(ctx context.Context) ([]string, error)
+
+	// GetTableInfo retrieves detailed information about a table
+	GetTableInfo(ctx context.Context, tableName string) (*TableInfo, error)
+
+	// TableExists checks if a table exists in the database
+	TableExists(ctx context.Context, tableName string) (bool, error)
 }
 
 // Config holds database connection configuration
@@ -180,6 +189,13 @@ func detectDialect(connectionString string) (DialectType, string, error) {
 	if strings.HasPrefix(lower, "sqlite://") {
 		// Extract file path from sqlite:// URL
 		dsn := strings.TrimPrefix(connectionString, "sqlite://")
+		
+		// For in-memory databases, use shared cache mode to allow multiple connections
+		// to access the same in-memory database
+		if dsn == ":memory:" {
+			dsn = "file::memory:?mode=memory&cache=shared"
+		}
+		
 		return DialectSQLite, dsn, nil
 	}
 

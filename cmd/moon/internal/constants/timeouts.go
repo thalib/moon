@@ -50,4 +50,10 @@ const (
 	// Purpose: Identifies performance issues by logging queries that exceed this duration
 	// Default: 500 milliseconds
 	SlowQueryThreshold = 500 * time.Millisecond
+
+	// ConsistencyCheckTimeout is the maximum time allowed for consistency check operations.
+	// Used in: consistency/checker.go
+	// Purpose: Prevents consistency checks from blocking startup indefinitely
+	// Default: 5 seconds (configurable via recovery.check_timeout)
+	ConsistencyCheckTimeout = 5 * time.Second
 )

@@ -20,4 +20,18 @@ var (
 		"no such host",
 		"timeout",
 	}
+
+	// ConsistencyErrorMessages contains error messages for consistency check failures.
+	// Used in: consistency/checker.go for reporting consistency issues
+	ConsistencyErrorMessages = struct {
+		OrphanedTable    string
+		OrphanedRegistry string
+		RepairFailed     string
+		CheckTimeout     string
+	}{
+		OrphanedTable:    "table exists in database but not in registry",
+		OrphanedRegistry: "collection registered but table does not exist",
+		RepairFailed:     "failed to repair consistency issues",
+		CheckTimeout:     "consistency check timed out",
+	}
 )

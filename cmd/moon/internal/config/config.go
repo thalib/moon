@@ -34,6 +34,11 @@ var Defaults = struct {
 		Enabled bool
 		Header  string
 	}
+	Recovery struct {
+		AutoRepair   bool
+		DropOrphans  bool
+		CheckTimeout int
+	}
 	ConfigPath string
 }{
 	Server: struct {
@@ -73,6 +78,15 @@ var Defaults = struct {
 		Enabled: false,
 		Header:  "X-API-KEY",
 	},
+	Recovery: struct {
+		AutoRepair   bool
+		DropOrphans  bool
+		CheckTimeout int
+	}{
+		AutoRepair:   true,
+		DropOrphans:  false,
+		CheckTimeout: 5,
+	},
 	ConfigPath: "/etc/moon.conf",
 }
 
@@ -84,6 +98,7 @@ type AppConfig struct {
 	Logging  LoggingConfig  `mapstructure:"logging"`
 	JWT      JWTConfig      `mapstructure:"jwt"`
 	APIKey   APIKeyConfig   `mapstructure:"apikey"`
+	Recovery RecoveryConfig `mapstructure:"recovery"`
 }
 
 // ServerConfig holds server-related configuration.
@@ -118,6 +133,13 @@ type APIKeyConfig struct {
 	Header  string `mapstructure:"header"`
 }
 
+// RecoveryConfig holds database recovery and consistency check configuration.
+type RecoveryConfig struct {
+	AutoRepair   bool `mapstructure:"auto_repair"`    // automatically repair inconsistencies
+	DropOrphans  bool `mapstructure:"drop_orphans"`   // drop orphaned tables (admin-controlled)
+	CheckTimeout int  `mapstructure:"check_timeout"`  // consistency check timeout in seconds
+}
+
 var globalConfig *AppConfig
 
 // Load initializes and loads the application configuration.
@@ -138,6 +160,9 @@ func Load(configPath string) (*AppConfig, error) {
 	v.SetDefault("jwt.expiry", Defaults.JWT.Expiry)
 	v.SetDefault("apikey.enabled", Defaults.APIKey.Enabled)
 	v.SetDefault("apikey.header", Defaults.APIKey.Header)
+	v.SetDefault("recovery.auto_repair", Defaults.Recovery.AutoRepair)
+	v.SetDefault("recovery.drop_orphans", Defaults.Recovery.DropOrphans)
+	v.SetDefault("recovery.check_timeout", Defaults.Recovery.CheckTimeout)
 
 	// Configure Viper to read from YAML config file only
 	// Explicitly disable TOML support
