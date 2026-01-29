@@ -12,6 +12,8 @@ Moon is a high-performance, API-first headless backend built in Go that enables 
 - **🔌 Multi-Database Support** - SQLite, PostgreSQL, and MySQL with automatic dialect detection
 - **🎯 Predictable API Pattern** - AIP-136 custom actions (`:create`, `:update`, `:list`, etc.)
 - **📊 Dynamic OpenAPI Documentation** - Auto-generated from the current database schema
+- **📈 Server-Side Aggregations** - Built-in `:count`, `:sum`, `:avg`, `:min`, `:max` endpoints with filtering
+- **🐳 Docker Ready** - Multi-stage builds for minimal production containers
 - **💾 Resource Efficient** - Memory footprint under 50MB, optimized for cloud and edge deployments
 - **🔒 Built-in Security** - JWT authentication and optional API key support
 - **🆔 ULID Identifiers** - Lexicographically sortable, 26-character unique identifiers for all records

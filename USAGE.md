@@ -440,6 +440,157 @@ Deletes a record from the collection.
 
 ## Example Commands
 
+### Aggregation Operations
+
+Moon provides server-side aggregation endpoints for analytics without fetching full datasets.
+
+#### Count Records
+
+```
+GET /api/v1/{collectionName}:count
+```
+
+Counts all records in a collection. Supports filtering.
+
+**Example:**
+
+```bash
+# Count all orders
+curl http://localhost:8080/api/v1/orders:count
+
+# Count orders with total > 200
+curl "http://localhost:8080/api/v1/orders:count?total[gt]=200"
+```
+
+**Response:**
+
+```json
+{
+  "value": 150
+}
+```
+
+#### Sum
+
+```
+GET /api/v1/{collectionName}:sum?field={fieldName}
+```
+
+Calculates the sum of a numeric field.
+
+**Parameters:**
+
+- `field` (query, required): Name of the numeric field to sum
+
+**Example:**
+
+```bash
+# Sum all order totals
+curl "http://localhost:8080/api/v1/orders:sum?field=total"
+
+# Sum orders with status=completed
+curl "http://localhost:8080/api/v1/orders:sum?field=total&status[eq]=completed"
+```
+
+**Response:**
+
+```json
+{
+  "value": 15750.50
+}
+```
+
+#### Average
+
+```
+GET /api/v1/{collectionName}:avg?field={fieldName}
+```
+
+Calculates the average of a numeric field.
+
+**Example:**
+
+```bash
+# Average order total
+curl "http://localhost:8080/api/v1/orders:avg?field=total"
+```
+
+**Response:**
+
+```json
+{
+  "value": 125.75
+}
+```
+
+#### Minimum
+
+```
+GET /api/v1/{collectionName}:min?field={fieldName}
+```
+
+Finds the minimum value of a numeric field.
+
+**Example:**
+
+```bash
+# Lowest order total
+curl "http://localhost:8080/api/v1/orders:min?field=total"
+```
+
+**Response:**
+
+```json
+{
+  "value": 25.00
+}
+```
+
+#### Maximum
+
+```
+GET /api/v1/{collectionName}:max?field={fieldName}
+```
+
+Finds the maximum value of a numeric field.
+
+**Example:**
+
+```bash
+# Highest order total
+curl "http://localhost:8080/api/v1/orders:max?field=total"
+```
+
+**Response:**
+
+```json
+{
+  "value": 999.99
+}
+```
+
+**Filtering Support:**
+
+All aggregation endpoints support the same filtering syntax as `:list`:
+
+```bash
+# Count active users
+curl "http://localhost:8080/api/v1/users:count?active[eq]=true"
+
+# Sum sales for a specific product category
+curl "http://localhost:8080/api/v1/orders:sum?field=total&category[eq]=electronics"
+
+# Average price for items in stock
+curl "http://localhost:8080/api/v1/products:avg?field=price&stock[gt]=0"
+```
+
+**Error Responses:**
+
+- Missing `field` parameter: `400 Bad Request`
+- Invalid field name: `400 Bad Request`
+- Non-numeric field: `400 Bad Request`
+- Collection not found: `404 Not Found`
+
 ### Complete Workflow Example
 
 Here's a complete workflow demonstrating Moon's capabilities:

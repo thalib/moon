@@ -152,6 +152,56 @@ The list endpoint supports powerful query parameters for filtering, sorting, sea
 GET /products:list?q=laptop&price[gt]=500&sort=-price&fields=name,price&limit=10
 ```
 
+### C. Aggregation Operations (`/{collectionName}`)
+
+These endpoints provide server-side aggregation for analytics without fetching full datasets.
+
+| Endpoint                    | Method | Purpose                                     |
+| --------------------------- | ------ | ------------------------------------------- |
+| `GET /{name}:count`         | `GET`  | Count records in the collection.            |
+| `GET /{name}:sum?field=...` | `GET`  | Sum values of a numeric field.              |
+| `GET /{name}:avg?field=...` | `GET`  | Calculate average of a numeric field.       |
+| `GET /{name}:min?field=...` | `GET`  | Find minimum value of a numeric field.      |
+| `GET /{name}:max?field=...` | `GET`  | Find maximum value of a numeric field.      |
+
+**Parameters:**
+- `field` (query): Required for `:sum`, `:avg`, `:min`, `:max`. Must be a numeric field (integer or float).
+- Filtering: All aggregation endpoints support the same filtering syntax as `:list` (e.g., `?price[gt]=100`)
+- Filters are applied at the database level before aggregation
+
+**Response Format:**
+```json
+{
+  "value": <number>
+}
+```
+
+**Examples:**
+```bash
+# Count all orders
+GET /orders:count
+# Response: {"value": 150}
+
+# Sum total sales
+GET /orders:sum?field=total
+# Response: {"value": 15750.50}
+
+# Average order value for completed orders
+GET /orders:avg?field=total&status[eq]=completed
+# Response: {"value": 125.75}
+
+# Find highest order amount
+GET /orders:max?field=total
+# Response: {"value": 999.99}
+```
+
+**Validation:**
+- Collection must exist
+- Field must exist in the collection schema
+- Field must be numeric type (integer or float) for `:sum`, `:avg`, `:min`, `:max`
+- Invalid field or missing field parameter returns `400 Bad Request`
+- Unknown collection returns `404 Not Found`
+
 ## 3. Architecture: The Dynamic Data Flow
 
 The server acts as a "Smart Bridge" between the user and the database.
