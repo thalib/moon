@@ -50,10 +50,10 @@ This pattern makes the API predictable and easy to use.
 ### 1. Start the Server
 
 ```bash
-# Console mode (foreground)
+# Console mode (foreground) - logs to stdout AND file
 ./moon --config /etc/moon.conf
 
-# Or daemon mode (background)
+# Or daemon mode (background) - logs to file only
 ./moon --daemon --config /etc/moon.conf
 ```
 
@@ -946,11 +946,16 @@ curl http://localhost:8080/health
 
 ### Checking Logs
 
-Moon logs to stdout by default. Redirect to a file for analysis:
+Moon logs to stdout and file in console mode, file only in daemon mode:
 
 ```bash
-./moon > moon.log 2>&1 &
-tail -f moon.log
+# Console mode - see logs in terminal and in file
+./moon --config /etc/moon.conf
+# Logs also written to /var/log/moon/main.log (or configured path)
+
+# Daemon mode - logs only to file
+./moon --daemon --config /etc/moon.conf
+tail -f /var/log/moon/main.log
 ```
 
 ### Testing Connection

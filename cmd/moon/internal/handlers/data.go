@@ -731,7 +731,7 @@ func parseFields(r *http.Request, collection *registry.Collection) ([]string, er
 
 	// Parse comma-separated field names
 	requestedFields := strings.Split(fieldsParam, ",")
-	
+
 	// Create a map of valid column names
 	validColumns := make(map[string]bool)
 	for _, col := range collection.Columns {
@@ -816,7 +816,7 @@ func buildSearchConditions(searchTerm string, collection *registry.Collection, d
 	escapedTerm := strings.ReplaceAll(searchTerm, `\`, `\\`)
 	escapedTerm = strings.ReplaceAll(escapedTerm, `%`, `\%`)
 	escapedTerm = strings.ReplaceAll(escapedTerm, `_`, `\_`)
-	
+
 	// Wrap with wildcards for partial matching
 	searchValue := "%" + escapedTerm + "%"
 
@@ -883,7 +883,7 @@ func buildSearchQueryWithFields(tableName string, fields []string, filters []que
 		}
 	}
 	sb.WriteString(" FROM ")
-	
+
 	// Escape table name
 	switch dialect {
 	case database.DialectPostgres:
@@ -896,16 +896,16 @@ func buildSearchQueryWithFields(tableName string, fields []string, filters []que
 
 	// WHERE clause
 	sb.WriteString(" WHERE ")
-	
+
 	// Add search conditions first
 	sb.WriteString(searchSQL)
 	args = append(args, searchArgs...)
-	
+
 	// Add filter conditions with AND
 	placeholderNum := len(searchArgs) + 1
 	for _, cond := range filters {
 		sb.WriteString(" AND ")
-		
+
 		// Escape column name
 		escapedCol := cond.Column
 		switch dialect {
@@ -914,12 +914,12 @@ func buildSearchQueryWithFields(tableName string, fields []string, filters []que
 		case database.DialectMySQL:
 			escapedCol = fmt.Sprintf("`%s`", cond.Column)
 		}
-		
+
 		sb.WriteString(escapedCol)
 		sb.WriteString(" ")
 		sb.WriteString(cond.Operator)
 		sb.WriteString(" ")
-		
+
 		// Handle special operators
 		if cond.Operator == query.OpIn {
 			values, ok := cond.Value.([]any)

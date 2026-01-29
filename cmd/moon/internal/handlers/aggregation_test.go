@@ -272,4 +272,3 @@ func TestAggregationHandler_NonNumericField(t *testing.T) {
 		})
 	}
 }
-

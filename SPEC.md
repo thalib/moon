@@ -54,7 +54,9 @@ moon --config /etc/moon.conf
 ```
 
 - Runs in foreground attached to terminal
-- Logs output to stdout/stderr
+- Logs output to both stdout/stderr AND log file (`/var/log/moon/main.log` or path specified in config)
+- Stdout logs use console format (colorized, human-readable)
+- File logs use simple format (`[LEVEL](TIMESTAMP): {MESSAGE}`)
 - Process terminates when terminal closes or Ctrl+C is pressed
 
 #### Daemon Mode
@@ -66,7 +68,7 @@ moon -d --config /etc/moon.conf
 ```
 
 - Runs as background daemon process
-- Logs written to `/var/log/moon/main.log` (or path specified in config)
+- Logs written only to `/var/log/moon/main.log` (or path specified in config)
 - PID file written to `/var/run/moon.pid`
 - Process continues after terminal closes
 - Supports graceful shutdown via SIGTERM/SIGINT

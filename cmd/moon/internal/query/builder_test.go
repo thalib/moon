@@ -677,11 +677,11 @@ func TestDelete_WithSpecialOperators(t *testing.T) {
 
 func TestDialect_SpecificBehavior(t *testing.T) {
 	tests := []struct {
-		name              string
-		dialect           database.DialectType
-		expectedFirstPH   string
-		expectedSecondPH  string
-		expectedThirdPH   string
+		name             string
+		dialect          database.DialectType
+		expectedFirstPH  string
+		expectedSecondPH string
+		expectedThirdPH  string
 	}{
 		{
 			name:             "PostgreSQL placeholders",

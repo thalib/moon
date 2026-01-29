@@ -1202,7 +1202,6 @@ func TestBuildOrderBy(t *testing.T) {
 	}
 }
 
-
 // PRD 023: Full-Text Search Tests
 
 func TestBuildSearchConditions_Basic(t *testing.T) {
@@ -1250,7 +1249,6 @@ func TestBuildSearchConditions_NoTextColumns(t *testing.T) {
 		t.Errorf("expected empty SQL for non-text columns, got %s", sql)
 	}
 }
-
 
 // PRD 024: Field Selection Tests
 

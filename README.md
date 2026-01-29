@@ -212,18 +212,20 @@ database:
 
 ### Running Modes
 
-**Console Mode (Default)** - Foreground with stdout logging:
+**Console Mode (Default)** - Foreground with dual logging (stdout + file):
 
 ```bash
 ./moon --config /etc/moon.conf
+# Logs to terminal (console format) AND /var/log/moon/main.log (simple format)
 ```
 
-**Daemon Mode** - Background with file logging:
+**Daemon Mode** - Background with file-only logging:
 
 ```bash
 ./moon --daemon --config /etc/moon.conf
 # or shorthand
 ./moon -d --config /etc/moon.conf
+# Logs only to /var/log/moon/main.log
 ```
 
 **Systemd Service** - Production deployment:
