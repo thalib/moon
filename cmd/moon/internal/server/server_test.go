@@ -417,3 +417,107 @@ func TestDynamicDataHandler_WithPrefix(t *testing.T) {
 		})
 	}
 }
+
+func TestRootMessageHandler(t *testing.T) {
+	srv := setupTestServer(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	w := httptest.NewRecorder()
+
+	srv.rootMessageHandler(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected status code %d, got %d", http.StatusOK, w.Code)
+	}
+
+	contentType := w.Header().Get("Content-Type")
+	if contentType != "text/plain; charset=utf-8" {
+		t.Errorf("Expected Content-Type 'text/plain; charset=utf-8', got '%s'", contentType)
+	}
+
+	expectedBody := "Darling, the Moon is still the Moon in all of its phases."
+	actualBody := w.Body.String()
+	if actualBody != expectedBody {
+		t.Errorf("Expected body '%s', got '%s'", expectedBody, actualBody)
+	}
+}
+
+func TestRootMessageHandler_NonRootPath(t *testing.T) {
+	srv := setupTestServer(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/something", nil)
+	w := httptest.NewRecorder()
+
+	srv.rootMessageHandler(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("Expected status code %d for non-root path, got %d", http.StatusNotFound, w.Code)
+	}
+}
+
+func TestRootMessageHandler_Integration(t *testing.T) {
+	tests := []struct {
+		name                string
+		prefix              string
+		requestPath         string
+		expectedStatus      int
+		expectedBody        string
+		expectedContentType string
+	}{
+		{
+			name:                "Root message with no prefix",
+			prefix:              "",
+			requestPath:         "/",
+			expectedStatus:      http.StatusOK,
+			expectedBody:        "Darling, the Moon is still the Moon in all of its phases.",
+			expectedContentType: "text/plain; charset=utf-8",
+		},
+		{
+			name:           "Root path should 404 with prefix",
+			prefix:         "/api/v1",
+			requestPath:    "/",
+			expectedStatus: http.StatusNotFound,
+		},
+		{
+			name:           "Other routes should still work with no prefix",
+			prefix:         "",
+			requestPath:    "/health",
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "Collections endpoint should work with no prefix",
+			prefix:         "",
+			requestPath:    "/collections:list",
+			expectedStatus: http.StatusOK,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			srv := setupTestServerWithPrefix(t, tt.prefix)
+
+			req := httptest.NewRequest(http.MethodGet, tt.requestPath, nil)
+			w := httptest.NewRecorder()
+
+			srv.mux.ServeHTTP(w, req)
+
+			if w.Code != tt.expectedStatus {
+				t.Errorf("Expected status code %d, got %d", tt.expectedStatus, w.Code)
+			}
+
+			if tt.expectedBody != "" {
+				actualBody := w.Body.String()
+				if actualBody != tt.expectedBody {
+					t.Errorf("Expected body '%s', got '%s'", tt.expectedBody, actualBody)
+				}
+			}
+
+			if tt.expectedContentType != "" {
+				contentType := w.Header().Get("Content-Type")
+				if contentType != tt.expectedContentType {
+					t.Errorf("Expected Content-Type '%s', got '%s'", tt.expectedContentType, contentType)
+				}
+			}
+		})
+	}
+}

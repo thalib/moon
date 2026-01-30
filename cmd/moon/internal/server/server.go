@@ -69,6 +69,11 @@ func (s *Server) setupRoutes() {
 	// Get the prefix from config
 	prefix := s.config.Server.Prefix
 
+	// Root message endpoint (only for exact "/" path with no prefix)
+	if prefix == "" {
+		s.mux.HandleFunc("GET /", s.loggingMiddleware(s.rootMessageHandler))
+	}
+
 	// Health check endpoint (always at /health, respects prefix)
 	healthPath := prefix + "/health"
 	s.mux.HandleFunc("GET "+healthPath, s.loggingMiddleware(s.healthHandler))
@@ -192,6 +197,19 @@ func (s *Server) healthHandler(w http.ResponseWriter, r *http.Request) {
 	// Always return HTTP 200, even if service is down
 	// Clients must check the "status" field to determine service health
 	s.writeJSON(w, http.StatusOK, response)
+}
+
+// Root message handler - returns a friendly message at the root path
+func (s *Server) rootMessageHandler(w http.ResponseWriter, r *http.Request) {
+	// Only respond to exact root path
+	if r.URL.Path != "/" {
+		s.notFoundHandler(w, r)
+		return
+	}
+
+	w.Header().Set(constants.HeaderContentType, constants.MIMETextPlain)
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Darling, the Moon is still the Moon in all of its phases."))
 }
 
 // Not found handler

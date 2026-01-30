@@ -33,6 +33,10 @@ const (
 	// MIMEApplicationJSON is the MIME type for JSON responses.
 	// Used throughout the API for JSON content encoding
 	MIMEApplicationJSON = "application/json"
+
+	// MIMETextPlain is the MIME type for plain text responses.
+	// Used for simple text responses like the root message
+	MIMETextPlain = "text/plain; charset=utf-8"
 )
 
 // Authentication schemes and prefixes.
