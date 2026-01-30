@@ -1,0 +1,312 @@
+# Moon API Documentation
+
+**Version:** {{.Version}}  
+**Service:** moon
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Authentication](#authentication)
+- [Base URL and Prefix](#base-url-and-prefix)
+- [Quickstart](#quickstart)
+- [Available Collections](#available-collections)
+- [Schema Management](#schema-management)
+- [Data Access](#data-access)
+- [Aggregation Operations](#aggregation-operations)
+- [Filtering, Sorting & Pagination](#filtering-sorting--pagination)
+- [Error Responses](#error-responses)
+- [Example Requests](#example-requests)
+
+## Overview
+
+Moon is a dynamic headless engine that provides a RESTful API for managing database tables and records without manual migrations. All endpoints follow the AIP-136 custom actions pattern using a colon separator between the resource and action.
+
+## Authentication
+
+{{if or .JWTEnabled .APIKeyEnabled}}This API requires authentication for most endpoints.
+
+{{if .JWTEnabled}}**JWT Authentication:** Include a bearer token in the Authorization header:
+
+```
+Authorization: Bearer <your-jwt-token>
+```
+
+{{end}}{{if .APIKeyEnabled}}**API Key Authentication:** Include your API key in the {{.APIKeyHeader}} header:
+
+```
+{{.APIKeyHeader}}: <your-api-key>
+```
+
+{{end}}{{else}}Authentication is currently disabled for this instance.
+
+{{end}}
+## Base URL and Prefix
+
+**Base URL:** `{{.BaseURL}}`
+
+{{if .Prefix}}**URL Prefix:** `{{.Prefix}}`
+
+All endpoints are prefixed with `{{.Prefix}}`. For example:
+
+```
+{{.BaseURL}}{{.Prefix}}/health
+{{.BaseURL}}{{.Prefix}}/collections:list
+```
+
+{{else}}**URL Prefix:** None (endpoints start at root)
+
+```
+{{.BaseURL}}/health
+{{.BaseURL}}/collections:list
+```
+
+{{end}}
+## Quickstart
+
+Get started with Moon in 5 simple steps:
+
+### 1. Create a collection
+
+```bash
+curl -X POST "{{.BaseURL}}{{.Prefix}}/collections:create" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"products","columns":[{"name":"title","type":"string","nullable":false},{"name":"price","type":"float","nullable":false}]}'
+```
+
+### 2. Insert a record
+
+```bash
+curl -X POST "{{.BaseURL}}{{.Prefix}}/{collection}:create" \
+  -H "Content-Type: application/json" \
+  -d '{"data":{"title":"Laptop","price":999.99}}'
+```
+
+### 3. List records
+
+```bash
+curl -s "{{.BaseURL}}{{.Prefix}}/{collection}:list" | jq .
+```
+
+### 4. Update a record
+
+```bash
+curl -X POST "{{.BaseURL}}{{.Prefix}}/{collection}:update" \
+  -H "Content-Type: application/json" \
+  -d '{"id":"01ARZ3NDEKTSV4RRFFQ69G5FBX","data":{"price":899.99}}'
+```
+
+### 5. Delete a record
+
+```bash
+curl -X POST "{{.BaseURL}}{{.Prefix}}/{collection}:destroy" \
+  -H "Content-Type: application/json" \
+  -d '{"id":"01ARZ3NDEKTSV4RRFFQ69G5FBX"}'
+```
+
+## Available Collections
+
+{{if .Collections}}The following collections are currently available:
+
+{{range .Collections}}- `{{.}}`
+{{end}}
+{{else}}No collections have been created yet.
+
+{{end}}
+## Schema Management
+
+These endpoints manage database tables (collections) and their schemas.
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `{{.Prefix}}/collections:list` | GET | List all collections |
+| `{{.Prefix}}/collections:get` | GET | Get collection schema (requires `?name=...`) |
+| `{{.Prefix}}/collections:create` | POST | Create a new collection |
+| `{{.Prefix}}/collections:update` | POST | Update collection schema |
+| `{{.Prefix}}/collections:destroy` | POST | Delete a collection |
+
+## Data Access
+
+These endpoints manage records within a specific collection. Replace `{collection}` with your collection name.
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `{{.Prefix}}/{collection}:list` | GET | List all records |
+| `{{.Prefix}}/{collection}:get` | GET | Get a single record (requires `?id=...`) |
+| `{{.Prefix}}/{collection}:create` | POST | Create a new record |
+| `{{.Prefix}}/{collection}:update` | POST | Update an existing record |
+| `{{.Prefix}}/{collection}:destroy` | POST | Delete a record |
+
+## Aggregation Operations
+
+Server-side aggregation endpoints for analytics. Replace `{collection}` with your collection name.
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `{{.Prefix}}/{collection}:count` | GET | Count records |
+| `{{.Prefix}}/{collection}:sum` | GET | Sum numeric field (requires `?field=...`) |
+| `{{.Prefix}}/{collection}:avg` | GET | Average numeric field (requires `?field=...`) |
+| `{{.Prefix}}/{collection}:min` | GET | Minimum value (requires `?field=...`) |
+| `{{.Prefix}}/{collection}:max` | GET | Maximum value (requires `?field=...`) |
+
+## Filtering, Sorting & Pagination
+
+### Filtering
+
+Use query parameters to filter results:
+
+```
+?column[operator]=value
+```
+
+**Operators:** `eq`, `ne`, `gt`, `lt`, `gte`, `lte`, `like`, `in`
+
+**Example:**
+
+```bash
+{{.BaseURL}}{{.Prefix}}/{collection}:list?price[gt]=100&category[eq]=electronics
+```
+
+### Sorting
+
+Sort by field (ascending) or `-field` (descending):
+
+```
+?sort=-price,name
+```
+
+### Full-Text Search
+
+Search across all text columns:
+
+```
+?q=laptop
+```
+
+### Field Selection
+
+Return only specific fields (always includes id):
+
+```
+?fields=name,price
+```
+
+### Pagination
+
+Use cursor-based pagination:
+
+```
+?after=01ARZ3NDEKTSV4RRFFQ69G5FBX&limit=10
+```
+
+Response includes `next_cursor` when more results are available.
+
+## Error Responses
+
+All errors follow a consistent JSON structure:
+
+```json
+{
+  "error": "Error message describing what went wrong",
+  "code": 400
+}
+```
+
+**Common Status Codes:**
+
+- `400 Bad Request` - Invalid input, missing required field, invalid filter operator
+- `404 Not Found` - Collection or record not found
+- `409 Conflict` - Collection already exists
+- `500 Internal Server Error` - Server error
+
+## Example Requests
+
+### Schema Management Example
+
+**Create a collection:**
+
+```bash
+curl -X POST "{{.BaseURL}}{{.Prefix}}/collections:create" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "products",
+    "columns": [
+      {"name": "title", "type": "string", "nullable": false},
+      {"name": "price", "type": "float", "nullable": false},
+      {"name": "description", "type": "text", "nullable": true}
+    ]
+  }'
+```
+
+**Response (201 Created):**
+
+```json
+{
+  "message": "Collection created successfully",
+  "collection": {
+    "name": "products",
+    "columns": [...]
+  }
+}
+```
+
+### Data Access Example
+
+**Create a record:**
+
+```bash
+curl -X POST "{{.BaseURL}}{{.Prefix}}/{collection}:create" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "data": {
+      "title": "Wireless Mouse",
+      "price": 29.99,
+      "description": "Ergonomic wireless mouse"
+    }
+  }'
+```
+
+**Response (201 Created):**
+
+```json
+{
+  "message": "Record created successfully",
+  "data": {
+    "id": "01ARZ3NDEKTSV4RRFFQ69G5FBX",
+    "title": "Wireless Mouse",
+    "price": 29.99,
+    "description": "Ergonomic wireless mouse"
+  }
+}
+```
+
+**List records with filtering:**
+
+```bash
+curl -s "{{.BaseURL}}{{.Prefix}}/{collection}:list?price[gt]=20&sort=-price" | jq .
+```
+
+### Aggregation Example
+
+**Count records:**
+
+```bash
+curl -s "{{.BaseURL}}{{.Prefix}}/{collection}:count"
+```
+
+**Response (200 OK):**
+
+```json
+{"value": 42}
+```
+
+**Sum with filter:**
+
+```bash
+curl -s "{{.BaseURL}}{{.Prefix}}/{collection}:sum?field=price&category[eq]=electronics"
+```
+
+**Response (200 OK):**
+
+```json
+{"value": 1599.99}
+```
