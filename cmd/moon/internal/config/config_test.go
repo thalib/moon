@@ -425,3 +425,81 @@ func TestDefaults_Prefix(t *testing.T) {
 		t.Errorf("Expected default prefix to be empty, got %s", Defaults.Server.Prefix)
 	}
 }
+
+func TestLoad_LogInvalidURLRequestsDefault(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.yaml")
+
+	content := `jwt:
+  secret: test-secret
+`
+
+	if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
+		t.Fatalf("Failed to write config file: %v", err)
+	}
+
+	cfg, err := Load(configPath)
+	if err != nil {
+		t.Fatalf("Load() failed: %v", err)
+	}
+
+	// Should default to false
+	if cfg.Logging.LogInvalidURLRequests {
+		t.Error("Expected log_invalid_url_requests to default to false")
+	}
+}
+
+func TestLoad_LogInvalidURLRequestsEnabled(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.yaml")
+
+	content := `logging:
+  log_invalid_url_requests: true
+jwt:
+  secret: test-secret
+`
+
+	if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
+		t.Fatalf("Failed to write config file: %v", err)
+	}
+
+	cfg, err := Load(configPath)
+	if err != nil {
+		t.Fatalf("Load() failed: %v", err)
+	}
+
+	if !cfg.Logging.LogInvalidURLRequests {
+		t.Error("Expected log_invalid_url_requests to be true when set in config")
+	}
+}
+
+func TestLoad_LogInvalidURLRequestsDisabled(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.yaml")
+
+	content := `logging:
+  log_invalid_url_requests: false
+jwt:
+  secret: test-secret
+`
+
+	if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
+		t.Fatalf("Failed to write config file: %v", err)
+	}
+
+	cfg, err := Load(configPath)
+	if err != nil {
+		t.Fatalf("Load() failed: %v", err)
+	}
+
+	if cfg.Logging.LogInvalidURLRequests {
+		t.Error("Expected log_invalid_url_requests to be false when explicitly set to false")
+	}
+}
+
+func TestDefaults_LogInvalidURLRequests(t *testing.T) {
+	// Verify that Defaults struct has correct log_invalid_url_requests value
+	if Defaults.Logging.LogInvalidURLRequests {
+		t.Error("Expected default log_invalid_url_requests to be false")
+	}
+}

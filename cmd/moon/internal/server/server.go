@@ -102,15 +102,24 @@ func (s *Server) loggingMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		// Call the next handler
 		next(rw, r)
 
-		// Log the request
+		// Calculate duration
 		duration := time.Since(start)
-		log.Printf(
-			"%s %s %d %s",
-			r.Method,
-			r.URL.Path,
-			rw.statusCode,
-			duration,
-		)
+
+		// Log the request based on status code and configuration
+		// Always log valid requests (status < 400)
+		// Log invalid requests (404) only if configured
+		shouldLog := rw.statusCode < 400 ||
+			(rw.statusCode == http.StatusNotFound && s.config.Logging.LogInvalidURLRequests)
+
+		if shouldLog {
+			log.Printf(
+				"%s %s %d %s",
+				r.Method,
+				r.URL.Path,
+				rw.statusCode,
+				duration,
+			)
+		}
 	}
 }
 

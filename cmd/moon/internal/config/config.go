@@ -39,7 +39,8 @@ var Defaults = struct {
 		Host       string
 	}
 	Logging struct {
-		Path string
+		Path                  string
+		LogInvalidURLRequests bool
 	}
 	JWT struct {
 		Expiry int
@@ -78,9 +79,11 @@ var Defaults = struct {
 		Host:       "0.0.0.0",
 	},
 	Logging: struct {
-		Path string
+		Path                  string
+		LogInvalidURLRequests bool
 	}{
-		Path: "/var/log/moon",
+		Path:                  "/var/log/moon",
+		LogInvalidURLRequests: false,
 	},
 	JWT: struct {
 		Expiry int
@@ -135,7 +138,8 @@ type DatabaseConfig struct {
 
 // LoggingConfig holds logging configuration.
 type LoggingConfig struct {
-	Path string `mapstructure:"path"` // log directory path
+	Path                  string `mapstructure:"path"`                     // log directory path
+	LogInvalidURLRequests bool   `mapstructure:"log_invalid_url_requests"` // enable logging of invalid URL requests (404)
 }
 
 // JWTConfig holds JWT authentication configuration.
@@ -175,6 +179,7 @@ func Load(configPath string) (*AppConfig, error) {
 	v.SetDefault("database.password", Defaults.Database.Password)
 	v.SetDefault("database.host", Defaults.Database.Host)
 	v.SetDefault("logging.path", Defaults.Logging.Path)
+	v.SetDefault("logging.log_invalid_url_requests", Defaults.Logging.LogInvalidURLRequests)
 	v.SetDefault("jwt.expiry", Defaults.JWT.Expiry)
 	v.SetDefault("apikey.enabled", Defaults.APIKey.Enabled)
 	v.SetDefault("apikey.header", Defaults.APIKey.Header)

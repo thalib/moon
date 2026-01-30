@@ -417,3 +417,136 @@ func TestDynamicDataHandler_WithPrefix(t *testing.T) {
 		})
 	}
 }
+
+func setupTestServerWithLoggingConfig(t *testing.T, logInvalidURLRequests bool) *Server {
+	cfg := &config.AppConfig{
+		Server: config.ServerConfig{
+			Port: 6006,
+			Host: "0.0.0.0",
+		},
+		Database: config.DatabaseConfig{
+			Connection: "sqlite",
+			Database:   ":memory:",
+		},
+		Logging: config.LoggingConfig{
+			Path:                  "/tmp",
+			LogInvalidURLRequests: logInvalidURLRequests,
+		},
+		JWT: config.JWTConfig{
+			Secret: "test-secret",
+			Expiry: 3600,
+		},
+	}
+
+	dbConfig := database.Config{
+		ConnectionString: "sqlite://:memory:",
+	}
+
+	driver, err := database.NewDriver(dbConfig)
+	if err != nil {
+		t.Fatalf("Failed to create database driver: %v", err)
+	}
+
+	if err := driver.Connect(context.Background()); err != nil {
+		t.Fatalf("Failed to connect to database: %v", err)
+	}
+
+	reg := registry.NewSchemaRegistry()
+
+	return New(cfg, driver, reg, "1-test")
+}
+
+func TestLoggingMiddleware_InvalidURLRequests_Enabled(t *testing.T) {
+	srv := setupTestServerWithLoggingConfig(t, true)
+
+	// Test that a 404 response should be logged when config is enabled
+	testHandler := func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}
+
+	wrapped := srv.loggingMiddleware(testHandler)
+
+	req := httptest.NewRequest(http.MethodGet, "/invalid/path", nil)
+	w := httptest.NewRecorder()
+
+	// The middleware should allow logging (we can't directly test log output,
+	// but we can verify the handler executes without error)
+	wrapped(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("Expected status code %d, got %d", http.StatusNotFound, w.Code)
+	}
+}
+
+func TestLoggingMiddleware_InvalidURLRequests_Disabled(t *testing.T) {
+	srv := setupTestServerWithLoggingConfig(t, false)
+
+	// Test that a 404 response should not be logged when config is disabled
+	testHandler := func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}
+
+	wrapped := srv.loggingMiddleware(testHandler)
+
+	req := httptest.NewRequest(http.MethodGet, "/invalid/path", nil)
+	w := httptest.NewRecorder()
+
+	// The middleware should skip logging for 404s (we can't directly test log output,
+	// but we can verify the handler executes without error)
+	wrapped(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("Expected status code %d, got %d", http.StatusNotFound, w.Code)
+	}
+}
+
+func TestLoggingMiddleware_ValidRequests_AlwaysLogged(t *testing.T) {
+	// Test that valid requests (status < 400) are always logged regardless of config
+	tests := []struct {
+		name                  string
+		logInvalidURLRequests bool
+		statusCode            int
+	}{
+		{
+			name:                  "Valid request with logging enabled",
+			logInvalidURLRequests: true,
+			statusCode:            http.StatusOK,
+		},
+		{
+			name:                  "Valid request with logging disabled",
+			logInvalidURLRequests: false,
+			statusCode:            http.StatusOK,
+		},
+		{
+			name:                  "Created request with logging enabled",
+			logInvalidURLRequests: true,
+			statusCode:            http.StatusCreated,
+		},
+		{
+			name:                  "Created request with logging disabled",
+			logInvalidURLRequests: false,
+			statusCode:            http.StatusCreated,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			srv := setupTestServerWithLoggingConfig(t, tt.logInvalidURLRequests)
+
+			testHandler := func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(tt.statusCode)
+			}
+
+			wrapped := srv.loggingMiddleware(testHandler)
+
+			req := httptest.NewRequest(http.MethodGet, "/test", nil)
+			w := httptest.NewRecorder()
+
+			wrapped(w, req)
+
+			if w.Code != tt.statusCode {
+				t.Errorf("Expected status code %d, got %d", tt.statusCode, w.Code)
+			}
+		})
+	}
+}

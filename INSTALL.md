@@ -14,6 +14,25 @@ git clone https://github.com/thalib/moon.git
 cd moon
 ```
 
+## Configuration
+
+Moon uses YAML-only configuration. The main configuration file is located at `/etc/moon.conf`.
+
+### Logging Configuration
+
+```yaml
+logging:
+  path: "/var/log/moon"
+  log_invalid_url_requests: false  # Enable or disable logging of invalid URL requests (404)
+```
+
+**log_invalid_url_requests** (default: `false`):
+- When set to `true`, logs all requests to invalid or unhandled URLs (404 Not Found) with timestamp, HTTP method, requested URL, status code, and latency.
+- When set to `false` (default), only valid requests are logged.
+- This setting is useful for debugging and monitoring unexpected client behavior.
+
+See `samples/moon-full.conf` for a complete list of all configuration options with detailed explanations.
+
 ## Docker Deployment (Recommended)
 
 Moon can be run in a Docker container for consistent, portable deployments.
