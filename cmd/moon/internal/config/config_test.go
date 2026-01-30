@@ -314,3 +314,24 @@ func TestDefaults(t *testing.T) {
 		t.Errorf("Expected default config path /etc/moon.conf, got %s", Defaults.ConfigPath)
 	}
 }
+
+func TestVersion(t *testing.T) {
+	// Test that Version() returns the expected format
+	expected := "1.99"
+	actual := Version()
+
+	if actual != expected {
+		t.Errorf("Expected version %s, got %s", expected, actual)
+	}
+}
+
+func TestVersionConstants(t *testing.T) {
+	// Test that version constants have expected values
+	if VersionMajor != 1 {
+		t.Errorf("Expected VersionMajor to be 1, got %d", VersionMajor)
+	}
+
+	if VersionMinor != 99 {
+		t.Errorf("Expected VersionMinor to be 99, got %d", VersionMinor)
+	}
+}

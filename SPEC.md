@@ -74,7 +74,7 @@ Moon includes robust consistency checking and recovery logic that ensures the in
 - Returns a simple JSON response with three fields:
   - `status`: Service liveness (`live` or `down`)
   - `name`: Service name (always `moon`)
-  - `version`: Service version in format `{major}-{short-git-commit}` (e.g., `1-87811bc`)
+  - `version`: Service version in format `{major}.{minor}` (e.g., `1.99`)
 - Always returns HTTP 200, even when the service is down
 - Clients must check the `status` field to determine service health
 - Does not expose internal details like database type, collection count, or consistency status
@@ -84,7 +84,7 @@ Moon includes robust consistency checking and recovery logic that ensures the in
 {
   "status": "live",
   "name": "moon",
-  "version": "1-87811bc"
+  "version": "1.99"
 }
 ```
 
