@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -517,6 +518,122 @@ func TestRootMessageHandler_Integration(t *testing.T) {
 				if contentType != tt.expectedContentType {
 					t.Errorf("Expected Content-Type '%s', got '%s'", tt.expectedContentType, contentType)
 				}
+			}
+		})
+	}
+}
+
+// TestDynamicCollectionEndpoints_RoutingFix tests that the root handler does not
+// intercept dynamic collection endpoints (bug fix for GitHub issue)
+func TestDynamicCollectionEndpoints_RoutingFix(t *testing.T) {
+	srv := setupTestServer(t)
+
+	// Register a test collection in registry so we can test routing
+	collection := &registry.Collection{
+		Name: "orders",
+		Columns: []registry.Column{
+			{Name: "order_id", Type: registry.TypeString},
+		},
+	}
+	srv.registry.Set(collection)
+
+	// Test that dynamic endpoints reach the handler (not 404)
+	// They may return other errors (like 500 if table doesn't exist), but NOT 404
+	tests := []struct {
+		name        string
+		method      string
+		path        string
+		shouldRoute bool
+		description string
+	}{
+		{
+			name:        "Orders list should route",
+			method:      http.MethodGet,
+			path:        "/orders:list",
+			shouldRoute: true,
+			description: "Should reach dynamic handler, not return 404",
+		},
+		{
+			name:        "Orders count should route",
+			method:      http.MethodGet,
+			path:        "/orders:count",
+			shouldRoute: true,
+			description: "Should reach aggregation handler, not return 404",
+		},
+		{
+			name:        "Root still returns 200",
+			method:      http.MethodGet,
+			path:        "/",
+			shouldRoute: true,
+			description: "Root handler should work",
+		},
+		{
+			name:        "Collections list still works",
+			method:      http.MethodGet,
+			path:        "/collections:list",
+			shouldRoute: true,
+			description: "Collections endpoint should still work",
+		},
+		{
+			name:        "Invalid path returns 404",
+			method:      http.MethodGet,
+			path:        "/invalid",
+			shouldRoute: false,
+			description: "Invalid paths should return 404",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(tt.method, tt.path, nil)
+			w := httptest.NewRecorder()
+
+			srv.mux.ServeHTTP(w, req)
+
+			if tt.shouldRoute {
+				if w.Code == http.StatusNotFound {
+					t.Errorf("%s: got 404 (routing failed), expected handler to be reached. Body: %s",
+						tt.description, w.Body.String())
+				}
+			} else {
+				if w.Code != http.StatusNotFound {
+					t.Errorf("%s: expected 404, got %d. Body: %s",
+						tt.description, w.Code, w.Body.String())
+				}
+			}
+		})
+	}
+}
+
+// TestDynamicCollectionEndpoints_MultipleCollections tests that multiple
+// collections can have their dynamic endpoints route correctly
+func TestDynamicCollectionEndpoints_MultipleCollections(t *testing.T) {
+	srv := setupTestServer(t)
+
+	// Register multiple collections in the registry
+	collections := []string{"products", "orders", "customers"}
+
+	for _, collName := range collections {
+		collection := &registry.Collection{
+			Name: collName,
+			Columns: []registry.Column{
+				{Name: "name", Type: registry.TypeString},
+			},
+		}
+		srv.registry.Set(collection)
+	}
+
+	// Test that all dynamic endpoints route correctly (not 404)
+	for _, collName := range collections {
+		t.Run(fmt.Sprintf("List %s", collName), func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/%s:list", collName), nil)
+			w := httptest.NewRecorder()
+
+			srv.mux.ServeHTTP(w, req)
+
+			if w.Code == http.StatusNotFound {
+				t.Errorf("Got 404 for /%s:list (routing failed), expected handler to be reached. Body: %s",
+					collName, w.Body.String())
 			}
 		})
 	}
