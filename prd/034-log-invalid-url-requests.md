@@ -63,21 +63,22 @@ Introduce a configuration option to enable or disable logging of invalid URL req
 - Confirm that invalid requests are not logged.
 
 ### Test Scenarios
-- [ ] Valid URL request is logged as before.
-- [ ] Invalid URL request is logged when config is enabled.
-- [ ] Invalid URL request is not logged when config is disabled.
-- [ ] Log entry for invalid URL includes timestamp, method, URL, status code, and latency.
-- [ ] Configuration defaults to `false` if not set.
-- [ ] Invalid config value does not break logging; defaults to `false`.
+- [x] Valid URL request is logged as before.
+- [x] Invalid URL request is logged when config is enabled.
+- [x] Invalid URL request is not logged when config is disabled.
+- [x] Log entry for invalid URL includes timestamp, method, URL, status code, and latency.
+- [x] Configuration defaults to `false` if not set.
+- [x] Invalid config value does not break logging; defaults to `false`.
 
 ### Expected API Responses
 - Not applicable (no new API endpoints).
 
 ### Edge Cases and Negative Paths
-- [ ] Rapid/frequent invalid requests do not cause log flooding (documented, not enforced).
-- [ ] Logging failure does not impact request handling.
-- [ ] Invalid config value (e.g., non-boolean) is handled gracefully.
+- [x] Rapid/frequent invalid requests do not cause log flooding (documented, not enforced).
+- [x] Logging failure does not impact request handling.
+- [x] Invalid config value (e.g., non-boolean) is handled gracefully.
 
 ---
 
-- [ ] Ensure all documentation, scripts, and samples (`SPEC.md`, `INSTALL.md`, `README.md`, `USAGE.md`, `install.sh`, and all files in `samples/*`) are updated and remain consistent with the implemented code changes.
+- [x] Ensure all documentation, scripts, and samples (`SPEC.md`, `INSTALL.md`, `README.md`, `USAGE.md`, `install.sh`, and all files in `samples/*`) are updated and remain consistent with the implemented code changes.
+- [x] Ensure all test scripts in `scripts/*.sh` are working properly and up to date with the latest code and API changes.
