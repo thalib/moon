@@ -263,3 +263,158 @@ func TestServerRoutes(t *testing.T) {
 		})
 	}
 }
+
+func setupTestServerWithPrefix(t *testing.T, prefix string) *Server {
+	cfg := &config.AppConfig{
+		Server: config.ServerConfig{
+			Port:   6006,
+			Host:   "0.0.0.0",
+			Prefix: prefix,
+		},
+		Database: config.DatabaseConfig{
+			Connection: "sqlite",
+			Database:   ":memory:",
+		},
+		Logging: config.LoggingConfig{
+			Path: "/tmp",
+		},
+		JWT: config.JWTConfig{
+			Secret: "test-secret",
+			Expiry: 3600,
+		},
+	}
+
+	dbConfig := database.Config{
+		ConnectionString: "sqlite://:memory:",
+	}
+
+	driver, err := database.NewDriver(dbConfig)
+	if err != nil {
+		t.Fatalf("Failed to create database driver: %v", err)
+	}
+
+	if err := driver.Connect(context.Background()); err != nil {
+		t.Fatalf("Failed to connect to database: %v", err)
+	}
+
+	reg := registry.NewSchemaRegistry()
+
+	return New(cfg, driver, reg, "1-test")
+}
+
+func TestServerRoutes_WithPrefix(t *testing.T) {
+	tests := []struct {
+		name           string
+		prefix         string
+		requestPath    string
+		expectedStatus int
+	}{
+		{
+			name:           "Health check with /api/v1 prefix",
+			prefix:         "/api/v1",
+			requestPath:    "/api/v1/health",
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "Health check without prefix should fail",
+			prefix:         "/api/v1",
+			requestPath:    "/health",
+			expectedStatus: http.StatusNotFound,
+		},
+		{
+			name:           "Health check with /moon/api prefix",
+			prefix:         "/moon/api",
+			requestPath:    "/moon/api/health",
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "Health check with empty prefix",
+			prefix:         "",
+			requestPath:    "/health",
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "Collections list with prefix",
+			prefix:         "/api/v1",
+			requestPath:    "/api/v1/collections:list",
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "Collections list with empty prefix",
+			prefix:         "",
+			requestPath:    "/collections:list",
+			expectedStatus: http.StatusOK,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			srv := setupTestServerWithPrefix(t, tt.prefix)
+
+			req := httptest.NewRequest(http.MethodGet, tt.requestPath, nil)
+			w := httptest.NewRecorder()
+
+			srv.mux.ServeHTTP(w, req)
+
+			if w.Code != tt.expectedStatus {
+				t.Errorf("Expected status code %d, got %d", tt.expectedStatus, w.Code)
+			}
+		})
+	}
+}
+
+func TestDynamicDataHandler_WithPrefix(t *testing.T) {
+	tests := []struct {
+		name           string
+		prefix         string
+		requestPath    string
+		expectedStatus int
+	}{
+		{
+			name:           "Collection action with /api/v1 prefix",
+			prefix:         "/api/v1",
+			requestPath:    "/api/v1/users:list",
+			expectedStatus: http.StatusNotFound, // Collection doesn't exist yet
+		},
+		{
+			name:           "Collection action with empty prefix",
+			prefix:         "",
+			requestPath:    "/users:list",
+			expectedStatus: http.StatusNotFound, // Collection doesn't exist yet
+		},
+		{
+			name:           "Collection action with /moon/api/ prefix",
+			prefix:         "/moon/api",
+			requestPath:    "/moon/api/products:list",
+			expectedStatus: http.StatusNotFound, // Collection doesn't exist yet
+		},
+		{
+			name:           "Invalid path should 404 with prefix",
+			prefix:         "/api/v1",
+			requestPath:    "/api/v1/invalid",
+			expectedStatus: http.StatusNotFound,
+		},
+		{
+			name:           "Prevent collections endpoint access",
+			prefix:         "/api/v1",
+			requestPath:    "/api/v1/collections:invalid",
+			expectedStatus: http.StatusNotFound,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			srv := setupTestServerWithPrefix(t, tt.prefix)
+
+			req := httptest.NewRequest(http.MethodGet, tt.requestPath, nil)
+			w := httptest.NewRecorder()
+
+			srv.mux.ServeHTTP(w, req)
+
+			if w.Code != tt.expectedStatus {
+				t.Errorf("Expected status code %d, got %d", tt.expectedStatus, w.Code)
+			}
+		})
+	}
+}
+

@@ -66,20 +66,29 @@ func (s *Server) setupRoutes() {
 	// Create aggregation handler
 	aggregationHandler := handlers.NewAggregationHandler(s.db, s.registry)
 
-	// Health check endpoint
-	s.mux.HandleFunc("GET /health", s.loggingMiddleware(s.healthHandler))
+	// Get the prefix from config
+	prefix := s.config.Server.Prefix
+
+	// Health check endpoint (always at /health, respects prefix)
+	healthPath := prefix + "/health"
+	s.mux.HandleFunc("GET "+healthPath, s.loggingMiddleware(s.healthHandler))
 
 	// Schema management endpoints (collections)
-	s.mux.HandleFunc("GET /api/v1/collections:list", s.loggingMiddleware(collectionsHandler.List))
-	s.mux.HandleFunc("GET /api/v1/collections:get", s.loggingMiddleware(collectionsHandler.Get))
-	s.mux.HandleFunc("POST /api/v1/collections:create", s.loggingMiddleware(collectionsHandler.Create))
-	s.mux.HandleFunc("POST /api/v1/collections:update", s.loggingMiddleware(collectionsHandler.Update))
-	s.mux.HandleFunc("POST /api/v1/collections:destroy", s.loggingMiddleware(collectionsHandler.Destroy))
+	s.mux.HandleFunc("GET "+prefix+"/collections:list", s.loggingMiddleware(collectionsHandler.List))
+	s.mux.HandleFunc("GET "+prefix+"/collections:get", s.loggingMiddleware(collectionsHandler.Get))
+	s.mux.HandleFunc("POST "+prefix+"/collections:create", s.loggingMiddleware(collectionsHandler.Create))
+	s.mux.HandleFunc("POST "+prefix+"/collections:update", s.loggingMiddleware(collectionsHandler.Update))
+	s.mux.HandleFunc("POST "+prefix+"/collections:destroy", s.loggingMiddleware(collectionsHandler.Destroy))
 
 	// Data access endpoints (dynamic collections with :action pattern)
-	s.mux.HandleFunc("/api/v1/", s.loggingMiddleware(s.dynamicDataHandler(dataHandler, aggregationHandler)))
-	// Catch-all for 404
-	s.mux.HandleFunc("/", s.loggingMiddleware(s.notFoundHandler))
+	// This also serves as catch-all when prefix is empty
+	if prefix == "" {
+		s.mux.HandleFunc("/", s.loggingMiddleware(s.dynamicDataHandler(dataHandler, aggregationHandler)))
+	} else {
+		s.mux.HandleFunc(prefix+"/", s.loggingMiddleware(s.dynamicDataHandler(dataHandler, aggregationHandler)))
+		// Catch-all for 404 when prefix is set
+		s.mux.HandleFunc("/", s.loggingMiddleware(s.notFoundHandler))
+	}
 }
 
 // loggingMiddleware logs HTTP requests and responses
@@ -212,8 +221,8 @@ func (s *Server) writeError(w http.ResponseWriter, statusCode int, message strin
 
 func (s *Server) dynamicDataHandler(dataHandler *handlers.DataHandler, aggregationHandler *handlers.AggregationHandler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Parse path: /api/v1/{name}:{action}
-		path := strings.TrimPrefix(r.URL.Path, "/api/v1/")
+		// Parse path: {prefix}/{name}:{action}
+		path := strings.TrimPrefix(r.URL.Path, s.config.Server.Prefix+"/")
 
 		// Split by colon to get name and action
 		parts := strings.SplitN(path, ":", 2)

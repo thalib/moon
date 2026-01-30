@@ -6,6 +6,7 @@ package config
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/viper"
 )
@@ -26,8 +27,9 @@ func Version() string {
 // centralized in one place to avoid hardcoded literals
 var Defaults = struct {
 	Server struct {
-		Port int
-		Host string
+		Port   int
+		Host   string
+		Prefix string
 	}
 	Database struct {
 		Connection string
@@ -54,11 +56,13 @@ var Defaults = struct {
 	ConfigPath string
 }{
 	Server: struct {
-		Port int
-		Host string
+		Port   int
+		Host   string
+		Prefix string
 	}{
-		Port: 6006,
-		Host: "0.0.0.0",
+		Port:   6006,
+		Host:   "0.0.0.0",
+		Prefix: "",
 	},
 	Database: struct {
 		Connection string
@@ -115,8 +119,9 @@ type AppConfig struct {
 
 // ServerConfig holds server-related configuration.
 type ServerConfig struct {
-	Port int    `mapstructure:"port"`
-	Host string `mapstructure:"host"`
+	Port   int    `mapstructure:"port"`
+	Host   string `mapstructure:"host"`
+	Prefix string `mapstructure:"prefix"`
 }
 
 // DatabaseConfig holds database connection configuration.
@@ -163,6 +168,7 @@ func Load(configPath string) (*AppConfig, error) {
 	// Set default values from centralized Defaults struct
 	v.SetDefault("server.port", Defaults.Server.Port)
 	v.SetDefault("server.host", Defaults.Server.Host)
+	v.SetDefault("server.prefix", Defaults.Server.Prefix)
 	v.SetDefault("database.connection", Defaults.Database.Connection)
 	v.SetDefault("database.database", Defaults.Database.Database)
 	v.SetDefault("database.user", Defaults.Database.User)
@@ -223,6 +229,11 @@ func Load(configPath string) (*AppConfig, error) {
 func validate(cfg *AppConfig) error {
 	if cfg.Server.Port <= 0 || cfg.Server.Port > 65535 {
 		return fmt.Errorf("invalid server port: %d", cfg.Server.Port)
+	}
+
+	// Normalize prefix: add leading slash if missing, preserve trailing slash
+	if cfg.Server.Prefix != "" && !strings.HasPrefix(cfg.Server.Prefix, "/") {
+		cfg.Server.Prefix = "/" + cfg.Server.Prefix
 	}
 
 	// Apply default database values if not provided

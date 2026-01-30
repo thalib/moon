@@ -39,3 +39,8 @@
 - All documentation is updated to reflect the configurable prefix
 - All tests pass with both empty prefix and custom prefix configurations
 - No hardcoded `/api/v1/` references remain in the codebase
+
+## Implementation Checklist
+
+- [ ] Ensure all documentation, scripts, and samples (`SPEC.md`, `INSTALL.md`, `README.md`, `USAGE.md`, `install.sh`, and all files in `samples/*`) are updated and remain consistent with the implemented code changes.
+- [ ] Ensure all test scripts in `scripts/*.sh` are working properly and up to date with the latest code and API changes.

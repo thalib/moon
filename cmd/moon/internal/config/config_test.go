@@ -335,3 +335,94 @@ func TestVersionConstants(t *testing.T) {
 		t.Errorf("Expected VersionMinor to be 99, got %d", VersionMinor)
 	}
 }
+
+func TestLoad_PrefixDefault(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.yaml")
+
+	content := `jwt:
+  secret: test-secret
+`
+
+	if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
+		t.Fatalf("Failed to write config file: %v", err)
+	}
+
+	cfg, err := Load(configPath)
+	if err != nil {
+		t.Fatalf("Load() failed: %v", err)
+	}
+
+	// Should default to empty string
+	if cfg.Server.Prefix != "" {
+		t.Errorf("Expected empty prefix by default, got %s", cfg.Server.Prefix)
+	}
+}
+
+func TestLoad_PrefixNormalization(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "empty prefix",
+			input:    "",
+			expected: "",
+		},
+		{
+			name:     "prefix with leading slash",
+			input:    "/api/v1",
+			expected: "/api/v1",
+		},
+		{
+			name:     "prefix without leading slash",
+			input:    "api/v1",
+			expected: "/api/v1",
+		},
+		{
+			name:     "prefix with trailing slash",
+			input:    "/moon/api/",
+			expected: "/moon/api/",
+		},
+		{
+			name:     "prefix without leading slash with trailing slash",
+			input:    "moon/api/",
+			expected: "/moon/api/",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			configPath := filepath.Join(tmpDir, "config.yaml")
+
+			content := `server:
+  prefix: "` + tt.input + `"
+jwt:
+  secret: test-secret
+`
+
+			if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
+				t.Fatalf("Failed to write config file: %v", err)
+			}
+
+			cfg, err := Load(configPath)
+			if err != nil {
+				t.Fatalf("Load() failed: %v", err)
+			}
+
+			if cfg.Server.Prefix != tt.expected {
+				t.Errorf("Expected prefix %q, got %q", tt.expected, cfg.Server.Prefix)
+			}
+		})
+	}
+}
+
+func TestDefaults_Prefix(t *testing.T) {
+	// Verify that Defaults struct has correct prefix value
+	if Defaults.Server.Prefix != "" {
+		t.Errorf("Expected default prefix to be empty, got %s", Defaults.Server.Prefix)
+	}
+}
+

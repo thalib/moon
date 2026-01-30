@@ -1,11 +1,25 @@
+#!/bin/bash
+# Collection API test script for Moon
+# Supports PREFIX environment variable for custom URL prefixes
+# Usage: PREFIX=/api/v1 ./scripts/collection.sh
+# Usage: PREFIX="" ./scripts/collection.sh (for no prefix)
 
-# Collection API test script for Moon (hardcoded URLs)
+# Default to empty prefix if not set
+PREFIX=${PREFIX:-}
+
+# Base URL
+BASE_URL="http://localhost:6006${PREFIX}"
+
+echo "Testing Moon Collection API"
+echo "Using prefix: ${PREFIX:-<empty>}"
+echo "Base URL: ${BASE_URL}"
+echo ""
 
 echo "[1] List collections:"
-curl -s -X GET "http://localhost:6006/api/v1/collections:list" | jq . 
+curl -s -X GET "${BASE_URL}/collections:list" | jq . 
 
 echo "[2] Create 'products' collection:"
-curl -s -X POST "http://localhost:6006/api/v1/collections:create" \
+curl -s -X POST "${BASE_URL}/collections:create" \
 	-H "Content-Type: application/json" \
 	-d '{
 		"name": "products",
@@ -18,11 +32,11 @@ curl -s -X POST "http://localhost:6006/api/v1/collections:create" \
 	}' | jq .
 
 echo "[3] Get 'products' collection schema:"
-curl -s -X GET "http://localhost:6006/api/v1/collections:get?name=products" | jq . || curl -s -X GET "http://localhost:6006/api/v1/collections:get?name=products"
+curl -s -X GET "${BASE_URL}/collections:get?name=products" | jq . || curl -s -X GET "${BASE_URL}/collections:get?name=products"
 echo
 
 echo "[4] Update 'products' collection (add 'category' column):"
-curl -s -X POST "http://localhost:6006/api/v1/collections:update" \
+curl -s -X POST "${BASE_URL}/collections:update" \
 	-H "Content-Type: application/json" \
 	-d '{
 		"name": "products",
@@ -32,7 +46,7 @@ curl -s -X POST "http://localhost:6006/api/v1/collections:update" \
 	}' | jq .
 
 echo "[5] Update 'products' collection (rename 'description' to 'details'):"
-curl -s -X POST "http://localhost:6006/api/v1/collections:update" \
+curl -s -X POST "${BASE_URL}/collections:update" \
 	-H "Content-Type: application/json" \
 	-d '{
 		"name": "products",
@@ -42,7 +56,7 @@ curl -s -X POST "http://localhost:6006/api/v1/collections:update" \
 	}' | jq .
 
 echo "[6] Update 'products' collection (modify 'details' type to string):"
-curl -s -X POST "http://localhost:6006/api/v1/collections:update" \
+curl -s -X POST "${BASE_URL}/collections:update" \
 	-H "Content-Type: application/json" \
 	-d '{
 		"name": "products",
@@ -52,7 +66,7 @@ curl -s -X POST "http://localhost:6006/api/v1/collections:update" \
 	}' | jq .
 
 echo "[7] Update 'products' collection (remove 'category' column):"
-curl -s -X POST "http://localhost:6006/api/v1/collections:update" \
+curl -s -X POST "${BASE_URL}/collections:update" \
 	-H "Content-Type: application/json" \
 	-d '{
 		"name": "products",
@@ -60,7 +74,7 @@ curl -s -X POST "http://localhost:6006/api/v1/collections:update" \
 	}' | jq .
 
 echo "[8] Update 'products' collection (combined operations):"
-curl -s -X POST "http://localhost:6006/api/v1/collections:update" \
+curl -s -X POST "${BASE_URL}/collections:update" \
 	-H "Content-Type: application/json" \
 	-d '{
 		"name": "products",
@@ -76,6 +90,6 @@ curl -s -X POST "http://localhost:6006/api/v1/collections:update" \
 	}' | jq .
 
 echo "[9] Destroy 'products' collection:"
-curl -s -X POST "http://localhost:6006/api/v1/collections:destroy" \
+curl -s -X POST "${BASE_URL}/collections:destroy" \
 	-H "Content-Type: application/json" \
 	-d '{"name": "products"}' | jq .

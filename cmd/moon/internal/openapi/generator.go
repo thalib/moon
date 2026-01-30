@@ -157,6 +157,7 @@ type GeneratorConfig struct {
 	Title       string
 	Description string
 	Version     string
+	Prefix      string
 	Servers     []Server
 	Contact     *Contact
 	License     *License
@@ -249,7 +250,8 @@ func (g *Generator) addHealthEndpoints(spec *OpenAPI) {
 		Description: "Health check endpoints",
 	})
 
-	spec.Paths["/health"] = PathItem{
+	healthPath := g.config.Prefix + "/health"
+	spec.Paths[healthPath] = PathItem{
 		Get: &Operation{
 			Tags:        []string{"Health"},
 			Summary:     "Liveness check",
@@ -324,7 +326,7 @@ func (g *Generator) addCollectionEndpoints(spec *OpenAPI) {
 	}
 
 	// List collections
-	spec.Paths["/api/v1/collections:list"] = PathItem{
+	spec.Paths[g.config.Prefix+"/collections:list"] = PathItem{
 		Get: &Operation{
 			Tags:        []string{"Collections"},
 			Summary:     "List all collections",
@@ -349,7 +351,7 @@ func (g *Generator) addCollectionEndpoints(spec *OpenAPI) {
 	}
 
 	// Get collection
-	spec.Paths["/api/v1/collections:get"] = PathItem{
+	spec.Paths[g.config.Prefix+"/collections:get"] = PathItem{
 		Get: &Operation{
 			Tags:        []string{"Collections"},
 			Summary:     "Get collection schema",
@@ -388,7 +390,7 @@ func (g *Generator) addCollectionEndpoints(spec *OpenAPI) {
 	}
 
 	// Create collection
-	spec.Paths["/api/v1/collections:create"] = PathItem{
+	spec.Paths[g.config.Prefix+"/collections:create"] = PathItem{
 		Post: &Operation{
 			Tags:        []string{"Collections"},
 			Summary:     "Create a collection",
@@ -441,7 +443,7 @@ func (g *Generator) addCollectionEndpoints(spec *OpenAPI) {
 	}
 
 	// Update collection
-	spec.Paths["/api/v1/collections:update"] = PathItem{
+	spec.Paths[g.config.Prefix+"/collections:update"] = PathItem{
 		Post: &Operation{
 			Tags:        []string{"Collections"},
 			Summary:     "Update a collection",
@@ -479,7 +481,7 @@ func (g *Generator) addCollectionEndpoints(spec *OpenAPI) {
 	}
 
 	// Destroy collection
-	spec.Paths["/api/v1/collections:destroy"] = PathItem{
+	spec.Paths[g.config.Prefix+"/collections:destroy"] = PathItem{
 		Post: &Operation{
 			Tags:        []string{"Collections"},
 			Summary:     "Destroy a collection",
@@ -553,7 +555,7 @@ func (g *Generator) addDataEndpoints(spec *OpenAPI) {
 		// Add schema for collection
 		g.addCollectionSchema(spec, collection)
 
-		basePath := fmt.Sprintf("/api/v1/%s", collection.Name)
+		basePath := fmt.Sprintf("%s/%s", g.config.Prefix, collection.Name)
 
 		// List records
 		spec.Paths[basePath+":list"] = PathItem{
