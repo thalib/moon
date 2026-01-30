@@ -1,3 +1,5 @@
+{{- $ApiURL := .BaseURL -}}
+{{- if .Prefix }}{{- $ApiURL = printf "%s%s" .BaseURL .Prefix -}}{{- end -}}
 # Moon API Documentation
 
 **Version:** {{.Version}}  
@@ -8,13 +10,13 @@
 - [Overview](#overview)
 - [Authentication](#authentication)
 - [Base URL and Prefix](#base-url-and-prefix)
-- [Quickstart](#quickstart)
 - [Available Collections](#available-collections)
 - [Schema Management](#schema-management)
 - [Data Access](#data-access)
 - [Aggregation Operations](#aggregation-operations)
-- [Filtering, Sorting & Pagination](#filtering-sorting--pagination)
+- [Filtering, Sorting & Pagination](#filtering-sorting-pagination)
 - [Error Responses](#error-responses)
+- [Quickstart](#quickstart)
 - [Example Requests](#example-requests)
 
 ## Overview
@@ -44,74 +46,25 @@ Authorization: Bearer <your-jwt-token>
 
 **Base URL:** `{{.BaseURL}}`
 
-{{if .Prefix}}**URL Prefix:** `{{.Prefix}}`
+{{if .Prefix}}
+**URL Prefix:** `{{.Prefix}}`
 
-All endpoints are prefixed with `{{.Prefix}}`. For example:
-
-```
-{{.BaseURL}}{{.Prefix}}/health
-{{.BaseURL}}{{.Prefix}}/collections:list
-```
-
-{{else}}**URL Prefix:** None (endpoints start at root)
-
-```
-{{.BaseURL}}/health
-{{.BaseURL}}/collections:list
-```
-
+All endpoints are prefixed with `{{.Prefix}}`.
 {{end}}
-## Quickstart
 
-Get started with Moon in 5 simple steps:
-
-### 1. Create a collection
-
-```bash
-curl -X POST "{{.BaseURL}}{{.Prefix}}/collections:create" \
-  -H "Content-Type: application/json" \
-  -d '{"name":"products","columns":[{"name":"title","type":"string","nullable":false},{"name":"price","type":"float","nullable":false}]}'
 ```
-
-### 2. Insert a record
-
-```bash
-curl -X POST "{{.BaseURL}}{{.Prefix}}/{collection}:create" \
-  -H "Content-Type: application/json" \
-  -d '{"data":{"title":"Laptop","price":999.99}}'
-```
-
-### 3. List records
-
-```bash
-curl -s "{{.BaseURL}}{{.Prefix}}/{collection}:list" | jq .
-```
-
-### 4. Update a record
-
-```bash
-curl -X POST "{{.BaseURL}}{{.Prefix}}/{collection}:update" \
-  -H "Content-Type: application/json" \
-  -d '{"id":"01ARZ3NDEKTSV4RRFFQ69G5FBX","data":{"price":899.99}}'
-```
-
-### 5. Delete a record
-
-```bash
-curl -X POST "{{.BaseURL}}{{.Prefix}}/{collection}:destroy" \
-  -H "Content-Type: application/json" \
-  -d '{"id":"01ARZ3NDEKTSV4RRFFQ69G5FBX"}'
+{{$ApiURL}}/health
+{{$ApiURL}}/collections:list
 ```
 
 ## Available Collections
 
-{{if .Collections}}The following collections are currently available:
+{{if .Collections}}
+{{range .Collections}}- `{{.}}`{{end}}
+{{else}}
+No collections have been created yet.
+{{- end }}
 
-{{range .Collections}}- `{{.}}`
-{{end}}
-{{else}}No collections have been created yet.
-
-{{end}}
 ## Schema Management
 
 These endpoints manage database tables (collections) and their schemas.
@@ -160,47 +113,27 @@ Use query parameters to filter results:
 
 **Operators:** `eq`, `ne`, `gt`, `lt`, `gte`, `lte`, `like`, `in`
 
-**Example:**
-
-```bash
-{{.BaseURL}}{{.Prefix}}/{collection}:list?price[gt]=100&category[eq]=electronics
-```
+**Example:** `{{$ApiURL}}/{collection}:list?price[gt]=100&category[eq]=electronics`
 
 ### Sorting
 
-Sort by field (ascending) or `-field` (descending):
-
-```
-?sort=-price,name
-```
+Sort by field (ascending) or `-field` (descending): `?sort=-price,name
 
 ### Full-Text Search
 
-Search across all text columns:
-
-```
-?q=laptop
-```
+Search across all text columns: `?q=laptop`
 
 ### Field Selection
 
-Return only specific fields (always includes id):
-
-```
-?fields=name,price
-```
+Return only specific fields (always includes id): `?fields=name,price`
 
 ### Pagination
 
-Use cursor-based pagination:
-
-```
-?after=01ARZ3NDEKTSV4RRFFQ69G5FBX&limit=10
-```
+Use cursor-based pagination: `?after=01ARZ3NDEKTSV4RRFFQ69G5FBX&limit=10`
 
 Response includes `next_cursor` when more results are available.
 
-## Error Responses
+**Error Responses**
 
 All errors follow a consistent JSON structure:
 
@@ -225,7 +158,7 @@ All errors follow a consistent JSON structure:
 **Create a collection:**
 
 ```bash
-curl -X POST "{{.BaseURL}}{{.Prefix}}/collections:create" \
+curl -X POST "{{$ApiURL}}/collections:create" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "products",
@@ -254,7 +187,7 @@ curl -X POST "{{.BaseURL}}{{.Prefix}}/collections:create" \
 **Create a record:**
 
 ```bash
-curl -X POST "{{.BaseURL}}{{.Prefix}}/{collection}:create" \
+curl -X POST "{{$ApiURL}}/{collection}:create" \
   -H "Content-Type: application/json" \
   -d '{
     "data": {
@@ -282,7 +215,7 @@ curl -X POST "{{.BaseURL}}{{.Prefix}}/{collection}:create" \
 **List records with filtering:**
 
 ```bash
-curl -s "{{.BaseURL}}{{.Prefix}}/{collection}:list?price[gt]=20&sort=-price" | jq .
+curl -s "{{$ApiURL}}/{collection}:list?price[gt]=20&sort=-price" | jq .
 ```
 
 ### Aggregation Example
@@ -290,23 +223,57 @@ curl -s "{{.BaseURL}}{{.Prefix}}/{collection}:list?price[gt]=20&sort=-price" | j
 **Count records:**
 
 ```bash
-curl -s "{{.BaseURL}}{{.Prefix}}/{collection}:count"
+curl -s "{{$ApiURL}}/{collection}:count"
 ```
 
-**Response (200 OK):**
-
-```json
-{"value": 42}
-```
+**Response (200 OK):** `{"value": 42}`
 
 **Sum with filter:**
 
 ```bash
-curl -s "{{.BaseURL}}{{.Prefix}}/{collection}:sum?field=price&category[eq]=electronics"
+curl -s "{{$ApiURL}}/{collection}:sum?field=price&category[eq]=electronics"
 ```
 
-**Response (200 OK):**
+**Response (200 OK):** `{"value": 1599.99}`
 
-```json
-{"value": 1599.99}
+## Quickstart
+
+Get started with Moon in 5 simple steps:
+
+### 1. Create a collection
+
+```bash
+curl -X POST "{{$ApiURL}}/collections:create" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"products","columns":[{"name":"title","type":"string","nullable":false},{"name":"price","type":"float","nullable":false}]}'
+```
+
+### 2. Insert a record
+
+```bash
+curl -X POST "{{$ApiURL}}/{collection}:create" \
+  -H "Content-Type: application/json" \
+  -d '{"data":{"title":"Laptop","price":999.99}}'
+```
+
+### 3. List records
+
+```bash
+curl -s "{{$ApiURL}}/{collection}:list" | jq .
+```
+
+### 4. Update a record
+
+```bash
+curl -X POST "{{$ApiURL}}/{collection}:update" \
+  -H "Content-Type: application/json" \
+  -d '{"id":"01ARZ3NDEKTSV4RRFFQ69G5FBX","data":{"price":899.99}}'
+```
+
+### 5. Delete a record
+
+```bash
+curl -X POST "{{$ApiURL}}/{collection}:destroy" \
+  -H "Content-Type: application/json" \
+  -d '{"id":"01ARZ3NDEKTSV4RRFFQ69G5FBX"}'
 ```
