@@ -11,4 +11,6 @@ Strictly follow the details and requirements specified in each PRD file.
 
 For each PRD: Keep code, tests, and documentation clean, minimal, and aligned with the project’s best practices.
 
-- Always keep the existing documentation, scripts and samples: `SPEC.md`, `INSTALL.md`, `README.md`, `USAGE.md`, `install.sh` and `samples/*` in sync with code changes
+Add Below checklist to each PRD:
+
+- Ensure all documentation, scripts, and samples (`SPEC.md`, `INSTALL.md`, `README.md`, `USAGE.md`, `install.sh`, and all files in `samples/*`) are updated and remain consistent with the implemented code changes.

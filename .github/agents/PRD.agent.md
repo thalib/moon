@@ -108,6 +108,10 @@ You **must**:
 - Ensure all sections are complete and well-structured
 - Name the file according to the PRD naming conventions
 
+### Add Below checklist to each PRD:
+
+- [ ] Ensure all documentation, scripts, and samples (`SPEC.md`, `INSTALL.md`, `README.md`, `USAGE.md`, `install.sh`, and all files in `samples/*`) are updated and remain consistent with the implemented code changes.
+
 ---
 
 ### Failure Conditions (Do NOT Proceed If)
