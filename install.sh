@@ -105,20 +105,64 @@ create_directories() {
 # Check for moon binary in current directory
 check_binary() {
     print_info "Checking for moon binary in current directory..."
-    if [ ! -f "moon" ]; then
-        print_error "moon binary not found in current directory."
-        echo ""
-        echo "Please build moon first (see docs/INSTALL.md for instructions)."
-        echo ""
-        echo "Build commands:"
-        echo "  go build -o moon ./cmd/moon"
-        echo ""
-        echo "Or use Docker to build (run from project root directory):"
-        echo '  sudo docker run --rm -v "$(pwd):/app" -v "$(pwd)/.gocache:/gocache" -w /app -e GOCACHE=/gocache golang:latest sh -c "go build -buildvcs=false -o moon ./cmd/moon"'
-        echo ""
-        exit 1
+    if [ -f "moon" ]; then
+        print_success "moon binary found"
+        local response
+        print_warning "moon binary already exists in current directory."
+        while true; do
+            read -t 30 -p "Do you want to rebuild the moon binary? [y/N]: " response || {
+                echo ""
+                print_warning "Timeout: defaulting to 'No'"
+                return 0
+            }
+            case $response in
+                [Yy]* )
+                    print_info "Rebuilding moon binary using Docker..."
+                    if ! command -v docker >/dev/null 2>&1; then
+                        print_error "Docker is not installed or not in PATH. Cannot build moon binary."
+                        exit 1
+                    fi
+                    docker run --rm \
+                      -v "$(pwd):/app" \
+                      -v "$(pwd)/.gocache:/gocache" \
+                      -w /app \
+                      -e GOCACHE=/gocache \
+                      golang:latest sh -c "go build -buildvcs=false -o moon ./cmd/moon"
+                    if [ ! -f "moon" ]; then
+                        print_error "Failed to build moon binary using Docker."
+                        exit 1
+                    fi
+                    print_success "moon binary rebuilt using Docker."
+                    return 0
+                    ;;
+                [Nn]* | "" )
+                    print_info "Skipping rebuild of moon binary."
+                    return 0
+                    ;;
+                * )
+                    echo "Please answer yes (y) or no (n)."
+                    ;;
+            esac
+        done
+    else
+        print_warning "moon binary not found in current directory. Attempting to build using Docker..."
+        if ! command -v docker >/dev/null 2>&1; then
+            print_error "Docker is not installed or not in PATH. Cannot build moon binary."
+            exit 1
+        fi
+        print_info "Building Moon binary using Docker..."
+        docker run --rm \
+          -v "$(pwd):/app" \
+          -v "$(pwd)/.gocache:/gocache" \
+          -w /app \
+          -e GOCACHE=/gocache \
+          golang:latest sh -c "go build -buildvcs=false -o moon ./cmd/moon"
+        if [ ! -f "moon" ]; then
+            print_error "Failed to build moon binary using Docker."
+            exit 1
+        fi
+        print_success "moon binary built using Docker."
     fi
-    print_success "moon binary found"
 }
 
 # Stop running moon service
