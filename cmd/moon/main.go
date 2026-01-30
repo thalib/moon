@@ -17,6 +17,18 @@ import (
 	"github.com/thalib/moon/cmd/moon/internal/server"
 )
 
+var (
+	// MajorVersion is the major version number (set at build time or from VERSION file)
+	MajorVersion = "1"
+	// GitCommit is the short git commit hash (set at build time)
+	GitCommit = "unknown"
+)
+
+// Version returns the full version string in format: {major}-{short-git-commit}
+func Version() string {
+	return fmt.Sprintf("%s-%s", MajorVersion, GitCommit)
+}
+
 func main() {
 	// Parse command-line flags
 	configPath := flag.String("config", "", "path to configuration file (default: /etc/moon.conf)")
@@ -127,7 +139,7 @@ func main() {
 	}
 
 	// Create and start HTTP server
-	srv := server.New(cfg, driver, reg)
+	srv := server.New(cfg, driver, reg, Version())
 
 	fmt.Println("Starting HTTP server...")
 	if err := srv.Run(); err != nil {

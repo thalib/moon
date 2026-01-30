@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/thalib/moon/cmd/moon/internal/config"
-	"github.com/thalib/moon/cmd/moon/internal/consistency"
 	"github.com/thalib/moon/cmd/moon/internal/constants"
 	"github.com/thalib/moon/cmd/moon/internal/database"
 	"github.com/thalib/moon/cmd/moon/internal/handlers"
@@ -30,10 +29,11 @@ type Server struct {
 	registry *registry.SchemaRegistry
 	mux      *http.ServeMux
 	server   *http.Server
+	version  string
 }
 
 // New creates a new server instance
-func New(cfg *config.AppConfig, db database.Driver, reg *registry.SchemaRegistry) *Server {
+func New(cfg *config.AppConfig, db database.Driver, reg *registry.SchemaRegistry, version string) *Server {
 	mux := http.NewServeMux()
 
 	srv := &Server{
@@ -41,6 +41,7 @@ func New(cfg *config.AppConfig, db database.Driver, reg *registry.SchemaRegistry
 		db:       db,
 		registry: reg,
 		mux:      mux,
+		version:  version,
 		server: &http.Server{
 			Addr:         fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port),
 			Handler:      mux,
@@ -166,52 +167,21 @@ func (s *Server) Run() error {
 func (s *Server) healthHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
+	status := "live"
+
 	// Check database connection
 	if err := s.db.Ping(ctx); err != nil {
-		s.writeError(w, http.StatusServiceUnavailable, "Database unavailable")
-		return
+		status = "down"
 	}
 
-	// Perform consistency check (non-blocking with short timeout, read-only)
-	checkCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
-	defer cancel()
-
-	// Create a read-only config for health checks (no repairs)
-	healthCheckConfig := &config.RecoveryConfig{
-		AutoRepair:   false, // Health checks should not modify state
-		DropOrphans:  false,
-		CheckTimeout: 2,
-	}
-	
-	checker := consistency.NewChecker(s.db, s.registry, healthCheckConfig)
-	consistencyResult, err := checker.Check(checkCtx)
-
-	response := map[string]any{
-		"status":      "healthy",
-		"database":    string(s.db.Dialect()),
-		"collections": s.registry.Count(),
+	response := map[string]string{
+		"status":  status,
+		"name":    "moon",
+		"version": s.version,
 	}
 
-	if err != nil || consistencyResult == nil {
-		response["consistency"] = "error"
-	} else if consistencyResult.TimedOut {
-		response["consistency"] = "timeout"
-	} else if consistencyResult.Consistent {
-		response["consistency"] = "ok"
-	} else {
-		response["consistency"] = "inconsistent"
-		// Add details about issues
-		var details []map[string]string
-		for _, issue := range consistencyResult.Issues {
-			details = append(details, map[string]string{
-				"type":     string(issue.Type),
-				"name":     issue.Name,
-				"repaired": fmt.Sprintf("%v", issue.Repaired),
-			})
-		}
-		response["details"] = details
-	}
-
+	// Always return HTTP 200, even if service is down
+	// Clients must check the "status" field to determine service health
 	s.writeJSON(w, http.StatusOK, response)
 }
 

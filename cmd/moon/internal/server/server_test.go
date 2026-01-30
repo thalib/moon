@@ -46,7 +46,7 @@ func setupTestServer(t *testing.T) *Server {
 
 	reg := registry.NewSchemaRegistry()
 
-	return New(cfg, driver, reg)
+	return New(cfg, driver, reg, "1-test")
 }
 
 func TestNew(t *testing.T) {
@@ -93,12 +93,21 @@ func TestHealthHandler(t *testing.T) {
 		t.Fatalf("Failed to decode response: %v", err)
 	}
 
-	if response["status"] != "healthy" {
-		t.Errorf("Expected status 'healthy', got '%v'", response["status"])
+	if response["status"] != "live" {
+		t.Errorf("Expected status 'live', got '%v'", response["status"])
 	}
 
-	if response["database"] != "sqlite" {
-		t.Errorf("Expected database 'sqlite', got '%v'", response["database"])
+	if response["name"] != "moon" {
+		t.Errorf("Expected name 'moon', got '%v'", response["name"])
+	}
+
+	if response["version"] != "1-test" {
+		t.Errorf("Expected version '1-test', got '%v'", response["version"])
+	}
+
+	// Ensure no other fields are present
+	if len(response) != 3 {
+		t.Errorf("Expected exactly 3 fields, got %d: %v", len(response), response)
 	}
 }
 
