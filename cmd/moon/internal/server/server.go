@@ -66,6 +66,9 @@ func (s *Server) setupRoutes() {
 	// Create aggregation handler
 	aggregationHandler := handlers.NewAggregationHandler(s.db, s.registry)
 
+	// Create documentation handler
+	docHandler := handlers.NewDocHandler(s.registry, s.config, s.version)
+
 	// Get the prefix from config
 	prefix := s.config.Server.Prefix
 
@@ -77,6 +80,11 @@ func (s *Server) setupRoutes() {
 	// Health check endpoint (always at /health, respects prefix)
 	healthPath := prefix + "/health"
 	s.mux.HandleFunc("GET "+healthPath, s.loggingMiddleware(s.healthHandler))
+
+	// Documentation endpoints
+	s.mux.HandleFunc("GET "+prefix+"/doc/", s.loggingMiddleware(docHandler.HTML))
+	s.mux.HandleFunc("GET "+prefix+"/doc/md", s.loggingMiddleware(docHandler.Markdown))
+	s.mux.HandleFunc("POST "+prefix+"/doc:refresh", s.loggingMiddleware(docHandler.RefreshCache))
 
 	// Schema management endpoints (collections)
 	s.mux.HandleFunc("GET "+prefix+"/collections:list", s.loggingMiddleware(collectionsHandler.List))
