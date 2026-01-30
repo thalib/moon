@@ -36,6 +36,7 @@ database:
 
 logging:
   path: "/var/log/moon" # Default: /var/log/moon
+  log_invalid_url_requests: false # Default: false - enable logging of invalid URL requests (404)
 
 jwt:
   secret: ""           # REQUIRED - must be set in config file
