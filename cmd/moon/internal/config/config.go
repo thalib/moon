@@ -10,6 +10,18 @@ import (
 	"github.com/spf13/viper"
 )
 
+const (
+	// VersionMajor is the major version number
+	VersionMajor = 1
+	// VersionMinor is the minor version number
+	VersionMinor = 99
+)
+
+// Version returns the version string in format {major}.{minor}
+func Version() string {
+	return fmt.Sprintf("%d.%d", VersionMajor, VersionMinor)
+}
+
 // Defaults contains all default configuration values
 // centralized in one place to avoid hardcoded literals
 var Defaults = struct {

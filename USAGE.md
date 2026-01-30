@@ -69,14 +69,14 @@ Expected response:
 {
   "status": "live",
   "name": "moon",
-  "version": "1-87811bc"
+  "version": "1.99"
 }
 ```
 
 The health endpoint provides minimal, non-sensitive information:
 - `status`: Service liveness (`live` or `down`)
 - `name`: Always returns `moon`
-- `version`: Service version in format `{major}-{short-git-commit}`
+- `version`: Service version in format `{major}.{minor}`
 
 **Important:** The endpoint always returns HTTP 200, even when the service is down. Check the `status` field to determine actual service health.
 
@@ -964,7 +964,7 @@ curl http://localhost:6006/health
 {
   "status": "live",
   "name": "moon",
-  "version": "1-87811bc"
+  "version": "1.99"
 }
 ```
 

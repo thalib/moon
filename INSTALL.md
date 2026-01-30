@@ -55,10 +55,8 @@ sudo ./install.sh
 ```
 
 The build script:
-- Reads the major version from the `VERSION` file (default: 1)
-- Captures the current git commit hash
-- Injects version information into the binary using build flags
-- Compiles the binary with version: `{major}-{git-commit}`
+- Compiles the Moon binary using Docker
+- Version information is defined in the codebase as constants
 
 This script:
 
@@ -81,7 +79,7 @@ curl http://localhost:6006/health
 # {
 #   "status": "live",
 #   "name": "moon",
-#   "version": "1-87811bc"
+#   "version": "1.99"
 # }
 
 # Check collections
