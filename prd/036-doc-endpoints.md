@@ -85,3 +85,4 @@
 
 
 - [ ] Ensure all documentation, scripts, and samples (`SPEC.md`, `INSTALL.md`, `README.md`, `USAGE.md`, `install.sh`, and all files in `samples/*`) are updated and remain consistent with the implemented code changes.
+- [ ] Ensure all test scripts in `scripts/*.sh` are working properly and up to date with the latest code and API changes.

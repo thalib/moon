@@ -6,6 +6,8 @@ This guide provides comprehensive information on using Moon's API and features.
 
 - [Overview](#overview)
 - [Quick Start](#quick-start)
+  - [Access Documentation](#2-access-documentation)
+  - [Check Health](#3-check-health)
 - [API Endpoints](#api-endpoints)
 - [Example Commands](#example-commands)
 - [Using Sample Data](#using-sample-data)
@@ -23,7 +25,7 @@ Moon is a dynamic headless engine that provides a migration-less database manage
 - **Multi-Database Support:** SQLite, PostgreSQL, and MySQL
 - **In-Memory Schema Caching:** Fast validation with zero-latency lookups
 - **RESTful API:** Follows AIP-136 custom action pattern
-- **Dynamic OpenAPI Documentation:** Auto-generated from schema cache
+- **Built-in Documentation:** HTML and Markdown documentation available at `/doc/` and `/doc/md`
 - **Lightweight:** Memory footprint under 50MB
 - **ULID Identifiers:** Uses 26-character, URL-safe, lexicographically sortable ULIDs (Universally Unique Lexicographically Sortable Identifiers) for record IDs
 
@@ -67,7 +69,35 @@ The prefix is configured in the `moon.conf` file under `server.prefix`. All exam
 ./moon --daemon --config /etc/moon.conf
 ```
 
-### 2. Check Health
+### 2. Access Documentation
+
+View the complete API documentation in your browser or terminal:
+
+```bash
+# HTML documentation (open in browser)
+open http://localhost:6006/doc/
+
+# Or view in terminal
+curl http://localhost:6006/doc/ | less
+
+# Markdown documentation (for AI agents or terminal viewing)
+curl http://localhost:6006/doc/md
+```
+
+The documentation includes:
+- Complete API reference with all endpoints
+- Quickstart guide with copy-pasteable examples
+- Filtering, sorting, and pagination documentation
+- Authentication requirements
+- Error response formats
+
+To refresh the documentation cache after schema changes:
+
+```bash
+curl -X POST http://localhost:6006/doc:refresh
+```
+
+### 3. Check Health
 
 ```bash
 curl http://localhost:6006/health

@@ -435,7 +435,7 @@ func TestRootMessageHandler(t *testing.T) {
 		t.Errorf("Expected Content-Type 'text/plain; charset=utf-8', got '%s'", contentType)
 	}
 
-	expectedBody := "Darling, the Moon is still the Moon in all of its phases."
+	expectedBody := "Moon is running."
 	actualBody := w.Body.String()
 	if actualBody != expectedBody {
 		t.Errorf("Expected body '%s', got '%s'", expectedBody, actualBody)
@@ -469,7 +469,7 @@ func TestRootMessageHandler_Integration(t *testing.T) {
 			prefix:              "",
 			requestPath:         "/",
 			expectedStatus:      http.StatusOK,
-			expectedBody:        "Darling, the Moon is still the Moon in all of its phases.",
+			expectedBody:        "Moon is running.",
 			expectedContentType: "text/plain; charset=utf-8",
 		},
 		{

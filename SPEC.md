@@ -281,7 +281,40 @@ GET /orders:max?field=total
 - Invalid field or missing field parameter returns `400 Bad Request`
 - Unknown collection returns `404 Not Found`
 
-### D. Collection Column Operations
+### D. Documentation Endpoints
+
+Moon provides human- and AI-readable documentation endpoints that automatically reflect the current API state.
+
+**Note:** All endpoints below are shown without a prefix. If a prefix is configured, prepend it to all paths.
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `GET /doc/` | `GET` | Retrieve HTML documentation (single-page, styled) |
+| `GET /doc/md` | `GET` | Retrieve Markdown documentation (for AI agents and markdown readers) |
+| `POST /doc:refresh` | `POST` | Clear cached documentation and force regeneration |
+
+**Features:**
+- Generic documentation with `{collection}` placeholders
+- Lists currently available collections
+- Includes all endpoint categories (schema, data, aggregation)
+- Quickstart guide with 5-step workflow
+- Comprehensive examples with curl commands (with and without jq)
+- Filtering, sorting, pagination, and field selection documentation
+- Error response format and common status codes
+- Table of contents for easy navigation
+
+**Caching:**
+- Documentation is generated once and cached in memory
+- Responses include `Cache-Control`, `ETag`, and `Last-Modified` headers
+- Supports conditional caching with `If-None-Match` (returns 304 Not Modified)
+- Cache can be cleared using `POST /doc:refresh`
+
+**Response Headers:**
+- HTML: `Content-Type: text/html; charset=utf-8`
+- Markdown: `Content-Type: text/markdown; charset=utf-8`
+- Both: `Cache-Control: public, max-age=3600`
+
+### E. Collection Column Operations
 
 The `POST /collections:update` endpoint supports comprehensive column lifecycle management through four operation types that can be combined in a single request.
 
@@ -403,8 +436,15 @@ The server acts as a "Smart Bridge" between the user and the database.
 
 ## Interface & Integration Layer
 
-- **Dynamic OpenAPI:** The Swagger/OpenAPI documentation is generated dynamically from the **In-Memory Cache**, ensuring the UI always reflects the current DB state.
-- **Dynamic OpenAPI:** The Swagger/OpenAPI documentation is generated dynamically from the **In-Memory Cache**, and always includes authentication/authorization requirements and example payloads for each endpoint, in addition to reflecting the current DB schema.
+- **Documentation Endpoints:** Human- and AI-readable documentation is available via `/doc/` (HTML) and `/doc/md` (Markdown) endpoints. Documentation is generated from the in-memory schema registry and includes:
+  - API overview and authentication requirements
+  - Complete endpoint reference with examples
+  - Quickstart guide with copy-pasteable curl commands
+  - Filtering, sorting, and pagination documentation
+  - Error response format and common status codes
+  - List of available collections (without per-collection schema expansion)
+  - Documentation is cached in memory for performance with ETag and Last-Modified headers for conditional caching
+  - Cache can be refreshed via `POST /doc:refresh` endpoint
 - **Middleware Security:** A high-speed JWT and API Key layer that enforces simple allow/deny permissions per endpoint before the request reaches the dynamic handlers.
 - **Advanced Auth Controls:**
   - JWT role-based authorization per path
