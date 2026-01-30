@@ -209,7 +209,7 @@ func (s *Server) rootMessageHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set(constants.HeaderContentType, constants.MIMETextPlain)
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Darling, the Moon is still the Moon in all of its phases."))
+	w.Write([]byte(config.RootMessage))
 }
 
 // Not found handler

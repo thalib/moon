@@ -6,6 +6,12 @@ import (
 	"testing"
 )
 
+func TestRootMessageConstant(t *testing.T) {
+	if RootMessage != "Moon is running." {
+		t.Errorf("Expected RootMessage to be %q, got %q", "Moon is running.", RootMessage)
+	}
+}
+
 func TestLoad_DefaultValues(t *testing.T) {
 	// Create a temporary directory for test files
 	tmpDir := t.TempDir()
@@ -37,8 +43,12 @@ func TestLoad_DefaultValues(t *testing.T) {
 		t.Errorf("Expected default connection %s, got %s", Defaults.Database.Connection, cfg.Database.Connection)
 	}
 
-	if cfg.Database.Database != Defaults.Database.Database {
-		t.Errorf("Expected default database %s, got %s", Defaults.Database.Database, cfg.Database.Database)
+	expectedDefaultDB, err := filepath.Abs(Defaults.Database.Database)
+	if err != nil {
+		t.Fatalf("Failed to resolve default database path: %v", err)
+	}
+	if cfg.Database.Database != expectedDefaultDB {
+		t.Errorf("Expected default database %s, got %s", expectedDefaultDB, cfg.Database.Database)
 	}
 
 	if cfg.Logging.Path != Defaults.Logging.Path {
@@ -208,8 +218,12 @@ func TestLoad_DefaultSQLiteConnection(t *testing.T) {
 		t.Errorf("Expected default SQLite connection %s, got %s", Defaults.Database.Connection, cfg.Database.Connection)
 	}
 
-	if cfg.Database.Database != Defaults.Database.Database {
-		t.Errorf("Expected default database path %s, got %s", Defaults.Database.Database, cfg.Database.Database)
+	expectedDefaultDB, err := filepath.Abs(Defaults.Database.Database)
+	if err != nil {
+		t.Fatalf("Failed to resolve default database path: %v", err)
+	}
+	if cfg.Database.Database != expectedDefaultDB {
+		t.Errorf("Expected default database path %s, got %s", expectedDefaultDB, cfg.Database.Database)
 	}
 }
 
