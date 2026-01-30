@@ -21,3 +21,4 @@
 - No new compiler warnings introduced.
 
 - [x] Ensure all documentation, scripts, and samples (`SPEC.md`, `INSTALL.md`, `README.md`, `USAGE.md`, `install.sh`, and all files in `samples/*`) are updated and remain consistent with the implemented code changes.
+- [x] Ensure all test scripts in `samples/test_scripts/*.sh` are working properly and up to date with the latest code and API changes.
