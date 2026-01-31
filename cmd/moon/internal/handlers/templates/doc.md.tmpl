@@ -142,7 +142,7 @@ curl -X POST "{{$ApiURL}}/collections:create" \
       {"name": "price", "type": "integer", "nullable": false},
         {"name": "description", "type": "text", "nullable": true}
     ]
-  }'
+  }' | jq .
 ```
 
 **Get Collections schema**
@@ -169,7 +169,7 @@ curl -s -X POST "http://localhost:6006/collections:update" \
 		"name": "products",
 		"add_columns": [
       {"name": "stock", "type": "integer", "nullable": false},
-			{"name": "category", "type": "text", "required": false}
+			{"name": "category", "type": "text", "nullable": false}
 		]
 	}' | jq .
 ```
@@ -187,7 +187,7 @@ curl -s -X POST "{{$ApiURL}}/collections:update" \
 	}' | jq .
 ```
 
-Modify existing columns:
+Modify existing columns data types or attributes:
 
 ```bash
 curl -s -X POST "{{$ApiURL}}/collections:update" \
@@ -195,7 +195,7 @@ curl -s -X POST "{{$ApiURL}}/collections:update" \
 	-d '{
 		"name": "products",
 		"modify_columns": [
-			{"name": "category", "type": "string"}
+			{"name": "category", "type": "string" , "nullable": true}
 		]
 	}' | jq .
 ```
@@ -219,7 +219,7 @@ curl -s -X POST "{{$ApiURL}}/collections:update" \
 	-d '{
 		"name": "products",
 		"add_columns": [
-			{"name": "brand", "type": "string", "required": false}
+			{"name": "brand", "type": "string", "nullable": false}
 		],
 		"rename_columns": [
 			{"old_name": "stock", "new_name": "quantity"}
@@ -256,42 +256,44 @@ List All Records
 curl -s "{{$ApiURL}}/products:list" | jq .
 ```
 
-Get a Single Record
-
-```bash
-curl -s "{{$ApiURL}}/products:get?id=01ARZ3NDEKTSV4RRFFQ69G5FBX" | jq .
-```
-
-Note replace the `id` value with the actual record ID.
-
 Create a New Record
 
 ```bash
-curl -X POST "{{$ApiURL}}/products:create" \
+curl -s -X POST "{{$ApiURL}}/products:create" \
   -H "Content-Type: application/json" \
   -d '{
     "data": {
       "title": "Wireless Mouse",
       "price": 29.99,
-      "description": "Ergonomic wireless mouse"
+      "details": "Ergonomic wireless mouse",
+	    "quantity" : 10,
+	    "brand": "Wow"
     }
-  }'
+  }' | jq .
 ```
+
+Get a Single Record
+
+```bash
+curl -s "{{$ApiURL}}/products:get?id={item_id}" | jq .
+```
+
+Note replace the `id` value with the actual record ID.
 
 Update an Existing Record
 
 ```bash
-curl -X POST "{{$ApiURL}}/products:update" \
+curl -s -X POST "{{$ApiURL}}/products:update" \
   -H "Content-Type: application/json" \
-  -d '{"id":"01ARZ3NDEKTSV4RRFFQ69G5FBX","data":{"price":899.99}}'
+  -d '{"id":"{item_id}","data":{"price":6000.00}}' | jq .
 ```
 
 Delete a Record
 
 ```bash
-curl -X POST "{{$ApiURL}}/products:destroy" \
+curl -s -X POST "{{$ApiURL}}/products:destroy" \
   -H "Content-Type: application/json" \
-  -d '{"id":"01ARZ3NDEKTSV4RRFFQ69G5FBX"}'
+  -d '{"id":"{item_id}"}' | jq .
 ```
 
 ---
