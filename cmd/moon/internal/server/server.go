@@ -74,7 +74,7 @@ func (s *Server) setupRoutes() {
 
 	// Root message endpoint (only for exact "/" path with no prefix)
 	if prefix == "" {
-		s.mux.HandleFunc("GET /", s.loggingMiddleware(s.rootMessageHandler))
+		s.mux.HandleFunc("GET /{$}", s.loggingMiddleware(s.rootMessageHandler))
 	}
 
 	// Health check endpoint (always at /health, respects prefix)
