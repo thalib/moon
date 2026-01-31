@@ -14,10 +14,8 @@ type ColumnType string
 const (
 	TypeString   ColumnType = "string"
 	TypeInteger  ColumnType = "integer"
-	TypeFloat    ColumnType = "float"
 	TypeBoolean  ColumnType = "boolean"
 	TypeDatetime ColumnType = "datetime"
-	TypeText     ColumnType = "text"
 	TypeJSON     ColumnType = "json"
 )
 
@@ -166,7 +164,7 @@ func (r *SchemaRegistry) Count() int {
 // ValidateColumnType checks if a column type is valid
 func ValidateColumnType(colType ColumnType) bool {
 	switch colType {
-	case TypeString, TypeInteger, TypeFloat, TypeBoolean, TypeDatetime, TypeText, TypeJSON:
+	case TypeString, TypeInteger, TypeBoolean, TypeDatetime, TypeJSON:
 		return true
 	default:
 		return false
@@ -180,8 +178,6 @@ func MapGoTypeToColumnType(goType string) (ColumnType, error) {
 		return TypeString, nil
 	case "int", "int8", "int16", "int32", "int64", "uint", "uint8", "uint16", "uint32", "uint64":
 		return TypeInteger, nil
-	case "float32", "float64":
-		return TypeFloat, nil
 	case "bool":
 		return TypeBoolean, nil
 	case "time.Time":

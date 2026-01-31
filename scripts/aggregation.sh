@@ -28,9 +28,9 @@ curl -s -X POST "${BASE_URL}/collections:create" \
 		"columns": [
 			{"name": "order_id", "type": "string", "required": true},
 			{"name": "customer_name", "type": "string", "required": true},
-			{"name": "total", "type": "float", "required": true},
-			{"name": "subtotal", "type": "float", "required": true},
-			{"name": "tax", "type": "float", "required": true},
+			{"name": "total", "type": "integer", "required": true},
+			{"name": "subtotal", "type": "integer", "required": true},
+			{"name": "tax", "type": "integer", "required": true},
 			{"name": "products", "type": "json", "required": false}
 		]
 	}' | jq .
@@ -43,9 +43,9 @@ curl -s -X POST "${BASE_URL}/orders:create" \
 		"data": {
 			"order_id": "ORD-0001",
 			"customer_name": "Customer 1",
-			"total": 125.00,
-			"subtotal": 112.50,
-			"tax": 12.50,
+			"total": 125,
+			"subtotal": 112,
+			"tax": 12,
 			"products": "{\"items\": 1}"
 		}
 	}' > /dev/null
@@ -55,9 +55,9 @@ curl -s -X POST "${BASE_URL}/orders:create" \
 		"data": {
 			"order_id": "ORD-0002",
 			"customer_name": "Customer 2",
-			"total": 150.00,
-			"subtotal": 135.00,
-			"tax": 15.00,
+			"total": 150,
+			"subtotal": 135,
+			"tax": 15,
 			"products": "{\"items\": 2}"
 		}
 	}' > /dev/null
@@ -67,9 +67,9 @@ curl -s -X POST "${BASE_URL}/orders:create" \
 		"data": {
 			"order_id": "ORD-0003",
 			"customer_name": "Customer 3",
-			"total": 175.00,
-			"subtotal": 157.50,
-			"tax": 17.50,
+			"total": 175,
+			"subtotal": 157,
+			"tax": 17,
 			"products": "{\"items\": 3}"
 		}
 	}' > /dev/null
@@ -79,9 +79,9 @@ curl -s -X POST "${BASE_URL}/orders:create" \
 		"data": {
 			"order_id": "ORD-0004",
 			"customer_name": "Customer 4",
-			"total": 200.00,
-			"subtotal": 180.00,
-			"tax": 20.00,
+			"total": 200,
+			"subtotal": 180,
+			"tax": 20,
 			"products": "{\"items\": 4}"
 		}
 	}' > /dev/null
@@ -91,9 +91,9 @@ curl -s -X POST "${BASE_URL}/orders:create" \
 		"data": {
 			"order_id": "ORD-0005",
 			"customer_name": "Customer 5",
-			"total": 225.00,
-			"subtotal": 202.50,
-			"tax": 22.50,
+			"total": 225,
+			"subtotal": 202,
+			"tax": 22,
 			"products": "{\"items\": 5}"
 		}
 	}' > /dev/null

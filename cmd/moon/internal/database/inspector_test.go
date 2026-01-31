@@ -232,10 +232,10 @@ func TestInferColumnType(t *testing.T) {
 		{"INT", registry.TypeInteger},
 		{"BIGINT", registry.TypeInteger},
 		{"SERIAL", registry.TypeInteger},
-		{"FLOAT", registry.TypeFloat},
-		{"DOUBLE", registry.TypeFloat},
-		{"REAL", registry.TypeFloat},
-		{"DECIMAL", registry.TypeFloat},
+		{"FLOAT", registry.TypeInteger},   // Float maps to Integer now
+		{"DOUBLE", registry.TypeInteger},  // Float maps to Integer now
+		{"REAL", registry.TypeInteger},    // Float maps to Integer now
+		{"DECIMAL", registry.TypeInteger}, // Float maps to Integer now
 		{"BOOLEAN", registry.TypeBoolean},
 		{"BOOL", registry.TypeBoolean},
 		{"TIMESTAMP", registry.TypeDatetime},
@@ -243,8 +243,8 @@ func TestInferColumnType(t *testing.T) {
 		{"DATETIME", registry.TypeDatetime},
 		{"JSON", registry.TypeJSON},
 		{"JSONB", registry.TypeJSON},
-		{"TEXT", registry.TypeText},
-		{"CLOB", registry.TypeText},
+		{"TEXT", registry.TypeString}, // Text maps to String now
+		{"CLOB", registry.TypeString}, // Text types map to String now
 		{"VARCHAR", registry.TypeString},
 		{"CHAR", registry.TypeString},
 		{"UNKNOWN_TYPE", registry.TypeString},

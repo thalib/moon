@@ -106,7 +106,7 @@ func TestDataHandler_Create_Success(t *testing.T) {
 		Name: "products",
 		Columns: []registry.Column{
 			{Name: "name", Type: registry.TypeString, Nullable: false},
-			{Name: "price", Type: registry.TypeFloat, Nullable: false},
+			{Name: "price", Type: registry.TypeInteger, Nullable: false},
 		},
 	}
 	reg.Set(collection)
@@ -122,7 +122,7 @@ func TestDataHandler_Create_Success(t *testing.T) {
 	reqBody := CreateDataRequest{
 		Data: map[string]any{
 			"name":  "Test Product",
-			"price": 19.99,
+			"price": 19,
 		},
 	}
 	body, _ := json.Marshal(reqBody)
@@ -155,7 +155,7 @@ func TestDataHandler_Create_MissingRequiredField(t *testing.T) {
 		Name: "products",
 		Columns: []registry.Column{
 			{Name: "name", Type: registry.TypeString, Nullable: false},
-			{Name: "price", Type: registry.TypeFloat, Nullable: false},
+			{Name: "price", Type: registry.TypeInteger, Nullable: false},
 		},
 	}
 	reg.Set(collection)
@@ -187,7 +187,7 @@ func TestDataHandler_Create_InvalidFieldType(t *testing.T) {
 		Name: "products",
 		Columns: []registry.Column{
 			{Name: "name", Type: registry.TypeString, Nullable: false},
-			{Name: "price", Type: registry.TypeFloat, Nullable: false},
+			{Name: "price", Type: registry.TypeInteger, Nullable: false},
 		},
 	}
 	reg.Set(collection)
@@ -219,7 +219,7 @@ func TestDataHandler_Update_Success(t *testing.T) {
 		Name: "products",
 		Columns: []registry.Column{
 			{Name: "name", Type: registry.TypeString, Nullable: false},
-			{Name: "price", Type: registry.TypeFloat, Nullable: false},
+			{Name: "price", Type: registry.TypeInteger, Nullable: false},
 		},
 	}
 	reg.Set(collection)
@@ -236,7 +236,7 @@ func TestDataHandler_Update_Success(t *testing.T) {
 		ID: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
 		Data: map[string]any{
 			"name":  "Updated Product",
-			"price": 29.99,
+			"price": 29,
 		},
 	}
 	body, _ := json.Marshal(reqBody)
@@ -373,14 +373,14 @@ func TestValidateFields_ValidData(t *testing.T) {
 		Name: "products",
 		Columns: []registry.Column{
 			{Name: "name", Type: registry.TypeString},
-			{Name: "price", Type: registry.TypeFloat},
+			{Name: "price", Type: registry.TypeInteger},
 			{Name: "available", Type: registry.TypeBoolean},
 		},
 	}
 
 	data := map[string]any{
 		"name":      "Test",
-		"price":     19.99,
+		"price":     19,
 		"available": true,
 	}
 
@@ -436,15 +436,15 @@ func TestValidateFieldType(t *testing.T) {
 		{
 			name:        "valid float",
 			fieldName:   "price",
-			value:       19.99,
-			columnType:  registry.TypeFloat,
+			value:       19,
+			columnType:  registry.TypeInteger,
 			expectError: false,
 		},
 		{
 			name:        "invalid float",
 			fieldName:   "price",
 			value:       "not a number",
-			columnType:  registry.TypeFloat,
+			columnType:  registry.TypeInteger,
 			expectError: true,
 		},
 		{
@@ -554,7 +554,7 @@ func TestDataHandler_Create_IgnoresClientProvidedULID(t *testing.T) {
 		Name: "products",
 		Columns: []registry.Column{
 			{Name: "name", Type: registry.TypeString, Nullable: false},
-			{Name: "price", Type: registry.TypeFloat, Nullable: false},
+			{Name: "price", Type: registry.TypeInteger, Nullable: false},
 		},
 	}
 	reg.Set(collection)
@@ -575,7 +575,7 @@ func TestDataHandler_Create_IgnoresClientProvidedULID(t *testing.T) {
 		Data: map[string]any{
 			"ulid":  clientProvidedULID,
 			"name":  "Test Product",
-			"price": 19.99,
+			"price": 19,
 		},
 	}
 	body, _ := json.Marshal(reqBody)
@@ -659,7 +659,7 @@ func TestDataHandler_Integration_SQLite(t *testing.T) {
 		Name: "products",
 		Columns: []registry.Column{
 			{Name: "name", Type: registry.TypeString, Nullable: false},
-			{Name: "price", Type: registry.TypeFloat, Nullable: false},
+			{Name: "price", Type: registry.TypeInteger, Nullable: false},
 		},
 	}
 	reg.Set(collection)
@@ -673,7 +673,7 @@ func TestDataHandler_Integration_SQLite(t *testing.T) {
 		reqBody := CreateDataRequest{
 			Data: map[string]any{
 				"name":  "Test Product",
-				"price": 19.99,
+				"price": 19,
 			},
 		}
 		body, _ := json.Marshal(reqBody)
@@ -731,7 +731,7 @@ func TestDataHandler_Integration_SQLite(t *testing.T) {
 			ID: createdULID,
 			Data: map[string]any{
 				"name":  "Updated Product",
-				"price": 29.99,
+				"price": 29,
 			},
 		}
 		body, _ := json.Marshal(reqBody)
@@ -859,7 +859,7 @@ func TestBuildConditions(t *testing.T) {
 		Name: "products",
 		Columns: []registry.Column{
 			{Name: "name", Type: registry.TypeString},
-			{Name: "price", Type: registry.TypeFloat},
+			{Name: "price", Type: registry.TypeInteger},
 			{Name: "stock", Type: registry.TypeInteger},
 			{Name: "active", Type: registry.TypeBoolean},
 		},
@@ -889,7 +889,7 @@ func TestBuildConditions(t *testing.T) {
 		{
 			name: "Valid float filter",
 			filters: []filterParam{
-				{column: "price", operator: "lte", value: "99.99"},
+				{column: "price", operator: "lte", value: "99"},
 			},
 			wantErr: false,
 		},
@@ -1007,19 +1007,6 @@ func TestConvertValue(t *testing.T) {
 			name:    "Integer type - invalid",
 			value:   "not_int",
 			colType: registry.TypeInteger,
-			wantErr: true,
-		},
-		{
-			name:     "Float type - valid",
-			value:    "123.45",
-			colType:  registry.TypeFloat,
-			expected: float64(123.45),
-			wantErr:  false,
-		},
-		{
-			name:    "Float type - invalid",
-			value:   "not_float",
-			colType: registry.TypeFloat,
 			wantErr: true,
 		},
 		{
@@ -1177,7 +1164,7 @@ func TestBuildOrderBy(t *testing.T) {
 		Name: "products",
 		Columns: []registry.Column{
 			{Name: "name", Type: registry.TypeString},
-			{Name: "price", Type: registry.TypeFloat},
+			{Name: "price", Type: registry.TypeInteger},
 			{Name: "created_at", Type: registry.TypeDatetime},
 		},
 	}
@@ -1295,7 +1282,7 @@ func TestBuildSearchConditions_Basic(t *testing.T) {
 		Name: "products",
 		Columns: []registry.Column{
 			{Name: "name", Type: registry.TypeString},
-			{Name: "description", Type: registry.TypeText},
+			{Name: "description", Type: registry.TypeString},
 		},
 	}
 
@@ -1325,7 +1312,7 @@ func TestBuildSearchConditions_NoTextColumns(t *testing.T) {
 	collection := &registry.Collection{
 		Name: "numbers",
 		Columns: []registry.Column{
-			{Name: "price", Type: registry.TypeFloat},
+			{Name: "price", Type: registry.TypeInteger},
 		},
 	}
 
@@ -1343,7 +1330,7 @@ func TestParseFields(t *testing.T) {
 		Name: "products",
 		Columns: []registry.Column{
 			{Name: "name", Type: registry.TypeString},
-			{Name: "price", Type: registry.TypeFloat},
+			{Name: "price", Type: registry.TypeInteger},
 			{Name: "stock", Type: registry.TypeInteger},
 		},
 	}

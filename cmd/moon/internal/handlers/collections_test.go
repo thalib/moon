@@ -267,8 +267,8 @@ func TestUpdate_AddColumns(t *testing.T) {
 	updateReq := UpdateRequest{
 		Name: "orders",
 		AddColumns: []registry.Column{
-			{Name: "total", Type: registry.TypeFloat, Nullable: false},
-			{Name: "notes", Type: registry.TypeText, Nullable: true},
+			{Name: "total", Type: registry.TypeInteger, Nullable: false},
+			{Name: "notes", Type: registry.TypeString, Nullable: true},
 		},
 	}
 
@@ -436,7 +436,7 @@ func TestUpdate_RemoveColumns_Success(t *testing.T) {
 		Name: "products",
 		Columns: []registry.Column{
 			{Name: "name", Type: registry.TypeString, Nullable: false},
-			{Name: "price", Type: registry.TypeFloat, Nullable: false},
+			{Name: "price", Type: registry.TypeInteger, Nullable: false},
 			{Name: "old_field", Type: registry.TypeString, Nullable: true},
 		},
 	}
@@ -695,7 +695,7 @@ func TestUpdate_ModifyColumns_Success(t *testing.T) {
 	updateReq := UpdateRequest{
 		Name: "products",
 		ModifyColumns: []ModifyColumn{
-			{Name: "description", Type: registry.TypeText},
+			{Name: "description", Type: registry.TypeString},
 		},
 	}
 	body, _ = json.Marshal(updateReq)
@@ -716,13 +716,13 @@ func TestUpdate_ModifyColumns_Success(t *testing.T) {
 	// Verify column type was modified
 	found := false
 	for _, col := range response.Collection.Columns {
-		if col.Name == "description" && col.Type == registry.TypeText {
+		if col.Name == "description" && col.Type == registry.TypeString {
 			found = true
 			break
 		}
 	}
 	if !found {
-		t.Error("Column 'description' should have been modified to text type")
+		t.Error("Column 'description' should have been modified to string type")
 	}
 }
 
@@ -786,7 +786,7 @@ func TestUpdate_CombinedOperations(t *testing.T) {
 			{OldName: "old_name", NewName: "new_name"},
 		},
 		ModifyColumns: []ModifyColumn{
-			{Name: "to_modify", Type: registry.TypeText},
+			{Name: "to_modify", Type: registry.TypeString},
 		},
 		AddColumns: []registry.Column{
 			{Name: "new_field", Type: registry.TypeInteger, Nullable: true},
@@ -819,7 +819,7 @@ func TestUpdate_CombinedOperations(t *testing.T) {
 		if col.Name == "new_field" {
 			hasNewField = true
 		}
-		if col.Name == "to_modify" && col.Type == registry.TypeText {
+		if col.Name == "to_modify" && col.Type == registry.TypeString {
 			hasToModify = true
 		}
 		if col.Name == "old_name" {
@@ -837,7 +837,7 @@ func TestUpdate_CombinedOperations(t *testing.T) {
 		t.Error("Added column 'new_field' not found")
 	}
 	if !hasToModify {
-		t.Error("Modified column 'to_modify' not found or not changed to text type")
+		t.Error("Modified column 'to_modify' not found or not changed to string type")
 	}
 }
 
@@ -909,7 +909,7 @@ func TestGenerateRenameColumnDDL(t *testing.T) {
 func TestGenerateModifyColumnDDL(t *testing.T) {
 	modify := ModifyColumn{
 		Name: "test_column",
-		Type: registry.TypeText,
+		Type: registry.TypeString,
 	}
 
 	tests := []struct {

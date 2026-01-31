@@ -666,11 +666,9 @@ func convertValue(value string, colType registry.ColumnType) (any, error) {
 	switch colType {
 	case registry.TypeInteger:
 		return strconv.ParseInt(value, 10, 64)
-	case registry.TypeFloat:
-		return strconv.ParseFloat(value, 64)
 	case registry.TypeBoolean:
 		return strconv.ParseBool(value)
-	case registry.TypeString, registry.TypeText, registry.TypeDatetime, registry.TypeJSON:
+	case registry.TypeString, registry.TypeDatetime, registry.TypeJSON:
 		return value, nil
 	default:
 		return value, nil
@@ -821,10 +819,10 @@ func buildSearchConditions(searchTerm string, collection *registry.Collection, d
 	// Wrap with wildcards for partial matching
 	searchValue := "%" + escapedTerm + "%"
 
-	// Find all text/string columns
+	// Find all string columns (full-text search on string fields)
 	var textColumns []string
 	for _, col := range collection.Columns {
-		if col.Type == registry.TypeString || col.Type == registry.TypeText {
+		if col.Type == registry.TypeString {
 			textColumns = append(textColumns, col.Name)
 		}
 	}
@@ -1056,7 +1054,7 @@ func validateFields(data map[string]any, collection *registry.Collection) error 
 // validateFieldType validates a field value against expected type
 func validateFieldType(fieldName string, value any, expectedType registry.ColumnType) error {
 	switch expectedType {
-	case registry.TypeString, registry.TypeText, registry.TypeDatetime:
+	case registry.TypeString, registry.TypeDatetime:
 		if _, ok := value.(string); !ok {
 			return fmt.Errorf("field '%s' must be a string", fieldName)
 		}
@@ -1066,13 +1064,6 @@ func validateFieldType(fieldName string, value any, expectedType registry.Column
 			// JSON numbers come as float64, accept them
 		default:
 			return fmt.Errorf("field '%s' must be an integer", fieldName)
-		}
-	case registry.TypeFloat:
-		switch value.(type) {
-		case float32, float64, int, int8, int16, int32, int64:
-			// Accept integers as floats
-		default:
-			return fmt.Errorf("field '%s' must be a number", fieldName)
 		}
 	case registry.TypeBoolean:
 		if _, ok := value.(bool); !ok {

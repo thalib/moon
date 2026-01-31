@@ -22,7 +22,7 @@ curl -s -X POST "${BASE_URL}/products:create" \
 		"data": {
 			"name": "Laptop",
 			"description": "High-performance laptop",
-			"price": 1299.99,
+			"price": 1299,
 			"stock": 50
 		}
 	}' | jq .
@@ -42,7 +42,7 @@ curl -s -X POST "${BASE_URL}/products:update" \
 	-d '{
 		"id": "01KG4BC716AACQFN757DENC4BE",
 		"data": {
-			"price": 1199.99,
+			"price": 1199,
 			"stock": 45
 		}
 	}' | jq .

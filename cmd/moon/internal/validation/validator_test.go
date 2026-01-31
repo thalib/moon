@@ -10,18 +10,18 @@ import (
 func setupTestRegistry() *registry.SchemaRegistry {
 	reg := registry.NewSchemaRegistry()
 
-	// Add a test collection
+	// Add a test collection (updated for new type system - no text/float types)
 	collection := &registry.Collection{
 		Name: "users",
 		Columns: []registry.Column{
 			{Name: "name", Type: registry.TypeString, Nullable: false},
 			{Name: "email", Type: registry.TypeString, Nullable: false},
 			{Name: "age", Type: registry.TypeInteger, Nullable: true},
-			{Name: "balance", Type: registry.TypeFloat, Nullable: true},
+			{Name: "score", Type: registry.TypeInteger, Nullable: true},
 			{Name: "active", Type: registry.TypeBoolean, Nullable: true},
 			{Name: "created_at", Type: registry.TypeDatetime, Nullable: true},
 			{Name: "metadata", Type: registry.TypeJSON, Nullable: true},
-			{Name: "bio", Type: registry.TypeText, Nullable: true},
+			{Name: "bio", Type: registry.TypeString, Nullable: true},
 		},
 	}
 	reg.Set(collection)
@@ -116,7 +116,7 @@ func TestSchemaValidator_Validate_ValidData(t *testing.T) {
 		"name":       "John Doe",
 		"email":      "john@example.com",
 		"age":        30,
-		"balance":    100.50,
+		"score":      100,
 		"active":     true,
 		"created_at": "2024-01-15T10:30:00Z",
 		"metadata":   map[string]any{"key": "value"},
@@ -237,28 +237,28 @@ func TestSchemaValidator_ValidateField_Integer(t *testing.T) {
 	})
 }
 
-func TestSchemaValidator_ValidateField_Float(t *testing.T) {
+func TestSchemaValidator_ValidateField_Score(t *testing.T) {
 	reg := registry.NewSchemaRegistry()
 	validator := NewSchemaValidator(reg)
 
-	column := registry.Column{Name: "balance", Type: registry.TypeFloat}
+	column := registry.Column{Name: "score", Type: registry.TypeInteger}
 
-	t.Run("Valid float", func(t *testing.T) {
-		err := validator.ValidateField("balance", 100.50, column)
+	t.Run("Valid integer", func(t *testing.T) {
+		err := validator.ValidateField("score", 100, column)
 		if err != nil {
-			t.Errorf("Expected no error for valid float, got: %v", err)
+			t.Errorf("Expected no error for valid integer, got: %v", err)
 		}
 	})
 
-	t.Run("Valid integer as float", func(t *testing.T) {
-		err := validator.ValidateField("balance", 100, column)
+	t.Run("Valid float64 whole number", func(t *testing.T) {
+		err := validator.ValidateField("score", float64(100), column)
 		if err != nil {
-			t.Errorf("Expected no error for integer as float, got: %v", err)
+			t.Errorf("Expected no error for whole number float64, got: %v", err)
 		}
 	})
 
 	t.Run("Invalid type string", func(t *testing.T) {
-		err := validator.ValidateField("balance", "100.50", column)
+		err := validator.ValidateField("score", "100", column)
 		if err == nil {
 			t.Error("Expected error for string value")
 		}
@@ -361,16 +361,17 @@ func TestSchemaValidator_ValidateField_JSON(t *testing.T) {
 	}
 }
 
-func TestSchemaValidator_ValidateField_Text(t *testing.T) {
+func TestSchemaValidator_ValidateField_Bio(t *testing.T) {
 	reg := registry.NewSchemaRegistry()
 	validator := NewSchemaValidator(reg)
 
-	column := registry.Column{Name: "bio", Type: registry.TypeText}
+	// Bio is now string type, not text
+	column := registry.Column{Name: "bio", Type: registry.TypeString}
 
-	t.Run("Valid text", func(t *testing.T) {
+	t.Run("Valid string", func(t *testing.T) {
 		err := validator.ValidateField("bio", "A long text value", column)
 		if err != nil {
-			t.Errorf("Expected no error for valid text, got: %v", err)
+			t.Errorf("Expected no error for valid string, got: %v", err)
 		}
 	})
 
@@ -388,25 +389,24 @@ func TestSchemaValidator_StringConstraints(t *testing.T) {
 
 	column := registry.Column{Name: "name", Type: registry.TypeString}
 
-	t.Run("String within limit", func(t *testing.T) {
+	t.Run("String normal length", func(t *testing.T) {
 		err := validator.ValidateField("name", "John Doe", column)
 		if err != nil {
 			t.Errorf("Expected no error, got: %v", err)
 		}
 	})
 
-	t.Run("String exceeds max length", func(t *testing.T) {
+	t.Run("String long length allowed", func(t *testing.T) {
+		// Since string now maps to TEXT, there is no length limit
 		longString := make([]byte, 300)
 		for i := range longString {
 			longString[i] = 'a'
 		}
 
 		err := validator.ValidateField("name", string(longString), column)
-		if err == nil {
-			t.Error("Expected error for string exceeding max length")
-		}
-		if err.Code != "STRING_TOO_LONG" {
-			t.Errorf("Expected code STRING_TOO_LONG, got %s", err.Code)
+		// No error expected - TEXT type has no length constraint
+		if err != nil {
+			t.Errorf("Expected no error for long string (TEXT type), got: %v", err)
 		}
 	})
 }

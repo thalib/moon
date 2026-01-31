@@ -10,6 +10,33 @@ This document outlines the design for a high-performance, API-first backend buil
 - **Resource Efficiency:** Targeted to run with a memory footprint under **50MB**, optimized for cloud-native and edge deployments.
 - **Database Default:** SQLite is used as the default database if no other is specified. For most development and testing scenarios, you do not need to configure a database connection string unless you want to use Postgres or MySQL.
 
+## Data Types
+
+Moon supports a simplified, portable type system that maps consistently across all supported databases (SQLite, PostgreSQL, MySQL). This design prioritizes simplicity and predictability over fine-grained type control.
+
+### Supported Data Types
+
+| API Type   | Description                                      | SQLite     | PostgreSQL | MySQL      |
+|------------|--------------------------------------------------|------------|------------|------------|
+| `string`   | Text values of any length                        | TEXT       | TEXT       | TEXT       |
+| `integer`  | 64-bit integer values                            | INTEGER    | BIGINT     | BIGINT     |
+| `boolean`  | True/false values                                | INTEGER    | BOOLEAN    | BOOLEAN    |
+| `datetime` | Date and time (RFC3339/ISO 8601 format)          | TEXT       | TIMESTAMP  | TIMESTAMP  |
+| `json`     | Arbitrary JSON objects or arrays                 | TEXT       | JSON       | JSON       |
+
+### Design Rationale
+
+- **No `float` type:** Floating-point numbers are discouraged due to precision issues. Use `integer` for whole numbers or store decimal values as strings with application-level parsing.
+- **No `text` vs `string` distinction:** All string data maps to `TEXT` for simplicity. There is no VARCHAR length limit enforcement at the database level.
+- **JSON storage:** JSON data is stored as TEXT in SQLite and native JSON in PostgreSQL/MySQL.
+- **Boolean storage:** SQLite uses INTEGER (0/1) for boolean values; PostgreSQL and MySQL use native BOOLEAN.
+
+### Migration from Previous Versions
+
+If upgrading from a previous version that supported `text` or `float` types:
+- **`text`** columns should be changed to `string` - behavior is identical
+- **`float`** columns should be changed to `integer` or stored as `string` with application-level decimal handling
+
 ## Configuration Architecture
 
 The system uses YAML-only configuration with centralized defaults:
@@ -244,7 +271,7 @@ These endpoints provide server-side aggregation for analytics without fetching f
 | `GET /{name}:max?field=...` | `GET`  | Find maximum value of a numeric field.      |
 
 **Parameters:**
-- `field` (query): Required for `:sum`, `:avg`, `:min`, `:max`. Must be a numeric field (integer or float).
+- `field` (query): Required for `:sum`, `:avg`, `:min`, `:max`. Must be a numeric field (integer).
 - Filtering: All aggregation endpoints support the same filtering syntax as `:list` (e.g., `?price[gt]=100`)
 - Filters are applied at the database level before aggregation
 
@@ -277,7 +304,7 @@ GET /orders:max?field=total
 **Validation:**
 - Collection must exist
 - Field must exist in the collection schema
-- Field must be numeric type (integer or float) for `:sum`, `:avg`, `:min`, `:max`
+- Field must be numeric type (integer) for `:sum`, `:avg`, `:min`, `:max`
 - Invalid field or missing field parameter returns `400 Bad Request`
 - Unknown collection returns `404 Not Found`
 
@@ -381,10 +408,10 @@ Operations are executed in the following order: rename → modify → add → re
   "modify_columns": [
     {
       "name": "price",
-      "type": "float",
+      "type": "integer",
       "nullable": false,
       "unique": false,
-      "default_value": "0.0"
+      "default_value": "0"
     }
   ]
 }
@@ -401,7 +428,7 @@ Operations are executed in the following order: rename → modify → add → re
     {"old_name": "stock", "new_name": "quantity"}
   ],
   "modify_columns": [
-    {"name": "price", "type": "float", "nullable": false}
+    {"name": "price", "type": "integer", "nullable": false}
   ],
   "add_columns": [
     {"name": "brand", "type": "string", "nullable": true}

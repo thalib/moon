@@ -716,17 +716,13 @@ func mapColumnTypeToSQL(colType registry.ColumnType, dialect database.DialectTyp
 func mapColumnTypeToPostgres(colType registry.ColumnType) string {
 	switch colType {
 	case registry.TypeString:
-		return "VARCHAR(255)"
+		return "TEXT"
 	case registry.TypeInteger:
-		return "INTEGER"
-	case registry.TypeFloat:
-		return "DOUBLE PRECISION"
+		return "BIGINT"
 	case registry.TypeBoolean:
 		return "BOOLEAN"
 	case registry.TypeDatetime:
 		return "TIMESTAMP"
-	case registry.TypeText:
-		return "TEXT"
 	case registry.TypeJSON:
 		return "JSONB"
 	default:
@@ -737,17 +733,13 @@ func mapColumnTypeToPostgres(colType registry.ColumnType) string {
 func mapColumnTypeToMySQL(colType registry.ColumnType) string {
 	switch colType {
 	case registry.TypeString:
-		return "VARCHAR(255)"
+		return "TEXT"
 	case registry.TypeInteger:
-		return "INT"
-	case registry.TypeFloat:
-		return "DOUBLE"
+		return "BIGINT"
 	case registry.TypeBoolean:
 		return "BOOLEAN"
 	case registry.TypeDatetime:
 		return "DATETIME"
-	case registry.TypeText:
-		return "TEXT"
 	case registry.TypeJSON:
 		return "JSON"
 	default:
@@ -761,13 +753,9 @@ func mapColumnTypeToSQLite(colType registry.ColumnType) string {
 		return "TEXT"
 	case registry.TypeInteger:
 		return "INTEGER"
-	case registry.TypeFloat:
-		return "REAL"
 	case registry.TypeBoolean:
 		return "INTEGER"
 	case registry.TypeDatetime:
-		return "TEXT"
-	case registry.TypeText:
 		return "TEXT"
 	case registry.TypeJSON:
 		return "TEXT"
