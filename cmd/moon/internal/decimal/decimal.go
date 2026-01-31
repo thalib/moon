@@ -50,7 +50,7 @@ func ParseDecimalWithScale(s string, maxScale int) (Decimal, error) {
 	s = strings.TrimSpace(s)
 
 	// Check for scientific notation (not allowed)
-	if strings.ContainsAny(strings.ToLower(s), "eE") {
+	if strings.ContainsAny(s, "eE") {
 		return Zero(), fmt.Errorf("invalid decimal value '%s': scientific notation not supported", s)
 	}
 
@@ -329,7 +329,7 @@ func ValidateDecimalStringForField(fieldName, value string, maxScale int) error 
 
 	value = strings.TrimSpace(value)
 
-	if strings.ContainsAny(strings.ToLower(value), "eE") {
+	if strings.ContainsAny(value, "eE") {
 		return fmt.Errorf("invalid decimal value for field '%s': scientific notation not supported", fieldName)
 	}
 
