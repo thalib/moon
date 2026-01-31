@@ -11,10 +11,9 @@
   - [Authentication](#authentication)
   - [URL Structure](#url-structure)
   - [Available Collections](#available-collections)
+- [Response Format](#response-format)
+- [Collection Management](#collection-management)
 - [API Endpoints](#api-endpoints)
-  - [Response Format](#response-format)
-    - [Error Responses](#error-responses)
-  - [Collection Management](#collection-management)
   - [Data Access](#data-access)
   - [Aggregation Operations](#aggregation-operations)
   - [Query Options](#query-options)
@@ -64,18 +63,7 @@ All endpoints are prefixed with `{{.Prefix}}`.
 {{$ApiURL}}/collections:list
 ```
 
-### Available Collections
-
-{{if .Collections}}
-{{range .Collections}}- `{{.}}`
-{{end}}
-{{else}}
-No collections have been created yet.
-{{- end }}
-
-## API Endpoints
-
-### Response Format
+## Response Format
 
 All successful responses return JSON with relevant data.
 
@@ -88,7 +76,19 @@ All successful responses return JSON with relevant data.
 - `409 Conflict` - Collection already exists
 - `500 Internal Server Error` - Server error
 
-#### Error Responses
+**Success Responses (201 Created)**
+
+```json
+{
+  "message": "Collection created successfully",
+  "collection": {
+    "name": "products",
+    "columns": [...]
+  }
+}
+```
+
+**Error Responses**
 
 All errors follow a consistent JSON structure:
 
@@ -99,7 +99,9 @@ All errors follow a consistent JSON structure:
 }
 ```
 
-### Collection Management
+
+
+## Collection Management
 
 These endpoints manage database tables (collections) and their schemas.
 
@@ -110,6 +112,59 @@ These endpoints manage database tables (collections) and their schemas.
 | `{{.Prefix}}/collections:create` | POST | Create a new collection |
 | `{{.Prefix}}/collections:update` | POST | Update collection schema |
 | `{{.Prefix}}/collections:destroy` | POST | Delete a collection |
+
+**List Collections**
+
+```bash
+curl -s {{$ApiURL}}/collections:list | jq .
+```
+
+**Create a Collection**
+
+```bash
+curl -X POST "{{$ApiURL}}/collections:create" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "products",
+    "columns": [
+      {"name": "title", "type": "string", "nullable": false},
+      {"name": "price", "type": "float", "nullable": false},
+      {"name": "description", "type": "text", "nullable": true}
+    ]
+  }'
+```
+
+**Get Collections schema**
+
+```bash
+curl -s {{$ApiURL}}/collections:get?name=products | jq .
+```
+
+**Update a Collection Schema**
+
+```bash
+curl -X POST "{{$ApiURL}}/collections:update" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "products",
+    "columns": [
+      {"name": "title", "type": "string", "nullable": false},
+      {"name": "price", "type": "float", "nullable": false},
+      {"name": "description", "type": "text", "nullable": true},
+      {"name": "stock", "type": "integer", "nullable": false}
+    ]
+  }'
+```
+
+**Delete a Collection**
+
+```bash
+curl -X POST "{{$ApiURL}}/collections:destroy" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "products"}'
+```
+
+## API Endpoints
 
 ### Data Access
 
@@ -206,18 +261,6 @@ curl -X POST "{{$ApiURL}}/collections:create" \
       {"name": "description", "type": "text", "nullable": true}
     ]
   }'
-```
-
-**Response (201 Created):**
-
-```json
-{
-  "message": "Collection created successfully",
-  "collection": {
-    "name": "products",
-    "columns": [...]
-  }
-}
 ```
 
 ### 2. Insert a record
