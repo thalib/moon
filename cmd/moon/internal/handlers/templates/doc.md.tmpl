@@ -15,15 +15,8 @@
 - [Data Types](#data-types)
 - [Collection Management](#collection-management)
 - [Data Access](#data-access)
-- [API Endpoints](#api-endpoints)
-  - [Aggregation Operations](#aggregation-operations)
-  - [Query Options](#query-options)
-    - [Filtering](#filtering)
-    - [Sorting](#sorting)
-    - [Full-Text Search](#full-text-search)
-    - [Field Selection](#field-selection)
-    - [Pagination](#pagination)
-- [Examples](#examples)
+- [Query Options](#query-options)
+- [Aggregation Operations](#aggregation-operations)
 
 ## Overview
 
@@ -297,8 +290,61 @@ curl -s -X POST "{{$ApiURL}}/products:destroy" \
 ```
 
 ---
+### Query Options
 
-## API Endpoints
+**Filtering:** 
+
+Query: `?column[operator]=value` 
+
+```bash
+curl -g "{{$ApiURL}}/products:list?price[gt]=100&brand[eq]=Wow" | jq .
+```
+
+**Operators:** `eq`, `ne`, `gt`, `lt`, `gte`, `lte`, `like`, `in`
+
+**Sorting:** 
+
+Query: `?sort={-field1,field2}` 
+
+```bash
+curl {{$ApiURL}}/products:list?sort=-price,name
+```
+
+Sort by 
+- `field` (ascending) 
+- `-field` (descending)
+
+**Full-Text Search:**
+
+Query: `?q={search_term}`
+
+Search across all text columns
+
+```bash
+curl {{$ApiURL}}/products:list?q=laptop
+```
+
+**Field Selection:** 
+
+Query: `?fields={field1,field2}`
+
+```bash
+curl {{$ApiURL}}/products:list?fields=name,price
+```
+
+Return only specific fields (always includes id)
+
+**Pagination:** 
+
+Query: `?after={cursor}&limit={limit}`
+
+```bash
+curl {{$ApiURL}}/products:list?after=01ARZ3NDEKTSV4RRFFQ69G5FBX&limit=10
+```
+
+Response includes `next_cursor` when more results are available.
+
+---
 
 ### Aggregation Operations
 
@@ -312,155 +358,3 @@ Server-side aggregation endpoints for analytics. Replace `{collection}` with you
 | `{{.Prefix}}/{collection}:min` | GET | Minimum value (requires `?field=...`) |
 | `{{.Prefix}}/{collection}:max` | GET | Maximum value (requires `?field=...`) |
 
-#### Query Options
-
-##### Filtering: 
-
-Query: `?column[operator]=value` 
-
-```bash
-curl {{$ApiURL}}/{collection}:list?price[gt]=100&category[eq]=electronics
-```
-
-**Operators:** `eq`, `ne`, `gt`, `lt`, `gte`, `lte`, `like`, `in`
-
-#### Sorting: 
-
-Query: `?sort={-field1,field2}` 
-
-```bash
-curl {{$ApiURL}}/{collection}:list?sort=-price,name
-```
-
-Sort by 
-- `field` (ascending) 
-- `-field` (descending)
-
-#### Full-Text Search:
-
-Query: `?q={search_term}`
-
-Search across all text columns
-
-```bash
-curl {{$ApiURL}}/{collection}:list?q=laptop
-```
-
-#### Field Selection 
-
-Query: `?fields={field1,field2}`
-
-```bash
-curl {{$ApiURL}}/{collection}:list?fields=name,price
-```
-
-Return only specific fields (always includes id)
-
-#### Pagination 
-
-Query: `?after={cursor}&limit={limit}`
-
-```bash
-curl {{$ApiURL}}/{collection}:list?after=01ARZ3NDEKTSV4RRFFQ69G5FBX&limit=10
-```
-
-Response includes `next_cursor` when more results are available.
-
-## Examples
-
-Get started with Moon using these real, working examples for a `products` collection:
-
-### 1. Create a collection
-
-```bash
-curl -X POST "{{$ApiURL}}/collections:create" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "products",
-    "columns": [
-      {"name": "title", "type": "string", "nullable": false},
-      {"name": "price", "type": "float", "nullable": false},
-      {"name": "description", "type": "text", "nullable": true}
-    ]
-  }'
-```
-
-### 2. Insert a record
-
-```bash
-curl -X POST "{{$ApiURL}}/products:create" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "data": {
-      "title": "Wireless Mouse",
-      "price": 29.99,
-      "description": "Ergonomic wireless mouse"
-    }
-  }'
-```
-
-**Response (201 Created):**
-
-```json
-{
-  "message": "Record created successfully",
-  "data": {
-    "id": "01ARZ3NDEKTSV4RRFFQ69G5FBX",
-    "title": "Wireless Mouse",
-    "price": 29.99,
-    "description": "Ergonomic wireless mouse"
-  }
-}
-```
-
-### 3. List records
-
-```bash
-curl -s "{{$ApiURL}}/products:list" | jq .
-```
-
-### 4. Update a record
-
-```bash
-curl -X POST "{{$ApiURL}}/products:update" \
-  -H "Content-Type: application/json" \
-  -d '{"id":"01ARZ3NDEKTSV4RRFFQ69G5FBX","data":{"price":899.99}}'
-```
-
-### 5. Delete a record
-
-```bash
-curl -X POST "{{$ApiURL}}/products:destroy" \
-  -H "Content-Type: application/json" \
-  -d '{"id":"01ARZ3NDEKTSV4RRFFQ69G5FBX"}'
-```
-
-### 6. List records with filtering
-
-```bash
-curl -s "{{$ApiURL}}/products:list?price[gt]=20&sort=-price" | jq .
-```
-
-### 7. Count records
-
-```bash
-curl -s "{{$ApiURL}}/products:count"
-```
-
-**Response (200 OK):**
-
-```json
-{"value": 42}
-```
-
-### 8. Sum with filter
-
-```bash
-curl -s "{{$ApiURL}}/products:sum?field=price&category[eq]=electronics"
-```
-
-**Response (200 OK):**
-
-```json
-{"value": 1599.99}
-```
