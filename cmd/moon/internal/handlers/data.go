@@ -209,13 +209,14 @@ func (h *DataHandler) List(w http.ResponseWriter, r *http.Request, collectionNam
 	// Determine next cursor
 	var nextCursor *string
 	if len(data) > limit {
-		// More data available, use the ULID of the last item as cursor
+		// More data available, use the ULID of the last returned record as cursor
+		// Truncate to limit first
+		data = data[:limit]
+		// Now get the last item from the returned data
 		lastItem := data[len(data)-1]
 		if ulidVal, ok := lastItem["id"].(string); ok {
 			nextCursor = &ulidVal
 		}
-		// Remove the extra item we fetched
-		data = data[:limit]
 	}
 
 	response := DataListResponse{

@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -1369,4 +1370,369 @@ func TestParseFields(t *testing.T) {
 			}
 		})
 	}
+}
+
+// PRD 038: Cursor Pagination Tests - Fix skip bug
+func TestDataHandler_CursorPagination(t *testing.T) {
+	// Create in-memory SQLite database
+	dbConfig := database.Config{
+		ConnectionString: ":memory:",
+		MaxOpenConns:     5,
+		MaxIdleConns:     2,
+	}
+
+	driver, err := database.NewDriver(dbConfig)
+	if err != nil {
+		t.Fatalf("failed to create driver: %v", err)
+	}
+
+	ctx := context.Background()
+	if err := driver.Connect(ctx); err != nil {
+		t.Fatalf("failed to connect: %v", err)
+	}
+	defer driver.Close()
+
+	// Create a test table
+	createTableSQL := `
+CREATE TABLE test_pagination (
+ulid TEXT PRIMARY KEY,
+name TEXT NOT NULL
+)
+`
+	if _, err := driver.Exec(ctx, createTableSQL); err != nil {
+		t.Fatalf("failed to create table: %v", err)
+	}
+
+	// Setup registry
+	reg := registry.NewSchemaRegistry()
+	collection := &registry.Collection{
+		Name: "test_pagination",
+		Columns: []registry.Column{
+			{Name: "name", Type: registry.TypeString, Nullable: false},
+		},
+	}
+	reg.Set(collection)
+
+	handler := NewDataHandler(driver, reg)
+
+	// Insert 5 test records
+	recordIDs := make([]string, 5)
+	for i := 0; i < 5; i++ {
+		reqBody := CreateDataRequest{
+			Data: map[string]any{
+				"name": fmt.Sprintf("Record %d", i+1),
+			},
+		}
+		body, _ := json.Marshal(reqBody)
+
+		req := httptest.NewRequest(http.MethodPost, "/test_pagination:create", bytes.NewReader(body))
+		w := httptest.NewRecorder()
+
+		handler.Create(w, req, "test_pagination")
+
+		if w.Code != http.StatusCreated {
+			t.Fatalf("failed to create record %d: status %d, body: %s", i+1, w.Code, w.Body.String())
+		}
+
+		var response CreateDataResponse
+		if err := json.NewDecoder(w.Body).Decode(&response); err != nil {
+			t.Fatalf("failed to decode create response: %v", err)
+		}
+		if idStr, ok := response.Data["id"].(string); ok {
+			recordIDs[i] = idStr
+		} else {
+			t.Fatalf("failed to get ID from create response")
+		}
+	}
+
+	t.Run("Paginate with limit=1 through all 5 records", func(t *testing.T) {
+		retrievedRecords := make([]map[string]any, 0, 5)
+		var cursor *string
+
+		// Fetch all records using pagination with limit=1
+		for pageNum := 1; pageNum <= 5; pageNum++ {
+			url := "/test_pagination:list?limit=1"
+			if cursor != nil {
+				url += "&after=" + *cursor
+			}
+
+			req := httptest.NewRequest(http.MethodGet, url, nil)
+			w := httptest.NewRecorder()
+
+			handler.List(w, req, "test_pagination")
+
+			if w.Code != http.StatusOK {
+				t.Fatalf("page %d: expected status %d, got %d. Body: %s", pageNum, http.StatusOK, w.Code, w.Body.String())
+			}
+
+			var response DataListResponse
+			if err := json.NewDecoder(w.Body).Decode(&response); err != nil {
+				t.Fatalf("page %d: failed to decode response: %v", pageNum, err)
+			}
+
+			// Verify we got exactly 1 record per page
+			if len(response.Data) != 1 {
+				t.Fatalf("page %d: expected 1 record, got %d", pageNum, len(response.Data))
+			}
+
+			// Store the retrieved record
+			retrievedRecords = append(retrievedRecords, response.Data[0])
+
+			// Verify cursor behavior
+			if pageNum < 5 {
+				// Not the last page - should have a cursor
+				if response.NextCursor == nil {
+					t.Fatalf("page %d: expected next_cursor, got nil", pageNum)
+				}
+				// Verify cursor points to the ID of the record we just retrieved
+				if recordID, ok := response.Data[0]["id"].(string); ok {
+					if *response.NextCursor != recordID {
+						t.Errorf("page %d: cursor should be ID of last returned record (%s), got %s",
+							pageNum, recordID, *response.NextCursor)
+					}
+				}
+				cursor = response.NextCursor
+			} else {
+				// Last page - should NOT have a cursor
+				if response.NextCursor != nil {
+					t.Errorf("page %d (last page): expected nil cursor, got %s", pageNum, *response.NextCursor)
+				}
+			}
+		}
+
+		// Verify we retrieved exactly 5 records
+		if len(retrievedRecords) != 5 {
+			t.Errorf("expected to retrieve 5 records total, got %d", len(retrievedRecords))
+		}
+
+		// Verify no duplicates (check all IDs are unique)
+		seenIDs := make(map[string]bool)
+		for i, record := range retrievedRecords {
+			if idStr, ok := record["id"].(string); ok {
+				if seenIDs[idStr] {
+					t.Errorf("duplicate record found at position %d: ID %s", i, idStr)
+				}
+				seenIDs[idStr] = true
+			}
+		}
+
+		// Verify all created records were retrieved
+		for _, expectedID := range recordIDs {
+			if !seenIDs[expectedID] {
+				t.Errorf("record with ID %s was not retrieved during pagination", expectedID)
+			}
+		}
+	})
+
+	t.Run("Edge case: Single record with limit=1", func(t *testing.T) {
+		// Create new table for this test
+		createSQL := `
+CREATE TABLE test_single (
+ulid TEXT PRIMARY KEY,
+name TEXT NOT NULL
+)
+`
+		if _, err := driver.Exec(ctx, createSQL); err != nil {
+			t.Fatalf("failed to create table: %v", err)
+		}
+
+		singleCollection := &registry.Collection{
+			Name: "test_single",
+			Columns: []registry.Column{
+				{Name: "name", Type: registry.TypeString, Nullable: false},
+			},
+		}
+		reg.Set(singleCollection)
+
+		// Insert one record
+		reqBody := CreateDataRequest{
+			Data: map[string]any{
+				"name": "Single Record",
+			},
+		}
+		body, _ := json.Marshal(reqBody)
+
+		req := httptest.NewRequest(http.MethodPost, "/test_single:create", bytes.NewReader(body))
+		w := httptest.NewRecorder()
+		handler.Create(w, req, "test_single")
+
+		// List with limit=1
+		req = httptest.NewRequest(http.MethodGet, "/test_single:list?limit=1", nil)
+		w = httptest.NewRecorder()
+		handler.List(w, req, "test_single")
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected status %d, got %d", http.StatusOK, w.Code)
+		}
+
+		var response DataListResponse
+		json.NewDecoder(w.Body).Decode(&response)
+
+		if len(response.Data) != 1 {
+			t.Errorf("expected 1 record, got %d", len(response.Data))
+		}
+
+		// Should have null cursor (no more records)
+		if response.NextCursor != nil {
+			t.Errorf("expected nil cursor for single record, got %s", *response.NextCursor)
+		}
+	})
+
+	t.Run("Edge case: Empty collection", func(t *testing.T) {
+		// Create new empty table
+		createSQL := `
+CREATE TABLE test_empty (
+ulid TEXT PRIMARY KEY,
+name TEXT NOT NULL
+)
+`
+		if _, err := driver.Exec(ctx, createSQL); err != nil {
+			t.Fatalf("failed to create table: %v", err)
+		}
+
+		emptyCollection := &registry.Collection{
+			Name: "test_empty",
+			Columns: []registry.Column{
+				{Name: "name", Type: registry.TypeString, Nullable: false},
+			},
+		}
+		reg.Set(emptyCollection)
+
+		// List empty collection
+		req := httptest.NewRequest(http.MethodGet, "/test_empty:list?limit=1", nil)
+		w := httptest.NewRecorder()
+		handler.List(w, req, "test_empty")
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected status %d, got %d", http.StatusOK, w.Code)
+		}
+
+		var response DataListResponse
+		json.NewDecoder(w.Body).Decode(&response)
+
+		if len(response.Data) != 0 {
+			t.Errorf("expected 0 records, got %d", len(response.Data))
+		}
+
+		// Should have null cursor
+		if response.NextCursor != nil {
+			t.Errorf("expected nil cursor for empty collection, got %s", *response.NextCursor)
+		}
+	})
+
+	t.Run("Edge case: Exactly limit records", func(t *testing.T) {
+		// Create new table for this test
+		createSQL := `
+CREATE TABLE test_exact (
+ulid TEXT PRIMARY KEY,
+name TEXT NOT NULL
+)
+`
+		if _, err := driver.Exec(ctx, createSQL); err != nil {
+			t.Fatalf("failed to create table: %v", err)
+		}
+
+		exactCollection := &registry.Collection{
+			Name: "test_exact",
+			Columns: []registry.Column{
+				{Name: "name", Type: registry.TypeString, Nullable: false},
+			},
+		}
+		reg.Set(exactCollection)
+
+		// Insert exactly 2 records
+		for i := 0; i < 2; i++ {
+			reqBody := CreateDataRequest{
+				Data: map[string]any{
+					"name": fmt.Sprintf("Exact Record %d", i+1),
+				},
+			}
+			body, _ := json.Marshal(reqBody)
+
+			req := httptest.NewRequest(http.MethodPost, "/test_exact:create", bytes.NewReader(body))
+			w := httptest.NewRecorder()
+			handler.Create(w, req, "test_exact")
+
+			if w.Code != http.StatusCreated {
+				t.Fatalf("failed to create record: %v", w.Body.String())
+			}
+		}
+
+		// List with limit=2 (exactly the number of records)
+		req := httptest.NewRequest(http.MethodGet, "/test_exact:list?limit=2", nil)
+		w := httptest.NewRecorder()
+		handler.List(w, req, "test_exact")
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected status %d, got %d", http.StatusOK, w.Code)
+		}
+
+		var response DataListResponse
+		json.NewDecoder(w.Body).Decode(&response)
+
+		if len(response.Data) != 2 {
+			t.Errorf("expected 2 records, got %d", len(response.Data))
+		}
+
+		// Should have null cursor (no more records)
+		if response.NextCursor != nil {
+			t.Errorf("expected nil cursor when fetching exact number of records, got %s", *response.NextCursor)
+		}
+	})
+
+	t.Run("Paginate with limit=2 through 5 records", func(t *testing.T) {
+		retrievedRecords := make([]map[string]any, 0, 5)
+		var cursor *string
+		pageNum := 0
+
+		// Fetch all 5 records using pagination with limit=2
+		for {
+			pageNum++
+			url := "/test_pagination:list?limit=2"
+			if cursor != nil {
+				url += "&after=" + *cursor
+			}
+
+			req := httptest.NewRequest(http.MethodGet, url, nil)
+			w := httptest.NewRecorder()
+
+			handler.List(w, req, "test_pagination")
+
+			if w.Code != http.StatusOK {
+				t.Fatalf("page %d: expected status %d, got %d", pageNum, http.StatusOK, w.Code)
+			}
+
+			var response DataListResponse
+			if err := json.NewDecoder(w.Body).Decode(&response); err != nil {
+				t.Fatalf("page %d: failed to decode response: %v", pageNum, err)
+			}
+
+			if len(response.Data) == 0 {
+				break
+			}
+
+			retrievedRecords = append(retrievedRecords, response.Data...)
+
+			if response.NextCursor == nil {
+				break
+			}
+			cursor = response.NextCursor
+		}
+
+		// Verify we retrieved exactly 5 records
+		if len(retrievedRecords) != 5 {
+			t.Errorf("expected to retrieve 5 records total, got %d", len(retrievedRecords))
+		}
+
+		// Verify no duplicates
+		seenIDs := make(map[string]bool)
+		for _, record := range retrievedRecords {
+			if idStr, ok := record["id"].(string); ok {
+				if seenIDs[idStr] {
+					t.Errorf("duplicate record found: ID %s", idStr)
+				}
+				seenIDs[idStr] = true
+			}
+		}
+	})
 }
