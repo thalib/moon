@@ -103,4 +103,5 @@ MIT License ([LICENSE](LICENSE))
 Built with [Go](https://go.dev/), [Viper](https://github.com/spf13/viper), [go-sql-driver/mysql](https://github.com/go-sql-driver/mysql), [lib/pq](https://github.com/lib/pq), [modernc.org/sqlite](https://gitlab.com/cznic/sqlite)
 
 ---
-Made by [Mohamed Thalib](https://github.com/thalib)
+
+Made by [Devnodes.in](https://github.com/devnodesin)

@@ -243,13 +243,13 @@ These endpoints manage records within a specific collection. Replace `{collectio
 | `{{.Prefix}}/{collection}:update` | POST | Update an existing record |
 | `{{.Prefix}}/{collection}:destroy` | POST | Delete a record |
 
-List All Records
+**List All Records**
 
 ```bash
 curl -s "{{$ApiURL}}/products:list" | jq .
 ```
 
-Create a New Record
+**Create a New Record**
 
 ```bash
 curl -s -X POST "{{$ApiURL}}/products:create" \
@@ -265,7 +265,7 @@ curl -s -X POST "{{$ApiURL}}/products:create" \
   }' | jq .
 ```
 
-Get a Single Record
+**Get a Single Record**
 
 ```bash
 curl -s "{{$ApiURL}}/products:get?id={item_id}" | jq .
@@ -273,7 +273,7 @@ curl -s "{{$ApiURL}}/products:get?id={item_id}" | jq .
 
 Note replace the `id` value with the actual record ID.
 
-Update an Existing Record
+**Update an Existing Record**
 
 ```bash
 curl -s -X POST "{{$ApiURL}}/products:update" \
@@ -281,7 +281,7 @@ curl -s -X POST "{{$ApiURL}}/products:update" \
   -d '{"id":"{item_id}","data":{"price":6000.00}}' | jq .
 ```
 
-Delete a Record
+**Delete a Record**
 
 ```bash
 curl -s -X POST "{{$ApiURL}}/products:destroy" \
@@ -307,13 +307,9 @@ curl -g "{{$ApiURL}}/products:list?price[gt]=100&brand[eq]=Wow" | jq .
 curl {{$ApiURL}}/products:list?sort=-price,name | jq .
 ```
 
-Sort by 
-- `field` (ascending) 
-- `-field` (descending)
+Sort by `field` (ascending) or `-field` (descending)
 
-**Full-Text Search :** `?q={search_term}`
-
-Search across all text columns
+**Full-Text Search :** `?q={search_term}` (across all text columns)
 
 ```bash
 curl {{$ApiURL}}/products:list?q=mouse | jq .
@@ -331,13 +327,11 @@ curl {{$ApiURL}}/products:list?fields=name,title | jq .
 curl {{$ApiURL}}/products:list?limit=2 | jq .
 ```
 
-**Pagination :** `?after={cursor}`
+**Pagination :** `?after={cursor}` (Response includes `next_cursor` when more results are available.)
 
 ```bash
 curl {{$ApiURL}}/products:list?after=01ARZ3NDEKTSV4RRFFQ69G5FBX&limit=10 | jq .
 ```
-
-Response includes `next_cursor` when more results are available.
 
 ---
 
@@ -383,3 +377,7 @@ curl {{$ApiURL}}/products:min?field=price | jq .
 ```bash
 curl {{$ApiURL}}/products:max?field=price | jq .
 ```
+
+---
+
+Made by [Devnodes.in](https://github.com/devnodesin)
