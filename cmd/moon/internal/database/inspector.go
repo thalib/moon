@@ -210,11 +210,11 @@ func InferColumnType(dbType string) registry.ColumnType {
 		return registry.TypeInteger
 	}
 
-	// Float types
+	// Float types - map to integer (per PRD 041, float type removed)
 	if strings.Contains(dbTypeLower, "float") || strings.Contains(dbTypeLower, "double") ||
 		strings.Contains(dbTypeLower, "real") || strings.Contains(dbTypeLower, "decimal") ||
 		strings.Contains(dbTypeLower, "numeric") {
-		return registry.TypeFloat
+		return registry.TypeInteger
 	}
 
 	// Boolean types
@@ -233,13 +233,8 @@ func InferColumnType(dbType string) registry.ColumnType {
 		return registry.TypeJSON
 	}
 
-	// Text types (large text)
-	if strings.Contains(dbTypeLower, "text") || strings.Contains(dbTypeLower, "clob") ||
-		strings.Contains(dbTypeLower, "blob") {
-		return registry.TypeText
-	}
-
-	// Default to string for varchar, char, and unknown types
+	// All text types map to string
+	// Default to string for varchar, char, text, clob, blob, and unknown types
 	return registry.TypeString
 }
 

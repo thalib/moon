@@ -23,7 +23,7 @@ func TestCreateTable_PostgreSQL(t *testing.T) {
 	builder := NewBuilder(database.DialectPostgres)
 	columns := []registry.Column{
 		{Name: "name", Type: registry.TypeString, Nullable: false},
-		{Name: "price", Type: registry.TypeFloat, Nullable: false},
+		{Name: "count", Type: registry.TypeInteger, Nullable: false},
 	}
 
 	sql := builder.CreateTable("products", columns)
@@ -37,8 +37,8 @@ func TestCreateTable_PostgreSQL(t *testing.T) {
 	if !strings.Contains(sql, "\"name\"") {
 		t.Error("expected quoted column name")
 	}
-	if !strings.Contains(sql, "VARCHAR(255)") {
-		t.Error("expected VARCHAR type")
+	if !strings.Contains(sql, "TEXT") {
+		t.Error("expected TEXT type for string")
 	}
 	if !strings.Contains(sql, "NOT NULL") {
 		t.Error("expected NOT NULL constraint")
@@ -280,19 +280,16 @@ func TestMapColumnTypes(t *testing.T) {
 		colType      registry.ColumnType
 		expectedType string
 	}{
-		{database.DialectPostgres, registry.TypeString, "VARCHAR(255)"},
-		{database.DialectPostgres, registry.TypeInteger, "INTEGER"},
-		{database.DialectPostgres, registry.TypeFloat, "DOUBLE PRECISION"},
+		{database.DialectPostgres, registry.TypeString, "TEXT"},
+		{database.DialectPostgres, registry.TypeInteger, "BIGINT"},
 		{database.DialectPostgres, registry.TypeBoolean, "BOOLEAN"},
 		{database.DialectPostgres, registry.TypeDatetime, "TIMESTAMP"},
-		{database.DialectPostgres, registry.TypeJSON, "JSONB"},
-		{database.DialectMySQL, registry.TypeString, "VARCHAR(255)"},
-		{database.DialectMySQL, registry.TypeInteger, "INT"},
-		{database.DialectMySQL, registry.TypeFloat, "DOUBLE"},
+		{database.DialectPostgres, registry.TypeJSON, "JSON"},
+		{database.DialectMySQL, registry.TypeString, "TEXT"},
+		{database.DialectMySQL, registry.TypeInteger, "BIGINT"},
 		{database.DialectMySQL, registry.TypeJSON, "JSON"},
 		{database.DialectSQLite, registry.TypeString, "TEXT"},
 		{database.DialectSQLite, registry.TypeInteger, "INTEGER"},
-		{database.DialectSQLite, registry.TypeFloat, "REAL"},
 		{database.DialectSQLite, registry.TypeBoolean, "INTEGER"},
 	}
 

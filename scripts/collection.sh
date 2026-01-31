@@ -25,8 +25,8 @@ curl -s -X POST "${BASE_URL}/collections:create" \
 		"name": "products",
 		"columns": [
 			{"name": "name", "type": "string", "required": true},
-			{"name": "description", "type": "text", "required": false},
-			{"name": "price", "type": "float", "required": true},
+			{"name": "description", "type": "string", "required": false},
+			{"name": "price", "type": "integer", "required": true},
 			{"name": "stock", "type": "integer", "required": true}
 		]
 	}' | jq .
@@ -41,7 +41,7 @@ curl -s -X POST "${BASE_URL}/collections:update" \
 	-d '{
 		"name": "products",
 		"add_columns": [
-			{"name": "category", "type": "text", "required": false}
+			{"name": "category", "type": "string", "required": false}
 		]
 	}' | jq .
 
@@ -85,7 +85,7 @@ curl -s -X POST "${BASE_URL}/collections:update" \
 			{"old_name": "stock", "new_name": "quantity"}
 		],
 		"modify_columns": [
-			{"name": "price", "type": "float", "nullable": false}
+			{"name": "price", "type": "integer", "nullable": false}
 		]
 	}' | jq .
 

@@ -80,7 +80,7 @@ func TestValidateNumericField(t *testing.T) {
 	collection := &registry.Collection{
 		Name: "orders",
 		Columns: []registry.Column{
-			{Name: "total", Type: registry.TypeFloat},
+			{Name: "total", Type: registry.TypeInteger},
 			{Name: "quantity", Type: registry.TypeInteger},
 			{Name: "status", Type: registry.TypeString},
 		},
@@ -92,12 +92,12 @@ func TestValidateNumericField(t *testing.T) {
 		wantError bool
 	}{
 		{
-			name:      "valid float field",
+			name:      "valid integer field total",
 			fieldName: "total",
 			wantError: false,
 		},
 		{
-			name:      "valid integer field",
+			name:      "valid integer field quantity",
 			fieldName: "quantity",
 			wantError: false,
 		},
@@ -178,7 +178,7 @@ func TestAggregationHandler_MissingField(t *testing.T) {
 	reg := registry.NewSchemaRegistry()
 	collection := &registry.Collection{
 		Name:    "orders",
-		Columns: []registry.Column{{Name: "total", Type: registry.TypeFloat}},
+		Columns: []registry.Column{{Name: "total", Type: registry.TypeInteger}},
 	}
 	reg.Set(collection)
 

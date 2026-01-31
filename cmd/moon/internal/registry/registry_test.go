@@ -289,7 +289,7 @@ func TestSchemaRegistry_ConcurrentAccess(t *testing.T) {
 
 func TestValidateColumnType(t *testing.T) {
 	validTypes := []ColumnType{
-		TypeString, TypeInteger, TypeFloat, TypeBoolean, TypeDatetime, TypeText, TypeJSON,
+		TypeString, TypeInteger, TypeBoolean, TypeDatetime, TypeJSON,
 	}
 
 	for _, colType := range validTypes {
@@ -300,6 +300,14 @@ func TestValidateColumnType(t *testing.T) {
 
 	if ValidateColumnType("invalid") {
 		t.Error("ValidateColumnType() should return false for invalid type")
+	}
+
+	// Verify that removed types are now invalid
+	if ValidateColumnType("text") {
+		t.Error("ValidateColumnType() should return false for removed 'text' type")
+	}
+	if ValidateColumnType("float") {
+		t.Error("ValidateColumnType() should return false for removed 'float' type")
 	}
 }
 
@@ -312,9 +320,10 @@ func TestMapGoTypeToColumnType(t *testing.T) {
 		{"string", TypeString, false},
 		{"int", TypeInteger, false},
 		{"int64", TypeInteger, false},
-		{"float64", TypeFloat, false},
 		{"bool", TypeBoolean, false},
 		{"time.Time", TypeDatetime, false},
+		{"float32", "", true}, // float types now rejected
+		{"float64", "", true}, // float types now rejected
 		{"invalid", "", true},
 	}
 

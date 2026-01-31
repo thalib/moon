@@ -92,10 +92,8 @@ All errors follow a consistent JSON structure:
 
 Supported column data types:
 
-- `string` - Short, length-limited text (e.g., names, titles, emails)
-- `text` - Long, unbounded text (e.g., descriptions, comments)
-- `integer` - Whole numbers
-- `float` - Decimal numbers
+- `string` - Text values of any length (maps to TEXT in SQL)
+- `integer` - 64-bit whole numbers
 - `boolean` - true/false values
 - `datetime` - Date/time in RFC3339 or ISO 8601 format (e.g., 2023-01-31T13:45:00Z)
 - `json` - Arbitrary JSON object or array

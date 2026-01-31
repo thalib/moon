@@ -207,8 +207,8 @@ Retrieves the schema for a specific collection.
     "name": "users",
     "columns": [
       {"name": "id", "type": "string", "required": true},
-      {"name": "email", "type": "text", "required": true},
-      {"name": "name", "type": "text", "required": true},
+      {"name": "email", "type": "string", "required": true},
+      {"name": "name", "type": "string", "required": true},
       {"name": "age", "type": "integer", "required": false}
     ]
   }
@@ -230,21 +230,19 @@ Creates a new collection (table) in the database.
   "name": "products",
   "columns": [
     {"name": "name", "type": "string", "required": true},
-    {"name": "price", "type": "float", "required": true},
-    {"name": "description", "type": "text", "required": false}
+    {"name": "price", "type": "integer", "required": true},
+    {"name": "description", "type": "string", "required": false}
   ]
 }
 ```
 
 **Column Types:**
 
-- `string`: Short string values
-- `text`: Long text values
-- `integer`: Whole numbers
-- `float`: Floating-point numbers
+- `string`: Text values of any length (maps to TEXT in SQL)
+- `integer`: 64-bit whole numbers
 - `boolean`: True/false values
-- `datetime`: Date and time values
-- `json`: JSON data
+- `datetime`: Date and time values (RFC3339 or ISO 8601 format)
+- `json`: JSON data (objects or arrays)
 
 **Response:**
 
@@ -269,7 +267,7 @@ Modifies a collection schema (adds columns).
 {
   "name": "products",
   "add_columns": [
-    {"name": "category", "type": "text", "required": false}
+    {"name": "category", "type": "string", "required": false}
   ]
 }
 ```
@@ -325,7 +323,7 @@ Retrieves all records from a collection with support for advanced filtering, sor
 - `after` (optional): Cursor for pagination - Use the `next_cursor` value from the previous page response
 - `fields` (optional): Comma-separated list of fields to return (e.g., `fields=name,price`)
 - `sort` (optional): Sort order - field name or `-field` for descending (e.g., `sort=-created_at,name`)
-- `q` (optional): Search term to search across all text columns (e.g., `q=laptop`)
+- `q` (optional): Search term to search across all string columns (e.g., `q=laptop`)
 - `column[operator]` (optional): Filter by column with operator (e.g., `price[gt]=100`)
   - Operators: `eq`, `ne`, `gt`, `lt`, `gte`, `lte`, `like`, `in`
 
@@ -667,7 +665,7 @@ curl -X POST http://localhost:6006collections:create \
     "name": "posts",
     "columns": [
       {"name": "title", "type": "string", "required": true},
-      {"name": "content", "type": "text", "required": true},
+      {"name": "content", "type": "string", "required": true},
       {"name": "author", "type": "string", "required": true},
       {"name": "published", "type": "boolean", "required": false}
     ]
@@ -984,7 +982,7 @@ export MOON_JWT_SECRET=your-secret-key
 
 **Solutions:**
 
-1. Check column types: `string`, `text`, `integer`, `float`, `boolean`, `datetime`, `json`
+1. Check column types: `string`, `integer`, `boolean`, `datetime`, `json`
 2. Ensure required fields are provided
 3. Get collection schema: `GET collections:get?name={collection}`
 

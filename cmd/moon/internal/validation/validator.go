@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/thalib/moon/cmd/moon/internal/constants"
 	"github.com/thalib/moon/cmd/moon/internal/registry"
 	moonulid "github.com/thalib/moon/cmd/moon/internal/ulid"
 )
@@ -206,7 +205,7 @@ func (v *SchemaValidator) ValidateField(fieldName string, value any, column regi
 // validateType validates that a value matches the expected column type
 func (v *SchemaValidator) validateType(fieldName string, value any, expectedType registry.ColumnType) *ValidationError {
 	switch expectedType {
-	case registry.TypeString, registry.TypeText:
+	case registry.TypeString:
 		if _, ok := value.(string); !ok {
 			return &ValidationError{
 				Field:        fieldName,
@@ -236,20 +235,6 @@ func (v *SchemaValidator) validateType(fieldName string, value any, expectedType
 			return &ValidationError{
 				Field:        fieldName,
 				Message:      fmt.Sprintf("field '%s' must be an integer", fieldName),
-				ExpectedType: string(expectedType),
-				ActualValue:  value,
-				Code:         "INVALID_TYPE",
-			}
-		}
-
-	case registry.TypeFloat:
-		switch value.(type) {
-		case float32, float64, int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
-			// Valid numeric types (integers can be treated as floats)
-		default:
-			return &ValidationError{
-				Field:        fieldName,
-				Message:      fmt.Sprintf("field '%s' must be a number", fieldName),
 				ExpectedType: string(expectedType),
 				ActualValue:  value,
 				Code:         "INVALID_TYPE",
@@ -287,18 +272,9 @@ func (v *SchemaValidator) validateType(fieldName string, value any, expectedType
 }
 
 // validateStringConstraints validates string-specific constraints
-// Note: MaxLength is a default value for VARCHAR; production use should
-// derive this from schema column definition or configuration
+// Note: Since all strings now map to TEXT, there is no length limit
 func (v *SchemaValidator) validateStringConstraints(fieldName string, value string) *ValidationError {
-	if len(value) > constants.DefaultVarcharMaxLength {
-		return &ValidationError{
-			Field:       fieldName,
-			Message:     fmt.Sprintf("field '%s' exceeds maximum length of %d characters", fieldName, constants.DefaultVarcharMaxLength),
-			ActualValue: len(value),
-			Code:        "STRING_TOO_LONG",
-		}
-	}
-
+	// No length constraints for TEXT type
 	return nil
 }
 
