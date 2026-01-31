@@ -173,3 +173,4 @@ config.toml
 .env
 .env.local
 .gocache
+* copy.md
