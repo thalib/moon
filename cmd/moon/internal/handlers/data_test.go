@@ -1566,7 +1566,9 @@ name TEXT NOT NULL
 		}
 
 		var response DataListResponse
-		json.NewDecoder(w.Body).Decode(&response)
+		if err := json.NewDecoder(w.Body).Decode(&response); err != nil {
+			t.Fatalf("failed to decode response: %v", err)
+		}
 
 		if len(response.Data) != 1 {
 			t.Errorf("expected 1 record, got %d", len(response.Data))
@@ -1608,7 +1610,9 @@ name TEXT NOT NULL
 		}
 
 		var response DataListResponse
-		json.NewDecoder(w.Body).Decode(&response)
+		if err := json.NewDecoder(w.Body).Decode(&response); err != nil {
+			t.Fatalf("failed to decode response: %v", err)
+		}
 
 		if len(response.Data) != 0 {
 			t.Errorf("expected 0 records, got %d", len(response.Data))
@@ -1668,7 +1672,9 @@ name TEXT NOT NULL
 		}
 
 		var response DataListResponse
-		json.NewDecoder(w.Body).Decode(&response)
+		if err := json.NewDecoder(w.Body).Decode(&response); err != nil {
+			t.Fatalf("failed to decode response: %v", err)
+		}
 
 		if len(response.Data) != 2 {
 			t.Errorf("expected 2 records, got %d", len(response.Data))
