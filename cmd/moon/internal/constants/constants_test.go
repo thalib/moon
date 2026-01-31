@@ -100,8 +100,8 @@ func TestSensitiveFields(t *testing.T) {
 
 // TestPaginationConstants verifies pagination constant values.
 func TestPaginationConstants(t *testing.T) {
-	if DefaultPaginationLimit != 100 {
-		t.Errorf("Expected DefaultPaginationLimit to be 100, got %d", DefaultPaginationLimit)
+	if DefaultPaginationLimit != 15 {
+		t.Errorf("Expected DefaultPaginationLimit to be 15, got %d", DefaultPaginationLimit)
 	}
 
 	if DefaultPaginationOffset != 0 {
