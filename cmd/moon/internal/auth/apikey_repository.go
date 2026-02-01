@@ -230,3 +230,125 @@ func (r *APIKeyRepository) List(ctx context.Context) ([]*APIKey, error) {
 
 	return keys, nil
 }
+
+// APIKeyListOptions contains options for listing API keys.
+type APIKeyListOptions struct {
+	Limit     int
+	AfterULID string
+}
+
+// ListPaginated retrieves API keys with pagination.
+func (r *APIKeyRepository) ListPaginated(ctx context.Context, opts APIKeyListOptions) ([]*APIKey, error) {
+	var query string
+	var args []any
+	argIdx := 1
+
+	baseSelect := "SELECT id, ulid, name, description, key_hash, role, can_write, created_at, last_used_at FROM apikeys"
+
+	if opts.AfterULID != "" {
+		if r.db.Dialect() == database.DialectPostgres {
+			query = baseSelect + fmt.Sprintf(" WHERE ulid > $%d ORDER BY ulid ASC", argIdx)
+		} else {
+			query = baseSelect + " WHERE ulid > ? ORDER BY ulid ASC"
+		}
+		args = append(args, opts.AfterULID)
+		argIdx++
+	} else {
+		query = baseSelect + " ORDER BY ulid ASC"
+	}
+
+	if opts.Limit > 0 {
+		if r.db.Dialect() == database.DialectPostgres {
+			query += fmt.Sprintf(" LIMIT $%d", argIdx)
+		} else {
+			query += " LIMIT ?"
+		}
+		args = append(args, opts.Limit)
+	}
+
+	rows, err := r.db.Query(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list API keys: %w", err)
+	}
+	defer rows.Close()
+
+	var keys []*APIKey
+	for rows.Next() {
+		apiKey := &APIKey{}
+		err := rows.Scan(
+			&apiKey.ID, &apiKey.ULID, &apiKey.Name, &apiKey.Description, &apiKey.KeyHash,
+			&apiKey.Role, &apiKey.CanWrite, &apiKey.CreatedAt, &apiKey.LastUsedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan API key: %w", err)
+		}
+		keys = append(keys, apiKey)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to iterate API keys: %w", err)
+	}
+
+	return keys, nil
+}
+
+// NameExists checks if an API key name already exists (optionally excluding an ID).
+func (r *APIKeyRepository) NameExists(ctx context.Context, name string, excludeID int64) (bool, error) {
+	var query string
+	var args []any
+
+	if excludeID > 0 {
+		query = "SELECT COUNT(*) FROM apikeys WHERE name = ? AND id != ?"
+		args = []any{name, excludeID}
+		if r.db.Dialect() == database.DialectPostgres {
+			query = "SELECT COUNT(*) FROM apikeys WHERE name = $1 AND id != $2"
+		}
+	} else {
+		query = "SELECT COUNT(*) FROM apikeys WHERE name = ?"
+		args = []any{name}
+		if r.db.Dialect() == database.DialectPostgres {
+			query = "SELECT COUNT(*) FROM apikeys WHERE name = $1"
+		}
+	}
+
+	var count int64
+	err := r.db.QueryRow(ctx, query, args...).Scan(&count)
+	if err != nil {
+		return false, fmt.Errorf("failed to check name existence: %w", err)
+	}
+	return count > 0, nil
+}
+
+// UpdateKeyHash updates the key hash for an API key (used during rotation).
+func (r *APIKeyRepository) UpdateKeyHash(ctx context.Context, id int64, newHash string) error {
+	var query string
+	switch r.db.Dialect() {
+	case database.DialectPostgres:
+		query = "UPDATE apikeys SET key_hash = $1 WHERE id = $2"
+	default:
+		query = "UPDATE apikeys SET key_hash = ? WHERE id = ?"
+	}
+
+	_, err := r.db.Exec(ctx, query, newHash, id)
+	if err != nil {
+		return fmt.Errorf("failed to update key hash: %w", err)
+	}
+	return nil
+}
+
+// UpdateMetadata updates only name, description, and can_write fields.
+func (r *APIKeyRepository) UpdateMetadata(ctx context.Context, apiKey *APIKey) error {
+	var query string
+	switch r.db.Dialect() {
+	case database.DialectPostgres:
+		query = `UPDATE apikeys SET name = $1, description = $2, can_write = $3 WHERE id = $4`
+	default:
+		query = `UPDATE apikeys SET name = ?, description = ?, can_write = ? WHERE id = ?`
+	}
+
+	_, err := r.db.Exec(ctx, query, apiKey.Name, apiKey.Description, apiKey.CanWrite, apiKey.ID)
+	if err != nil {
+		return fmt.Errorf("failed to update API key metadata: %w", err)
+	}
+	return nil
+}

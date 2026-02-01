@@ -513,6 +513,255 @@ func TestAPIKeyRepository_List(t *testing.T) {
 	}
 }
 
+func TestAPIKeyRepository_ListPaginated(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	repo := NewAPIKeyRepository(db)
+	ctx := context.Background()
+
+	// Create 5 API keys
+	var createdKeys []*APIKey
+	for i := 0; i < 5; i++ {
+		_, keyHash, _ := GenerateAPIKey()
+		apiKey := &APIKey{
+			Name:     "Test Key " + string(rune('A'+i)),
+			KeyHash:  keyHash,
+			Role:     "user",
+			CanWrite: true,
+		}
+		if err := repo.Create(ctx, apiKey); err != nil {
+			t.Fatalf("Create() error = %v", err)
+		}
+		createdKeys = append(createdKeys, apiKey)
+	}
+
+	// Test pagination with limit
+	keys, err := repo.ListPaginated(ctx, APIKeyListOptions{Limit: 2})
+	if err != nil {
+		t.Fatalf("ListPaginated() error = %v", err)
+	}
+	if len(keys) != 2 {
+		t.Errorf("ListPaginated() with limit 2 returned %d keys, want 2", len(keys))
+	}
+
+	// Test pagination with after cursor
+	keys, err = repo.ListPaginated(ctx, APIKeyListOptions{Limit: 2, AfterULID: keys[1].ULID})
+	if err != nil {
+		t.Fatalf("ListPaginated() error = %v", err)
+	}
+	if len(keys) != 2 {
+		t.Errorf("ListPaginated() after cursor returned %d keys, want 2", len(keys))
+	}
+}
+
+func TestAPIKeyRepository_NameExists(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	repo := NewAPIKeyRepository(db)
+	ctx := context.Background()
+
+	_, keyHash, _ := GenerateAPIKey()
+	apiKey := &APIKey{
+		Name:     "Unique Name",
+		KeyHash:  keyHash,
+		Role:     "user",
+		CanWrite: true,
+	}
+	if err := repo.Create(ctx, apiKey); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+
+	// Test existing name
+	exists, err := repo.NameExists(ctx, "Unique Name", 0)
+	if err != nil {
+		t.Fatalf("NameExists() error = %v", err)
+	}
+	if !exists {
+		t.Error("NameExists() should return true for existing name")
+	}
+
+	// Test non-existing name
+	exists, err = repo.NameExists(ctx, "Non Existing", 0)
+	if err != nil {
+		t.Fatalf("NameExists() error = %v", err)
+	}
+	if exists {
+		t.Error("NameExists() should return false for non-existing name")
+	}
+
+	// Test excluding own ID
+	exists, err = repo.NameExists(ctx, "Unique Name", apiKey.ID)
+	if err != nil {
+		t.Fatalf("NameExists() error = %v", err)
+	}
+	if exists {
+		t.Error("NameExists() should return false when excluding own ID")
+	}
+}
+
+func TestAPIKeyRepository_UpdateKeyHash(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	repo := NewAPIKeyRepository(db)
+	ctx := context.Background()
+
+	_, keyHash, _ := GenerateAPIKey()
+	apiKey := &APIKey{
+		Name:     "Rotate Test Key",
+		KeyHash:  keyHash,
+		Role:     "user",
+		CanWrite: true,
+	}
+	if err := repo.Create(ctx, apiKey); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+
+	// Generate new key hash
+	_, newKeyHash, _ := GenerateAPIKey()
+
+	// Update the hash
+	if err := repo.UpdateKeyHash(ctx, apiKey.ID, newKeyHash); err != nil {
+		t.Fatalf("UpdateKeyHash() error = %v", err)
+	}
+
+	// Verify old hash doesn't work
+	found, _ := repo.GetByHash(ctx, keyHash)
+	if found != nil {
+		t.Error("UpdateKeyHash() old hash should not work")
+	}
+
+	// Verify new hash works
+	found, err := repo.GetByHash(ctx, newKeyHash)
+	if err != nil {
+		t.Fatalf("GetByHash() error = %v", err)
+	}
+	if found == nil {
+		t.Fatal("UpdateKeyHash() new hash should work")
+	}
+	if found.ID != apiKey.ID {
+		t.Error("UpdateKeyHash() should return same key")
+	}
+}
+
+func TestAPIKeyRepository_UpdateMetadata(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	repo := NewAPIKeyRepository(db)
+	ctx := context.Background()
+
+	_, keyHash, _ := GenerateAPIKey()
+	apiKey := &APIKey{
+		Name:        "Original Name",
+		Description: "Original Description",
+		KeyHash:     keyHash,
+		Role:        "user",
+		CanWrite:    false,
+	}
+	if err := repo.Create(ctx, apiKey); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+
+	// Update metadata
+	apiKey.Name = "Updated Name"
+	apiKey.Description = "Updated Description"
+	apiKey.CanWrite = true
+
+	if err := repo.UpdateMetadata(ctx, apiKey); err != nil {
+		t.Fatalf("UpdateMetadata() error = %v", err)
+	}
+
+	// Verify updates
+	found, err := repo.GetByID(ctx, apiKey.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error = %v", err)
+	}
+	if found == nil {
+		t.Fatal("GetByID() returned nil")
+	}
+	if found.Name != "Updated Name" {
+		t.Errorf("UpdateMetadata() name = %q, want %q", found.Name, "Updated Name")
+	}
+	if found.Description != "Updated Description" {
+		t.Errorf("UpdateMetadata() description = %q, want %q", found.Description, "Updated Description")
+	}
+	if !found.CanWrite {
+		t.Error("UpdateMetadata() can_write should be true")
+	}
+}
+
+func TestAPIKeyRepository_GetByULID(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	repo := NewAPIKeyRepository(db)
+	ctx := context.Background()
+
+	_, keyHash, _ := GenerateAPIKey()
+	apiKey := &APIKey{
+		Name:     "ULID Test Key",
+		KeyHash:  keyHash,
+		Role:     "admin",
+		CanWrite: true,
+	}
+	if err := repo.Create(ctx, apiKey); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+
+	// Test GetByULID
+	found, err := repo.GetByULID(ctx, apiKey.ULID)
+	if err != nil {
+		t.Fatalf("GetByULID() error = %v", err)
+	}
+	if found == nil {
+		t.Fatal("GetByULID() returned nil")
+	}
+	if found.ULID != apiKey.ULID {
+		t.Errorf("GetByULID() ulid = %q, want %q", found.ULID, apiKey.ULID)
+	}
+
+	// Test not found
+	notFound, err := repo.GetByULID(ctx, "nonexistent")
+	if err != nil {
+		t.Fatalf("GetByULID() error = %v", err)
+	}
+	if notFound != nil {
+		t.Error("GetByULID() should return nil for nonexistent ULID")
+	}
+}
+
+func TestAPIKeyRepository_Delete(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	repo := NewAPIKeyRepository(db)
+	ctx := context.Background()
+
+	_, keyHash, _ := GenerateAPIKey()
+	apiKey := &APIKey{
+		Name:     "Delete Test Key",
+		KeyHash:  keyHash,
+		Role:     "user",
+		CanWrite: false,
+	}
+	if err := repo.Create(ctx, apiKey); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+
+	if err := repo.Delete(ctx, apiKey.ID); err != nil {
+		t.Fatalf("Delete() error = %v", err)
+	}
+
+	// Verify deletion
+	found, _ := repo.GetByID(ctx, apiKey.ID)
+	if found != nil {
+		t.Error("Delete() did not remove API key")
+	}
+}
+
 func TestBootstrap_WithAdmin(t *testing.T) {
 	cfg := database.Config{
 		ConnectionString: "sqlite://:memory:",

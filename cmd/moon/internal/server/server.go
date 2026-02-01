@@ -83,6 +83,9 @@ func (s *Server) setupRoutes() {
 	// Create users handler (admin only endpoints)
 	usersHandler := handlers.NewUsersHandler(s.db, s.config.JWT.Secret, accessExpiry, refreshExpiry)
 
+	// Create API keys handler (admin only endpoints)
+	apiKeysHandler := handlers.NewAPIKeysHandler(s.db, s.config.JWT.Secret, accessExpiry, refreshExpiry)
+
 	// Get the prefix from config
 	prefix := s.config.Server.Prefix
 
@@ -108,6 +111,13 @@ func (s *Server) setupRoutes() {
 	s.mux.HandleFunc("POST "+prefix+"/users:create", s.loggingMiddleware(usersHandler.Create))
 	s.mux.HandleFunc("POST "+prefix+"/users:update", s.loggingMiddleware(usersHandler.Update))
 	s.mux.HandleFunc("POST "+prefix+"/users:destroy", s.loggingMiddleware(usersHandler.Destroy))
+
+	// API key management endpoints (admin only)
+	s.mux.HandleFunc("GET "+prefix+"/apikeys:list", s.loggingMiddleware(apiKeysHandler.List))
+	s.mux.HandleFunc("GET "+prefix+"/apikeys:get", s.loggingMiddleware(apiKeysHandler.Get))
+	s.mux.HandleFunc("POST "+prefix+"/apikeys:create", s.loggingMiddleware(apiKeysHandler.Create))
+	s.mux.HandleFunc("POST "+prefix+"/apikeys:update", s.loggingMiddleware(apiKeysHandler.Update))
+	s.mux.HandleFunc("POST "+prefix+"/apikeys:destroy", s.loggingMiddleware(apiKeysHandler.Destroy))
 
 	// Documentation endpoints
 	s.mux.HandleFunc("GET "+prefix+"/doc/", s.loggingMiddleware(docHandler.HTML))
