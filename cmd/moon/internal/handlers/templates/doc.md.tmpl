@@ -94,10 +94,9 @@ Supported column data types:
 - `boolean` - true/false values
 - `datetime` - Date/time in RFC3339 or ISO 8601 format (e.g., 2023-01-31T13:45:00Z)
 - `json` - Arbitrary JSON object or array
-- `decimal` - Exact numeric values for precision-critical data (e.g., price, amount)
-  - API input/output as string (e.g., `"199.99"`)
-  - Default scale: 2 decimal places
-  - Supports SQL aggregation functions
+- `decimal` - For decimal values. API input/output use strings (e.g., `"199.99"`), with a default of 2 decimal places.
+
+***Note:*** Aggregation functions are supported only on `integer` and `decimal` types.
 
 ## Health Check
 
@@ -238,7 +237,7 @@ curl -s -X POST "{{$ApiURL}}/collections:update" \
 ```bash
 curl -X POST "{{$ApiURL}}/collections:destroy" \
   -H "Content-Type: application/json" \
-  -d '{"name": "products"}'
+  -d '{"name": "products"}' | jq .
 ```
 
 ## Data Access
