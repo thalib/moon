@@ -18,6 +18,7 @@
 - Invest in simplicity up front; process cannot fix complex designs.
 - Design for human limits: keep components small and independent.
 - Use only the Go standard library unless a third-party dependency is absolutely essential.
+- **AIP-136 Custom Actions:** APIs use a colon separator (`:`) to distinguish between the resource and the action, providing a predictable and AI-friendly interface.
 
 ## SPEC.md Compliance
 
