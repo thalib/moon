@@ -94,6 +94,10 @@ Supported column data types:
 - `boolean` - true/false values
 - `datetime` - Date/time in RFC3339 or ISO 8601 format (e.g., 2023-01-31T13:45:00Z)
 - `json` - Arbitrary JSON object or array
+- `decimal` - Exact numeric values for precision-critical data (e.g., price, amount)
+  - API input/output as string (e.g., `"199.99"`)
+  - Default scale: 2 decimal places
+  - Supports SQL aggregation functions
 
 ## Health Check
 

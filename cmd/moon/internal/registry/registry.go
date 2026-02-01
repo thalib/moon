@@ -17,6 +17,7 @@ const (
 	TypeBoolean  ColumnType = "boolean"
 	TypeDatetime ColumnType = "datetime"
 	TypeJSON     ColumnType = "json"
+	TypeDecimal  ColumnType = "decimal"
 )
 
 // Column represents a single column in a collection
@@ -164,7 +165,7 @@ func (r *SchemaRegistry) Count() int {
 // ValidateColumnType checks if a column type is valid
 func ValidateColumnType(colType ColumnType) bool {
 	switch colType {
-	case TypeString, TypeInteger, TypeBoolean, TypeDatetime, TypeJSON:
+	case TypeString, TypeInteger, TypeBoolean, TypeDatetime, TypeJSON, TypeDecimal:
 		return true
 	default:
 		return false

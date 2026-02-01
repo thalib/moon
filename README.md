@@ -25,13 +25,33 @@ cd moon
 
 See [INSTALL.md](INSTALL.md) for setup.
 
-## Documentation & Support
+## Documentation
 
-- [INSTALL.md](INSTALL.md): Install & deploy
-- [USAGE.md](USAGE.md): API reference & examples
-- [SPEC.md](SPEC.md): Architecture & technical details
-- [samples/](samples/): Sample Configuration
-- [scripts/](scripts/): Test Scripts
+Moon provides comprehensive, auto-generated API documentation:
+
+- **HTML Documentation**: Visit `http://localhost:6006/doc/` in your browser for a complete, interactive API reference
+- **Markdown Documentation**: Access `http://localhost:6006/doc/md` for terminal-friendly or AI-agent documentation
+- **Refresh Documentation**: POST to `http://localhost:6006/doc:refresh` to update the documentation cache after schema changes
+
+### Quick Access Examples
+
+```bash
+# View in browser
+open http://localhost:6006/doc/
+
+# View in terminal
+curl http://localhost:6006/doc/md | less
+
+# Refresh documentation cache
+curl -X POST http://localhost:6006/doc:refresh
+```
+
+### Additional Resources
+
+- [INSTALL.md](INSTALL.md): Installation and deployment guide
+- [SPEC.md](SPEC.md): Architecture and technical specifications
+- [samples/](samples/): Sample configuration files
+- [scripts/](scripts/): Test and demo scripts
 - [LICENSE](LICENSE): MIT License
 - [GitHub Issues](https://github.com/thalib/moon/issues)
 - [GitHub Discussions](https://github.com/thalib/moon/discussions)
@@ -58,7 +78,7 @@ Key components:
 
 ## API Pattern
 
-Collections management (`/api/v1/collections`):
+Collections management:
 
 | Endpoint              | Method | Purpose                |
 |-----------------------|--------|------------------------|
@@ -68,7 +88,7 @@ Collections management (`/api/v1/collections`):
 | `/collections:update` | POST   | Modify collection      |
 | `/collections:destroy`| POST   | Delete collection      |
 
-Data operations (`/api/v1/{collectionName}`):
+Data operations:
 
 | Endpoint         | Method | Purpose         |
 |------------------|--------|-----------------|
@@ -78,7 +98,7 @@ Data operations (`/api/v1/{collectionName}`):
 | `/{name}:update` | POST   | Update record   |
 | `/{name}:destroy`| POST   | Delete record   |
 
-See [USAGE.md](USAGE.md) for full API docs and examples.
+See the [API documentation](http://localhost:6006/doc/) for full details and examples.
 
 ## Configuration
 

@@ -212,7 +212,7 @@ All implemented features align with SPEC.md requirements. No significant extra o
    - Apply JWT and/or API Key middleware to handlers
    - Configure path protection based on YAML config
    - Add integration tests for auth enforcement
-   - Document authentication setup in INSTALL.md/USAGE.md
+   - Document authentication setup in INSTALL.md and API documentation
 
 ### Priority 2: High
 2. **Add auth configuration examples**

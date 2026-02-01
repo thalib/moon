@@ -394,7 +394,7 @@ func (h *AggregationHandler) Max(w http.ResponseWriter, r *http.Request, collect
 func validateNumericField(collection *registry.Collection, fieldName string) error {
 	for _, col := range collection.Columns {
 		if col.Name == fieldName {
-			if col.Type == registry.TypeInteger {
+			if col.Type == registry.TypeInteger || col.Type == registry.TypeDecimal {
 				return nil
 			}
 			return fmt.Errorf("field '%s' is not numeric (type: %s)", fieldName, col.Type)

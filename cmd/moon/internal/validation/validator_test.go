@@ -706,3 +706,144 @@ func TestULIDRule(t *testing.T) {
 		})
 	}
 }
+
+func TestSchemaValidator_ValidateField_Decimal(t *testing.T) {
+	reg := registry.NewSchemaRegistry()
+	validator := NewSchemaValidator(reg)
+
+	column := registry.Column{Name: "price", Type: registry.TypeDecimal}
+
+	t.Run("Valid decimal", func(t *testing.T) {
+		err := validator.ValidateField("price", "123.45", column)
+		if err != nil {
+			t.Errorf("Expected no error for valid decimal, got: %v", err)
+		}
+	})
+
+	t.Run("Valid decimal integer", func(t *testing.T) {
+		err := validator.ValidateField("price", "100", column)
+		if err != nil {
+			t.Errorf("Expected no error for integer decimal, got: %v", err)
+		}
+	})
+
+	t.Run("Valid decimal negative", func(t *testing.T) {
+		err := validator.ValidateField("price", "-42.75", column)
+		if err != nil {
+			t.Errorf("Expected no error for negative decimal, got: %v", err)
+		}
+	})
+
+	t.Run("Invalid decimal - not a string", func(t *testing.T) {
+		err := validator.ValidateField("price", 123.45, column)
+		if err == nil {
+			t.Error("Expected error for non-string decimal value")
+		}
+		if err.Code != "INVALID_TYPE" {
+			t.Errorf("Expected code INVALID_TYPE, got %s", err.Code)
+		}
+	})
+
+	t.Run("Invalid decimal - excess precision", func(t *testing.T) {
+		err := validator.ValidateField("price", "123.456", column)
+		if err == nil {
+			t.Error("Expected error for excess precision")
+		}
+		if err.Code != "INVALID_DECIMAL" {
+			t.Errorf("Expected code INVALID_DECIMAL, got %s", err.Code)
+		}
+	})
+
+	t.Run("Invalid decimal - non-numeric", func(t *testing.T) {
+		err := validator.ValidateField("price", "abc", column)
+		if err == nil {
+			t.Error("Expected error for non-numeric string")
+		}
+		if err.Code != "INVALID_DECIMAL" {
+			t.Errorf("Expected code INVALID_DECIMAL, got %s", err.Code)
+		}
+	})
+
+	t.Run("Invalid decimal - scientific notation", func(t *testing.T) {
+		err := validator.ValidateField("price", "1e10", column)
+		if err == nil {
+			t.Error("Expected error for scientific notation")
+		}
+		if err.Code != "INVALID_DECIMAL" {
+			t.Errorf("Expected code INVALID_DECIMAL, got %s", err.Code)
+		}
+	})
+
+	t.Run("Invalid decimal - trailing decimal point", func(t *testing.T) {
+		err := validator.ValidateField("price", "123.", column)
+		if err == nil {
+			t.Error("Expected error for trailing decimal point")
+		}
+	})
+
+	t.Run("Invalid decimal - leading decimal point", func(t *testing.T) {
+		err := validator.ValidateField("price", ".45", column)
+		if err == nil {
+			t.Error("Expected error for leading decimal point")
+		}
+	})
+}
+
+func TestSchemaValidator_Validate_DecimalField(t *testing.T) {
+	reg := registry.NewSchemaRegistry()
+	collection := &registry.Collection{
+		Name: "products",
+		Columns: []registry.Column{
+			{Name: "name", Type: registry.TypeString, Nullable: false},
+			{Name: "price", Type: registry.TypeDecimal, Nullable: false},
+			{Name: "tax", Type: registry.TypeDecimal, Nullable: true},
+		},
+	}
+	reg.Set(collection)
+
+	validator := NewSchemaValidator(reg)
+
+	t.Run("Valid data with decimal", func(t *testing.T) {
+		data := map[string]any{
+			"name":  "Widget",
+			"price": "199.99",
+			"tax":   "15.00",
+		}
+		errors := validator.Validate("products", data)
+		if errors != nil {
+			t.Errorf("Expected no validation errors, got: %v", errors)
+		}
+	})
+
+	t.Run("Valid data without optional decimal", func(t *testing.T) {
+		data := map[string]any{
+			"name":  "Widget",
+			"price": "199.99",
+		}
+		errors := validator.Validate("products", data)
+		if errors != nil {
+			t.Errorf("Expected no validation errors, got: %v", errors)
+		}
+	})
+
+	t.Run("Invalid decimal format", func(t *testing.T) {
+		data := map[string]any{
+			"name":  "Widget",
+			"price": "abc",
+		}
+		errors := validator.Validate("products", data)
+		if errors == nil {
+			t.Fatal("Expected validation errors for invalid decimal")
+		}
+		found := false
+		for _, err := range errors.Errors {
+			if err.Code == "INVALID_DECIMAL" && err.Field == "price" {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Error("Expected INVALID_DECIMAL error for price field")
+		}
+	})
+}

@@ -97,5 +97,5 @@ A convenient test runner with multiple modes, now located in `scripts/`:
 
 For detailed documentation, see:
 - [Installation Guide](../INSTALL.md)
-- [Usage Guide](../USAGE.md)
+- [API Documentation](http://localhost:6006/doc/) (available when server is running)
 - [Project README](../README.md)

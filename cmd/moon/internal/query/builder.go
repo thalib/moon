@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/thalib/moon/cmd/moon/internal/constants"
 	"github.com/thalib/moon/cmd/moon/internal/database"
 	"github.com/thalib/moon/cmd/moon/internal/registry"
 )
@@ -401,6 +402,8 @@ func mapColumnTypeToPostgres(colType registry.ColumnType) string {
 		return "TIMESTAMP"
 	case registry.TypeJSON:
 		return "JSONB"
+	case registry.TypeDecimal:
+		return fmt.Sprintf("NUMERIC(%d,%d)", constants.DefaultDecimalPrecision, constants.DefaultDecimalScale)
 	default:
 		return "TEXT"
 	}
@@ -418,6 +421,8 @@ func mapColumnTypeToMySQL(colType registry.ColumnType) string {
 		return "DATETIME"
 	case registry.TypeJSON:
 		return "JSON"
+	case registry.TypeDecimal:
+		return fmt.Sprintf("DECIMAL(%d,%d)", constants.DefaultDecimalPrecision, constants.DefaultDecimalScale)
 	default:
 		return "TEXT"
 	}
@@ -435,6 +440,8 @@ func mapColumnTypeToSQLite(colType registry.ColumnType) string {
 		return "TEXT"
 	case registry.TypeJSON:
 		return "TEXT"
+	case registry.TypeDecimal:
+		return "NUMERIC"
 	default:
 		return "TEXT"
 	}

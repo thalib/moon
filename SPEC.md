@@ -16,27 +16,65 @@ Moon supports a simplified, portable type system that maps consistently across a
 
 ### Supported Data Types
 
-| API Type   | Description                             | SQLite  | PostgreSQL | MySQL     |
-| ---------- | --------------------------------------- | ------- | ---------- | --------- |
-| `string`   | Text values of any length               | TEXT    | TEXT       | TEXT      |
-| `integer`  | 64-bit integer values                   | INTEGER | BIGINT     | BIGINT    |
-| `boolean`  | True/false values                       | INTEGER | BOOLEAN    | BOOLEAN   |
-| `datetime` | Date and time (RFC3339/ISO 8601 format) | TEXT    | TIMESTAMP  | TIMESTAMP |
-| `json`     | Arbitrary JSON objects or arrays        | TEXT    | JSON       | JSON      |
+| API Type   | Description                             | SQLite   | PostgreSQL   | MySQL        |
+| ---------- | --------------------------------------- | -------- | ------------ | ------------ |
+| `string`   | Text values of any length               | TEXT     | TEXT         | TEXT         |
+| `integer`  | 64-bit integer values                   | INTEGER  | BIGINT       | BIGINT       |
+| `boolean`  | True/false values                       | INTEGER  | BOOLEAN      | BOOLEAN      |
+| `datetime` | Date and time (RFC3339/ISO 8601 format) | TEXT     | TIMESTAMP    | TIMESTAMP    |
+| `json`     | Arbitrary JSON objects or arrays        | TEXT     | JSON         | JSON         |
+| `decimal`  | Exact numeric values (e.g., price)      | NUMERIC  | NUMERIC(19,2)| DECIMAL(19,2)|
+
+### Decimal Type
+
+The `decimal` type provides **exact, deterministic numeric handling** for precision-critical values such as price, amount, weight, tax, and quantity. This addresses the inherent precision errors in floating-point arithmetic.
+
+**API Representation:**
+- Input and output are **strings** (e.g., `"199.99"`, `"-42.75"`, `"0.01"`)
+- Preserves precision across serialization and deserialization
+- Supports SQL aggregation functions (`SUM`, `AVG`, `MIN`, `MAX`)
+
+**Validation:**
+- Default scale: 2 decimal places
+- Maximum scale: 10 decimal places
+- No scientific notation allowed
+- No locale-specific separators (e.g., no comma thousands separator)
+
+**Valid formats:**
+- `"10"`, `"10.50"`, `"1299.99"`, `"-42.75"`, `"0.01"`
+
+**Invalid formats:**
+- `"abc"` (non-numeric)
+- `"1e10"` (scientific notation)
+- `"10.999"` (exceeds default scale of 2)
+- `"10."` (trailing decimal point)
+- `".50"` (leading decimal point)
+
+**Example usage:**
+```json
+{
+  "name": "products",
+  "columns": [
+    {"name": "price", "type": "decimal", "nullable": false},
+    {"name": "tax", "type": "decimal", "nullable": true}
+  ]
+}
+```
 
 ### Design Rationale
 
-- **No `float` type:** Floating-point numbers are discouraged due to precision issues. Use `integer` for whole numbers or store decimal values as strings with application-level parsing.
+- **No `float` type:** Floating-point numbers are discouraged due to precision issues. Use `integer` for whole numbers or `decimal` for exact precision values like currency and measurements.
 - **No `text` vs `string` distinction:** All string data maps to `TEXT` for simplicity. There is no VARCHAR length limit enforcement at the database level.
 - **JSON storage:** JSON data is stored as TEXT in SQLite and native JSON in PostgreSQL/MySQL.
 - **Boolean storage:** SQLite uses INTEGER (0/1) for boolean values; PostgreSQL and MySQL use native BOOLEAN.
+- **Decimal storage:** Uses native NUMERIC/DECIMAL types for exact arithmetic. API exposes values as strings to preserve precision in JSON serialization.
 
 ### Migration from Previous Versions
 
 If upgrading from a previous version that supported `text` or `float` types:
 
 - **`text`** columns should be changed to `string` - behavior is identical
-- **`float`** columns should be changed to `integer` or stored as `string` with application-level decimal handling
+- **`float`** columns should be changed to `decimal` for exact precision or `integer` for whole numbers
 
 ## Configuration Architecture
 
@@ -285,7 +323,7 @@ These endpoints provide server-side aggregation for analytics without fetching f
 
 **Parameters:**
 
-- `field` (query): Required for `:sum`, `:avg`, `:min`, `:max`. Must be a numeric field (integer).
+- `field` (query): Required for `:sum`, `:avg`, `:min`, `:max`. Must be a numeric field (`integer` or `decimal`).
 - Filtering: All aggregation endpoints support the same filtering syntax as `:list` (e.g., `?price[gt]=100`)
 - Filters are applied at the database level before aggregation
 
@@ -297,7 +335,7 @@ These endpoints provide server-side aggregation for analytics without fetching f
 }
 ```
 
-**Note:** While only `integer` type fields can be aggregated, `:avg` operations return decimal results calculated by the database.
+**Note:** Both `integer` and `decimal` type fields support aggregation. Results preserve precision for decimal calculations.
 
 **Examples:**
 
@@ -306,7 +344,7 @@ These endpoints provide server-side aggregation for analytics without fetching f
 GET /orders:count
 # Response: {"value": 150}
 
-# Sum total sales
+# Sum total sales (decimal field)
 GET /orders:sum?field=total
 # Response: {"value": 15750.50}
 

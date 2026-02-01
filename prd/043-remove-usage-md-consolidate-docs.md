@@ -340,17 +340,19 @@ go test ./... -v
 
 ## Implementation Checklist
 
-- [ ] Verify `cmd/moon/internal/handlers/templates/doc.md.tmpl` contains all essential content from `USAGE.md`
-- [ ] Delete `USAGE.md` from repository root
-- [ ] Update `README.md` to reference `/doc/` and `/doc/md` endpoints
-- [ ] Remove USAGE.md references from `INSTALL.md`
-- [ ] Remove USAGE.md references from `SPEC.md`
-- [ ] Remove USAGE.md references from `AGENTS.md` (if any)
-- [ ] Search codebase for any remaining `USAGE.md` references
-- [ ] Test documentation endpoints to ensure completeness
-- [ ] Run all tests and ensure 100% pass rate
-- [ ] Review all documentation for clarity, accuracy, and consistency
-- [ ] Update any external references (GitHub wiki, external docs) to point to `/doc/`
+- [x] Verify `cmd/moon/internal/handlers/templates/doc.md.tmpl` contains all essential content from `USAGE.md`
+- [x] Delete `USAGE.md` from repository root
+- [x] Update `README.md` to reference `/doc/` and `/doc/md` endpoints
+- [x] Remove USAGE.md references from `INSTALL.md` (none existed)
+- [x] Remove USAGE.md references from `SPEC.md` (none existed)
+- [x] Remove USAGE.md references from `AGENTS.md` (if any)
+- [x] Search codebase for any remaining `USAGE.md` references
+- [x] Test documentation endpoints to ensure completeness
+- [x] Run all tests and ensure 100% pass rate
+- [x] Review all documentation for clarity, accuracy, and consistency
+- [x] Update any external references (samples/README.md) to point to `/doc/`
+- [x] Ensure all documentation, scripts, and samples (`SPEC.md`, `INSTALL.md`, `README.md`, `install.sh`, and all files in `samples/*`) are updated and remain consistent with the implemented code changes.
+- [x] Ensure all test scripts in `scripts/*.sh` are working properly and up to date with the latest code and API changes.
 
 ---
 

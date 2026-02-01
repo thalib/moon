@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/thalib/moon/cmd/moon/internal/constants"
+	"github.com/thalib/moon/cmd/moon/internal/decimal"
 	"github.com/thalib/moon/cmd/moon/internal/registry"
 	moonulid "github.com/thalib/moon/cmd/moon/internal/ulid"
 )
@@ -197,6 +199,12 @@ func (v *SchemaValidator) ValidateField(fieldName string, value any, column regi
 				return err
 			}
 		}
+	case registry.TypeDecimal:
+		if str, ok := value.(string); ok {
+			if err := v.validateDecimal(fieldName, str); err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil
@@ -263,6 +271,18 @@ func (v *SchemaValidator) validateType(fieldName string, value any, expectedType
 			}
 		}
 
+	case registry.TypeDecimal:
+		// Decimal values are passed as strings in JSON
+		if _, ok := value.(string); !ok {
+			return &ValidationError{
+				Field:        fieldName,
+				Message:      fmt.Sprintf("field '%s' must be a decimal string", fieldName),
+				ExpectedType: string(expectedType),
+				ActualValue:  value,
+				Code:         "INVALID_TYPE",
+			}
+		}
+
 	case registry.TypeJSON:
 		// JSON can be any type (object, array, string, number, boolean, null)
 		// So we just accept any value here
@@ -300,6 +320,19 @@ func (v *SchemaValidator) validateDatetime(fieldName, value string) *ValidationE
 		ActualValue: value,
 		Code:        "INVALID_DATETIME",
 	}
+}
+
+// validateDecimal validates decimal string format and precision
+func (v *SchemaValidator) validateDecimal(fieldName, value string) *ValidationError {
+	if err := decimal.ValidateDecimalStringForField(fieldName, value, constants.DefaultDecimalScale); err != nil {
+		return &ValidationError{
+			Field:       fieldName,
+			Message:     err.Error(),
+			ActualValue: value,
+			Code:        "INVALID_DECIMAL",
+		}
+	}
+	return nil
 }
 
 // Common custom validation rules
