@@ -15,7 +15,9 @@ This PRD implements:
 
 ### Problem Statement
 
-Moon needs a secure, scalable authentication foundation that supports both interactive users (JWT) and machine-to-machine integrations (API keys). The system must be configurable, backward compatible, and follow security best practices.
+Moon requires mandatory authentication for all operations. The system must support both interactive users (JWT) and machine-to-machine integrations (API keys) with role-based access control. Authentication is always enabled and cannot be disabled.
+
+**BREAKING CHANGE:** This introduces mandatory authentication. All API clients must be updated to authenticate.
 
 ### Dependencies
 
@@ -92,12 +94,17 @@ CREATE INDEX idx_apikeys_hash ON apikeys(key_hash);
 
 ### FR-2: Configuration
 
-**FR-2.1: Auth Configuration Structure**
-Add to `config.AppConfig`:
+**FR-2.1: Auth Configuration Removal**
+- Remove `auth.enabled` flag - authentication is always enabled
+- Remove conditional logic for auth toggle
+
+**FR-2.2: JWT Configuration (Required)**
+Update existing `JWTConfig`:
 ```go
-type AuthConfig struct {
-    Enabled       bool                `mapstructure:"enabled"`
-    BootstrapAdmin *BootstrapAdmin    `mapstructure:"bootstrap_admin"`
+type JWTConfig struct {
+    Secret        string `mapstructure:"secret"`        // REQUIRED
+    AccessExpiry  int    `mapstructure:"access_expiry"` // seconds
+    RefreshExpiry int    `mapstructure:"refresh_expiry"` // seconds
 }
 
 type BootstrapAdmin struct {
@@ -107,39 +114,21 @@ type BootstrapAdmin struct {
 }
 ```
 
-**FR-2.2: JWT Configuration Update**
-Update existing `JWTConfig`:
-```go
-type JWTConfig struct {
-    Secret        string `mapstructure:"secret"`
-    AccessExpiry  int    `mapstructure:"access_expiry"`   // seconds
-    RefreshExpiry int    `mapstructure:"refresh_expiry"`  // seconds
-}
-```
-
 **FR-2.3: Configuration Defaults**
 ```go
-Auth: struct {
-    Enabled bool
-    BootstrapAdmin *BootstrapAdmin
-}{
-    Enabled: true,  // Auth enabled by default
-    BootstrapAdmin: nil,
-},
 JWT: struct {
     Secret        string
     AccessExpiry  int
     RefreshExpiry int
 }{
-    Secret:        "",  // Required in config
+    Secret:        "",  // REQUIRED - server won't start without it
     AccessExpiry:  3600,     // 1 hour
     RefreshExpiry: 604800,   // 7 days
 },
+BootstrapAdmin: nil,  // REQUIRED on first startup
 ```
 
 **FR-2.4: Configuration Validation**
-- Validate `auth.enabled` is boolean
-- If `auth.enabled: true`, require `jwt.secret` (min 32 chars)
 - Validate `jwt.access_expiry > 0`
 - Validate `jwt.refresh_expiry > jwt.access_expiry`
 - Validate bootstrap admin fields if present
@@ -284,17 +273,16 @@ type APIKeyRepository interface {
 
 ### FR-6: Bootstrap Admin
 
-**FR-6.1: Bootstrap Logic**
+**FR-6.1: Bootstrap Logic (Required)**
 On server startup:
-1. Check if `auth.enabled: true`
-2. Count admin users
-3. If admin count == 0 and bootstrap config present:
+1. Count admin users in database
+2. If admin count == 0 and bootstrap config present:
    - Create admin user from config
    - Hash bootstrap password
    - Log success: "Bootstrap admin created: {email}"
-4. If admin count == 0 and no bootstrap config:
-   - Log warning: "No admin user exists and no bootstrap config provided"
-5. If admin count > 0:
+3. If admin count == 0 and NO bootstrap config:
+   - **ERROR:** Server fails to start with message: "No admin user exists. Provide auth.bootstrap_admin configuration."
+4. If admin count > 0:
    - Skip bootstrap silently
 
 **FR-6.2: Bootstrap Security**
@@ -310,14 +298,15 @@ func AuthMiddleware(config *AuthConfig, jwtSecret string, userRepo UserRepositor
 ```
 
 **FR-7.2: Authentication Flow**
-1. Skip if `auth.enabled: false`
-2. Check path against unprotected list
+1. Check path against unprotected list (`/health`, `/doc/*`, `/auth:login`, `/auth:refresh`)
+2. If unprotected, skip authentication
 3. Extract JWT from `Authorization: Bearer` header OR API key from `X-API-Key` header
 4. If both present, prioritize JWT
-5. Validate credentials
-6. Load user/key info
-7. Add to request context
-8. Call next handler
+5. If neither present, return 401
+6. Validate credentials
+7. Load user/key info
+8. Add to request context
+9. Call next handler
 
 **FR-7.3: Context Keys**
 ```go

@@ -30,7 +30,7 @@ Both methods support RBAC with:
 - **admin role:** Full system access
 - **user role:** Read access by default, optional write access via `can_write` flag
 
-The system is **opt-in** and controlled via configuration. When disabled (`auth.enabled: false`), all endpoints remain publicly accessible (backward compatible).
+**BREAKING CHANGE:** Authentication is **mandatory** and **always enabled**. All endpoints require authentication (except `/health` and `/doc/*`). There is no backward compatibility mode.
 
 ### Scope
 
@@ -45,9 +45,9 @@ The system is **opt-in** and controlled via configuration. When disabled (`auth.
 - Authentication and authorization middleware
 - Rate limiting per user/API key
 - Audit logging for auth events
-- Configuration toggle (`auth.enabled`)
 - Test scripts for all auth endpoints
 - Documentation updates
+- **BREAKING CHANGE:** Mandatory authentication on all endpoints (no opt-out)
 
 **Out of Scope:**
 - Multi-factor authentication (MFA)
@@ -57,39 +57,28 @@ The system is **opt-in** and controlled via configuration. When disabled (`auth.
 - Social login
 - Session management UI
 - Advanced permission models (ACLs, ABAC)
+- Backward compatibility with unauthenticated access
 
 ---
 
 ## Requirements
 
-### FR-1: Configuration Control
+### FR-1: Configuration
 
-**FR-1.1: Auth Toggle**
-- Configuration field: `auth.enabled` (boolean, default: `true`)
-- When `auth.enabled: false`:
-  - All auth middleware disabled
-  - All auth endpoints return `404 Not Found`
-  - All existing data/collection endpoints remain publicly accessible
-  - System behaves exactly as pre-auth implementation
-- When `auth.enabled: true`:
-  - All auth features enabled
-  - Auth middleware enforces authentication/authorization
-  - Protected endpoints require valid credentials
-
-**FR-1.2: JWT Configuration**
-- Required when `auth.enabled: true`
+**FR-1.1: JWT Configuration (Required)**
 - Configuration fields:
   - `jwt.secret` (string, required): Signing secret (min 32 chars)
   - `jwt.access_expiry` (int, default: 3600): Access token TTL in seconds
   - `jwt.refresh_expiry` (int, default: 604800): Refresh token TTL in seconds
+- Server will not start without valid JWT configuration
 
-**FR-1.3: API Key Configuration**
-- Optional authentication method
+**FR-1.2: API Key Configuration**
+- Optional authentication method (disabled by default)
 - Configuration fields:
   - `apikey.enabled` (bool, default: false): Enable API key auth
   - `apikey.header` (string, default: "X-API-Key"): HTTP header name
 
-**FR-1.4: Rate Limiting Configuration**
+**FR-1.3: Rate Limiting Configuration**
 - Configuration fields:
   - `auth.rate_limit.user_rpm` (int, default: 100): Requests/min for JWT users
   - `auth.rate_limit.apikey_rpm` (int, default: 1000): Requests/min for API keys
@@ -241,12 +230,12 @@ All endpoints follow AIP-136 custom actions pattern.
 - Return 429 when limit exceeded
 
 **FR-6.4: Protected Endpoints**
-When `auth.enabled: true`:
-- **Public:** `/health`, `/auth:login`, `/auth:refresh`, `/doc/*`
-- **Authenticated:** All data, collection, and aggregation endpoints
-- **Admin Only:** `/users:*`, `/apikeys:*`
+- **Public (No Auth):** `/health`, `/doc/*` only
+- **Public (Auth Required):** `/auth:login`, `/auth:refresh`
+- **Authenticated (Any Role):** `/auth:logout`, `/auth:me`, all data/collection read endpoints
+- **Admin Only:** `/users:*`, `/apikeys:*`, `/collections:create`, `/collections:update`, `/collections:destroy`
 - **User (can_write: false):** Read-only access to collections/data
-- **User (can_write: true):** Read + write access to data (not collections)
+- **User (can_write: true):** Read + write access to data (cannot manage collections)
 
 ### FR-7: Audit Logging
 
@@ -299,27 +288,31 @@ When `auth.enabled: true`:
 
 ## Acceptance Criteria
 
-### AC-1: Configuration Toggle
+### AC-1: Mandatory Authentication
 
 **Verification:**
-- [ ] When `auth.enabled: false`, all endpoints publicly accessible
-- [ ] When `auth.enabled: false`, auth endpoints return 404
-- [ ] When `auth.enabled: true`, protected endpoints require auth
-- [ ] Configuration validated on startup
+- [ ] Server requires `jwt.secret` to start
+- [ ] Server requires bootstrap admin config on first run
+- [ ] Protected endpoints return 401 without auth
+- [ ] Public endpoints accessible without auth: `/health`, `/doc/*`
 
 **Test:**
 ```bash
-# Disable auth
-echo "auth:\n  enabled: false" >> moon.conf
+# Start without JWT secret
+./moon --config moon-no-secret.conf
+# Expected: Error "jwt.secret is required"
+
+# Start with valid config
 ./moon --config moon.conf
+# Expected: Success
 
-# Verify no auth required
+# Try to access protected endpoint without auth
 curl http://localhost:6006/collections:list
-# Returns 200 OK
+# Expected: 401 Unauthorized
 
-# Verify auth endpoints disabled
-curl -X POST http://localhost:6006/auth:login
-# Returns 404 Not Found
+# Access public endpoint
+curl http://localhost:6006/health
+# Expected: 200 OK
 ```
 
 ### AC-2: Bootstrap Admin Creation
@@ -431,18 +424,29 @@ curl -X POST http://localhost:6006/auth:login \
 - [ ] samples/moon.conf includes auth config with comments
 - [ ] API doc endpoint includes auth information
 
-### AC-10: Backward Compatibility
+### AC-10: Breaking Changes Acknowledged
 
 **Verification:**
-- [ ] Existing tests pass with auth disabled
-- [ ] No breaking changes to existing endpoints
-- [ ] No compilation warnings introduced
-- [ ] Performance unchanged for non-auth operations
+- [ ] All endpoints (except `/health`, `/doc/*`) require authentication
+- [ ] Bootstrap admin must be created on first startup
+- [ ] API clients must be updated to include authentication
+- [ ] Documentation clearly states breaking change
 
 **Test:**
 ```bash
-# Run full test suite with auth disabled
-AUTH_ENABLED=false go test ./...
+# Verify all protected endpoints return 401
+curl http://localhost:6006/collections:list
+# Expected: 401
+
+curl http://localhost:6006/products:list
+# Expected: 401
+
+# Verify public endpoints work
+curl http://localhost:6006/health
+# Expected: 200
+
+curl http://localhost:6006/doc/
+# Expected: 200
 ```
 
 ---
