@@ -48,14 +48,25 @@ For example, consider the table `products` below.
 
 ## Authentication 
 
-This feature is [TODO]
-
-{{if or .JWTEnabled .APIKeyEnabled}}This API requires authentication for most endpoints.
+{{if or .JWTEnabled .APIKeyEnabled}}This API requires authentication for all endpoints except `/health`.
 
 {{if .JWTEnabled}}**JWT Authentication:** Include a bearer token in the Authorization header:
 
 ```
 Authorization: Bearer <your-jwt-token>
+```
+
+To use the examples below, first login and store your token:
+
+```bash
+# Login and save token to environment variable
+TOKEN=$(curl -s -X POST "{{$ApiURL}}/auth:login" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"moonadmin12#"}' | jq -r '.access_token')
+
+# Use in subsequent requests
+curl -s "{{$ApiURL}}/collections:list" \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
 {{end}}{{if .APIKeyEnabled}}**API Key Authentication:** Include your API key in the {{.APIKeyHeader}} header:
@@ -191,7 +202,7 @@ curl -X POST "{{$ApiURL}}/auth:me" \
 curl -X POST "{{$ApiURL}}/auth:me" \
   -H "Authorization: Bearer <access_token>" \
   -H "Content-Type: application/json" \
-  -d '{"current_password":"moonadmin12#","new_password":"NewSecurePass456"}'
+  -d '{"old_password":"moonadmin12#","password":"NewSecurePass456"}'
 ```
 
 ## User Management Endpoints
@@ -277,6 +288,13 @@ curl -X POST "{{$ApiURL}}/apikeys:destroy?id=APIKeyULID" \
 
 These endpoints manage database tables (collections) and their schemas.
 
+***Note:*** All collection and data endpoints require authentication. The examples below use `$TOKEN` - set it first by running:
+```bash
+TOKEN=$(curl -s -X POST "{{$ApiURL}}/auth:login" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"moonadmin12#"}' | jq -r '.access_token')
+```
+
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `{{.Prefix}}/collections:list` | GET | List all collections |
@@ -288,13 +306,15 @@ These endpoints manage database tables (collections) and their schemas.
 **List Collections**
 
 ```bash
-curl -s {{$ApiURL}}/collections:list | jq .
+curl -s {{$ApiURL}}/collections:list \
+  -H "Authorization: Bearer $TOKEN" | jq .
 ```
 
 **Create a Collection**
 
 ```bash
 curl -X POST "{{$ApiURL}}/collections:create" \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "products",
@@ -309,7 +329,8 @@ curl -X POST "{{$ApiURL}}/collections:create" \
 **Get Collection Schema**
 
 ```bash
-curl -s {{$ApiURL}}/collections:get?name=products | jq .
+curl -s {{$ApiURL}}/collections:get?name=products \
+  -H "Authorization: Bearer $TOKEN" | jq .
 ```
 
 **Update a Collection Schema**
@@ -324,7 +345,8 @@ Update collection schemas using one or more of the following operations:
 Add new columns:
 
 ```bash
-curl -s -X POST "http://localhost:6006/collections:update" \
+curl -s -X POST "{{$ApiURL}}/collections:update" \
+	-H "Authorization: Bearer $TOKEN" \
 	-H "Content-Type: application/json" \
 	-d '{
 		"name": "products",
@@ -339,6 +361,7 @@ Rename existing columns:
 
 ```bash
 curl -s -X POST "{{$ApiURL}}/collections:update" \
+	-H "Authorization: Bearer $TOKEN" \
 	-H "Content-Type: application/json" \
 	-d '{
 		"name": "products",
@@ -352,6 +375,7 @@ Modify existing columns' data types or attributes:
 
 ```bash
 curl -s -X POST "{{$ApiURL}}/collections:update" \
+	-H "Authorization: Bearer $TOKEN" \
 	-H "Content-Type: application/json" \
 	-d '{
 		"name": "products",
@@ -365,6 +389,7 @@ Remove existing columns:
 
 ```bash
 curl -s -X POST "{{$ApiURL}}/collections:update" \
+	-H "Authorization: Bearer $TOKEN" \
 	-H "Content-Type: application/json" \
 	-d '{
 		"name": "products",
@@ -376,6 +401,7 @@ Combine multiple operations:
 
 ```bash
 curl -s -X POST "{{$ApiURL}}/collections:update" \
+	-H "Authorization: Bearer $TOKEN" \
 	-H "Content-Type: application/json" \
 	-d '{
 		"name": "products",
@@ -395,6 +421,7 @@ curl -s -X POST "{{$ApiURL}}/collections:update" \
 
 ```bash
 curl -X POST "{{$ApiURL}}/collections:destroy" \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"name": "products"}' | jq .
 ```
@@ -414,13 +441,15 @@ These endpoints manage records within a specific collection. Replace `{collectio
 **List All Records**
 
 ```bash
-curl -s "{{$ApiURL}}/products:list" | jq .
+curl -s "{{$ApiURL}}/products:list" \
+  -H "Authorization: Bearer $TOKEN" | jq .
 ```
 
 **Create a New Record**
 
 ```bash
 curl -s -X POST "{{$ApiURL}}/products:create" \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "data": {
@@ -436,25 +465,29 @@ curl -s -X POST "{{$ApiURL}}/products:create" \
 **Get a Single Record**
 
 ```bash
-curl -s "{{$ApiURL}}/products:get?id=ItemID" | jq .
+# First, get the ID from a list or create operation, then:
+curl -s "{{$ApiURL}}/products:get?id=<RECORD_ID>" \
+  -H "Authorization: Bearer $TOKEN" | jq .
 ```
 
-Note: Replace the `id` value with the actual record ID.
+***Note:*** Replace `<RECORD_ID>` with an actual record ID from your data (e.g., `01KGD5E74RYS0WTNARQC92S1P7`).
 
 **Update an Existing Record**
 
 ```bash
 curl -s -X POST "{{$ApiURL}}/products:update" \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"id":"ItemID","data":{"price":"6000.00"}}' | jq .
+  -d '{"id":"<RECORD_ID>","data":{"price":"6000.00"}}' | jq .
 ```
 
 **Delete a Record**
 
 ```bash
 curl -s -X POST "{{$ApiURL}}/products:destroy" \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"id":"ItemID"}' | jq .
+  -d '{"id":"<RECORD_ID>"}' | jq .
 ```
 
 ---
@@ -464,7 +497,8 @@ curl -s -X POST "{{$ApiURL}}/products:destroy" \
 **Filtering:** `?column[operator]=value` 
 
 ```bash
-curl -g "{{$ApiURL}}/products:list?quantity[gt]=100&brand[eq]=Wow" | jq .
+curl -g "{{$ApiURL}}/products:list?quantity[gt]=5&brand[eq]=Wow" \
+  -H "Authorization: Bearer $TOKEN" | jq .
 ```
 
 **Operators:** `eq`, `ne`, `gt`, `lt`, `gte`, `lte`, `like`, `in`
@@ -472,7 +506,8 @@ curl -g "{{$ApiURL}}/products:list?quantity[gt]=100&brand[eq]=Wow" | jq .
 **Sorting:** `?sort={-field1,field2}` 
 
 ```bash
-curl {{$ApiURL}}/products:list?sort=-quantity,title | jq .
+curl "{{$ApiURL}}/products:list?sort=-quantity,title" \
+  -H "Authorization: Bearer $TOKEN" | jq .
 ```
 
 Sort by `field` (ascending) or `-field` (descending).
@@ -480,25 +515,29 @@ Sort by `field` (ascending) or `-field` (descending).
 **Full-Text Search:** `?q={search_term}` (across all text columns)
 
 ```bash
-curl {{$ApiURL}}/products:list?q=mouse | jq .
+curl "{{$ApiURL}}/products:list?q=mouse" \
+  -H "Authorization: Bearer $TOKEN" | jq .
 ```
 
 **Field Selection:** `?fields={field1,field2}`
 
 ```bash
-curl {{$ApiURL}}/products:list?fields=quantity,title | jq .
+curl "{{$ApiURL}}/products:list?fields=quantity,title" \
+  -H "Authorization: Bearer $TOKEN" | jq .
 ```
 
 **Limit:** `?limit={limit}`
 
 ```bash
-curl {{$ApiURL}}/products:list?limit=2 | jq .
+curl "{{$ApiURL}}/products:list?limit=2" \
+  -H "Authorization: Bearer $TOKEN" | jq .
 ```
 
 **Pagination:** `?after={cursor}` (Response includes `next_cursor` when more results are available.)
 
 ```bash
-curl {{$ApiURL}}/products:list?after=01ARZ3NDEKTSV4RRFFQ69G5FBX&limit=10 | jq .
+curl "{{$ApiURL}}/products:list?after=01ARZ3NDEKTSV4RRFFQ69G5FBX&limit=10" \
+  -H "Authorization: Bearer $TOKEN" | jq .
 ```
 
 ---
@@ -519,32 +558,39 @@ Server-side aggregation endpoints for analytics. Replace `{collection}` with you
 **Count Records:** `:count`
 
 ```bash
-curl {{$ApiURL}}/products:count | jq .
+curl "{{$ApiURL}}/products:count" \
+  -H "Authorization: Bearer $TOKEN" | jq .
 ```
 
 **Sum Numeric Field:** `:sum?field={field_name}`
 
 ```bash
-curl {{$ApiURL}}/products:sum?field=quantity | jq .
+curl "{{$ApiURL}}/products:sum?field=quantity" \
+  -H "Authorization: Bearer $TOKEN" | jq .
 ```
 
 **Average Numeric Field:** `:avg?field={field_name}`
 
 ```bash
-curl {{$ApiURL}}/products:avg?field=quantity | jq .
+curl "{{$ApiURL}}/products:avg?field=quantity" \
+  -H "Authorization: Bearer $TOKEN" | jq .
 ```
 
 **Minimum Value:** `:min?field={field_name}`
 
 ```bash
-curl {{$ApiURL}}/products:min?field=price | jq .
+curl "{{$ApiURL}}/products:min?field=quantity" \
+  -H "Authorization: Bearer $TOKEN" | jq .
 ```
 
 **Maximum Value:** `:max?field={field_name}`
 
 ```bash
-curl {{$ApiURL}}/products:max?field=price | jq .
+curl "{{$ApiURL}}/products:max?field=quantity" \
+  -H "Authorization: Bearer $TOKEN" | jq .
 ```
+
+***Note:*** Aggregation functions (sum, avg, min, max) only work on numeric fields (`integer` and `decimal` types). In the examples above, `price` was changed to `string` type during schema updates, so we use `quantity` for min/max demonstrations.
 
 ---
 
@@ -554,13 +600,14 @@ View HTML documentation in your browser: [{{$ApiURL}}/doc/]({{$ApiURL}}/doc/)
 
 Get Markdown documentation (for humans and AI coding agents) via curl:
 ```bash
-curl {{$ApiURL}}/doc/md
+curl "{{$ApiURL}}/doc/md"
 ```
 Or view in browser: [{{$ApiURL}}/doc/md]({{$ApiURL}}/doc/md)
 
 Refresh documentation cache:
 ```bash
-curl -X POST {{$ApiURL}}/doc:refresh
+curl -X POST "{{$ApiURL}}/doc:refresh" \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
 ---
