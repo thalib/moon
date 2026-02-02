@@ -4,8 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"time"
 	"github.com/thalib/moon/cmd/moon/internal/constants"
+	"time"
 
 	"github.com/thalib/moon/cmd/moon/internal/database"
 	moonulid "github.com/thalib/moon/cmd/moon/internal/ulid"
@@ -36,7 +36,10 @@ func (r *UserRepository) Create(ctx context.Context, user *User) error {
 			user.ULID, user.Username, user.Email, user.PasswordHash,
 			user.Role, user.CanWrite, user.CreatedAt, user.UpdatedAt,
 		).Scan(&user.ID)
-		return err
+		if err != nil {
+			return fmt.Errorf("failed to create user: %w", err)
+		}
+		return nil
 	default:
 		query = fmt.Sprintf(`INSERT INTO %s (ulid, username, email, password_hash, role, can_write, created_at, updated_at)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, constants.TableUsers)
@@ -45,11 +48,11 @@ func (r *UserRepository) Create(ctx context.Context, user *User) error {
 			user.Role, user.CanWrite, user.CreatedAt, user.UpdatedAt,
 		)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to create user: %w", err)
 		}
 		id, err := result.LastInsertId()
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to get user ID: %w", err)
 		}
 		user.ID = id
 		return nil

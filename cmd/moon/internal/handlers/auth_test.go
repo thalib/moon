@@ -577,237 +577,237 @@ func TestNewAuthHandler(t *testing.T) {
 }
 
 func TestAuthHandler_Login_RateLimiting(t *testing.T) {
-// Create in-memory SQLite database
-cfg := database.Config{
-ConnectionString: "sqlite://:memory:",
-MaxOpenConns:     1,
-MaxIdleConns:     1,
-}
+	// Create in-memory SQLite database
+	cfg := database.Config{
+		ConnectionString: "sqlite://:memory:",
+		MaxOpenConns:     1,
+		MaxIdleConns:     1,
+	}
 
-db, err := database.NewDriver(cfg)
-if err != nil {
-t.Fatalf("failed to create database driver: %v", err)
-}
-defer db.Close()
+	db, err := database.NewDriver(cfg)
+	if err != nil {
+		t.Fatalf("failed to create database driver: %v", err)
+	}
+	defer db.Close()
 
-ctx := context.Background()
-if err := db.Connect(ctx); err != nil {
-t.Fatalf("failed to connect to database: %v", err)
-}
+	ctx := context.Background()
+	if err := db.Connect(ctx); err != nil {
+		t.Fatalf("failed to connect to database: %v", err)
+	}
 
-// Initialize auth schema
-if err := auth.Bootstrap(ctx, db, nil); err != nil {
-t.Fatalf("failed to bootstrap auth: %v", err)
-}
+	// Initialize auth schema
+	if err := auth.Bootstrap(ctx, db, nil); err != nil {
+		t.Fatalf("failed to bootstrap auth: %v", err)
+	}
 
-// Create handler with strict rate limiting (2 attempts per 60 seconds)
-handler := NewAuthHandlerWithRateLimiter(db, "test-secret-key", 3600, 604800, 2, 60)
+	// Create handler with strict rate limiting (2 attempts per 60 seconds)
+	handler := NewAuthHandlerWithRateLimiter(db, "test-secret-key", 3600, 604800, 2, 60)
 
-// Create a test user
-passwordHash, _ := auth.HashPassword("testpassword123")
-userRepo := auth.NewUserRepository(db)
-user := &auth.User{
-Username:     "rateLimitUser",
-Email:        "ratelimit@example.com",
-PasswordHash: passwordHash,
-Role:         "user",
-CanWrite:     true,
-}
-if err := userRepo.Create(ctx, user); err != nil {
-t.Fatalf("failed to create test user: %v", err)
-}
+	// Create a test user
+	passwordHash, _ := auth.HashPassword("testpassword123")
+	userRepo := auth.NewUserRepository(db)
+	user := &auth.User{
+		Username:     "rateLimitUser",
+		Email:        "ratelimit@example.com",
+		PasswordHash: passwordHash,
+		Role:         "user",
+		CanWrite:     true,
+	}
+	if err := userRepo.Create(ctx, user); err != nil {
+		t.Fatalf("failed to create test user: %v", err)
+	}
 
-// Make 2 failed login attempts
-for i := 0; i < 2; i++ {
-body := LoginRequest{
-Username: "rateLimitUser",
-Password: "wrongpassword",
-}
-bodyBytes, _ := json.Marshal(body)
+	// Make 2 failed login attempts
+	for i := 0; i < 2; i++ {
+		body := LoginRequest{
+			Username: "rateLimitUser",
+			Password: "wrongpassword",
+		}
+		bodyBytes, _ := json.Marshal(body)
 
-req := httptest.NewRequest(http.MethodPost, "/auth:login", bytes.NewReader(bodyBytes))
-req.Header.Set("Content-Type", "application/json")
-req.RemoteAddr = "192.168.1.100:12345"
-w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, "/auth:login", bytes.NewReader(bodyBytes))
+		req.Header.Set("Content-Type", "application/json")
+		req.RemoteAddr = "192.168.1.100:12345"
+		w := httptest.NewRecorder()
 
-handler.Login(w, req)
+		handler.Login(w, req)
 
-if w.Code != http.StatusUnauthorized {
-t.Errorf("Failed login attempt %d: expected status %d, got %d", i+1, http.StatusUnauthorized, w.Code)
-}
-}
+		if w.Code != http.StatusUnauthorized {
+			t.Errorf("Failed login attempt %d: expected status %d, got %d", i+1, http.StatusUnauthorized, w.Code)
+		}
+	}
 
-// 3rd attempt should be rate limited
-body := LoginRequest{
-Username: "rateLimitUser",
-Password: "wrongpassword",
-}
-bodyBytes, _ := json.Marshal(body)
+	// 3rd attempt should be rate limited
+	body := LoginRequest{
+		Username: "rateLimitUser",
+		Password: "wrongpassword",
+	}
+	bodyBytes, _ := json.Marshal(body)
 
-req := httptest.NewRequest(http.MethodPost, "/auth:login", bytes.NewReader(bodyBytes))
-req.Header.Set("Content-Type", "application/json")
-req.RemoteAddr = "192.168.1.100:12345"
-w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/auth:login", bytes.NewReader(bodyBytes))
+	req.Header.Set("Content-Type", "application/json")
+	req.RemoteAddr = "192.168.1.100:12345"
+	w := httptest.NewRecorder()
 
-handler.Login(w, req)
+	handler.Login(w, req)
 
-if w.Code != http.StatusTooManyRequests {
-t.Errorf("Rate limited login: expected status %d, got %d, body: %s", http.StatusTooManyRequests, w.Code, w.Body.String())
-}
+	if w.Code != http.StatusTooManyRequests {
+		t.Errorf("Rate limited login: expected status %d, got %d, body: %s", http.StatusTooManyRequests, w.Code, w.Body.String())
+	}
 }
 
 func TestAuthHandler_Login_RateLimitReset(t *testing.T) {
-// Create in-memory SQLite database
-cfg := database.Config{
-ConnectionString: "sqlite://:memory:",
-MaxOpenConns:     1,
-MaxIdleConns:     1,
-}
+	// Create in-memory SQLite database
+	cfg := database.Config{
+		ConnectionString: "sqlite://:memory:",
+		MaxOpenConns:     1,
+		MaxIdleConns:     1,
+	}
 
-db, err := database.NewDriver(cfg)
-if err != nil {
-t.Fatalf("failed to create database driver: %v", err)
-}
-defer db.Close()
+	db, err := database.NewDriver(cfg)
+	if err != nil {
+		t.Fatalf("failed to create database driver: %v", err)
+	}
+	defer db.Close()
 
-ctx := context.Background()
-if err := db.Connect(ctx); err != nil {
-t.Fatalf("failed to connect to database: %v", err)
-}
+	ctx := context.Background()
+	if err := db.Connect(ctx); err != nil {
+		t.Fatalf("failed to connect to database: %v", err)
+	}
 
-// Initialize auth schema
-if err := auth.Bootstrap(ctx, db, nil); err != nil {
-t.Fatalf("failed to bootstrap auth: %v", err)
-}
+	// Initialize auth schema
+	if err := auth.Bootstrap(ctx, db, nil); err != nil {
+		t.Fatalf("failed to bootstrap auth: %v", err)
+	}
 
-// Create handler with strict rate limiting (3 attempts per 60 seconds)
-handler := NewAuthHandlerWithRateLimiter(db, "test-secret-key", 3600, 604800, 3, 60)
+	// Create handler with strict rate limiting (3 attempts per 60 seconds)
+	handler := NewAuthHandlerWithRateLimiter(db, "test-secret-key", 3600, 604800, 3, 60)
 
-// Create a test user
-passwordHash, _ := auth.HashPassword("correctpassword")
-userRepo := auth.NewUserRepository(db)
-user := &auth.User{
-Username:     "resetUser",
-Email:        "reset@example.com",
-PasswordHash: passwordHash,
-Role:         "user",
-CanWrite:     true,
-}
-if err := userRepo.Create(ctx, user); err != nil {
-t.Fatalf("failed to create test user: %v", err)
-}
+	// Create a test user
+	passwordHash, _ := auth.HashPassword("correctpassword")
+	userRepo := auth.NewUserRepository(db)
+	user := &auth.User{
+		Username:     "resetUser",
+		Email:        "reset@example.com",
+		PasswordHash: passwordHash,
+		Role:         "user",
+		CanWrite:     true,
+	}
+	if err := userRepo.Create(ctx, user); err != nil {
+		t.Fatalf("failed to create test user: %v", err)
+	}
 
-// Make 2 failed login attempts
-for i := 0; i < 2; i++ {
-body := LoginRequest{
-Username: "resetUser",
-Password: "wrongpassword",
-}
-bodyBytes, _ := json.Marshal(body)
+	// Make 2 failed login attempts
+	for i := 0; i < 2; i++ {
+		body := LoginRequest{
+			Username: "resetUser",
+			Password: "wrongpassword",
+		}
+		bodyBytes, _ := json.Marshal(body)
 
-req := httptest.NewRequest(http.MethodPost, "/auth:login", bytes.NewReader(bodyBytes))
-req.Header.Set("Content-Type", "application/json")
-req.RemoteAddr = "192.168.1.200:12345"
-w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, "/auth:login", bytes.NewReader(bodyBytes))
+		req.Header.Set("Content-Type", "application/json")
+		req.RemoteAddr = "192.168.1.200:12345"
+		w := httptest.NewRecorder()
 
-handler.Login(w, req)
-}
+		handler.Login(w, req)
+	}
 
-// Successful login should reset the counter
-body := LoginRequest{
-Username: "resetUser",
-Password: "correctpassword",
-}
-bodyBytes, _ := json.Marshal(body)
+	// Successful login should reset the counter
+	body := LoginRequest{
+		Username: "resetUser",
+		Password: "correctpassword",
+	}
+	bodyBytes, _ := json.Marshal(body)
 
-req := httptest.NewRequest(http.MethodPost, "/auth:login", bytes.NewReader(bodyBytes))
-req.Header.Set("Content-Type", "application/json")
-req.RemoteAddr = "192.168.1.200:12345"
-w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/auth:login", bytes.NewReader(bodyBytes))
+	req.Header.Set("Content-Type", "application/json")
+	req.RemoteAddr = "192.168.1.200:12345"
+	w := httptest.NewRecorder()
 
-handler.Login(w, req)
+	handler.Login(w, req)
 
-if w.Code != http.StatusOK {
-t.Errorf("Successful login: expected status %d, got %d, body: %s", http.StatusOK, w.Code, w.Body.String())
-}
+	if w.Code != http.StatusOK {
+		t.Errorf("Successful login: expected status %d, got %d, body: %s", http.StatusOK, w.Code, w.Body.String())
+	}
 
-// After successful login, failed attempts should work again from scratch
-for i := 0; i < 2; i++ {
-body := LoginRequest{
-Username: "resetUser",
-Password: "wrongpassword",
-}
-bodyBytes, _ := json.Marshal(body)
+	// After successful login, failed attempts should work again from scratch
+	for i := 0; i < 2; i++ {
+		body := LoginRequest{
+			Username: "resetUser",
+			Password: "wrongpassword",
+		}
+		bodyBytes, _ := json.Marshal(body)
 
-req := httptest.NewRequest(http.MethodPost, "/auth:login", bytes.NewReader(bodyBytes))
-req.Header.Set("Content-Type", "application/json")
-req.RemoteAddr = "192.168.1.200:12345"
-w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, "/auth:login", bytes.NewReader(bodyBytes))
+		req.Header.Set("Content-Type", "application/json")
+		req.RemoteAddr = "192.168.1.200:12345"
+		w := httptest.NewRecorder()
 
-handler.Login(w, req)
+		handler.Login(w, req)
 
-// Should be 401 Unauthorized, not 429 Too Many Requests
-if w.Code != http.StatusUnauthorized {
-t.Errorf("Failed login attempt after reset %d: expected status %d, got %d", i+1, http.StatusUnauthorized, w.Code)
-}
-}
+		// Should be 401 Unauthorized, not 429 Too Many Requests
+		if w.Code != http.StatusUnauthorized {
+			t.Errorf("Failed login attempt after reset %d: expected status %d, got %d", i+1, http.StatusUnauthorized, w.Code)
+		}
+	}
 }
 
 func TestGetClientIP(t *testing.T) {
-tests := []struct {
-name        string
-remoteAddr  string
-xForwarded  string
-xRealIP     string
-expectedIP  string
-}{
-{
-name:       "Remote addr only",
-remoteAddr: "192.168.1.1:12345",
-expectedIP: "192.168.1.1",
-},
-{
-name:        "X-Forwarded-For single",
-remoteAddr:  "10.0.0.1:12345",
-xForwarded:  "203.0.113.195",
-expectedIP:  "203.0.113.195",
-},
-{
-name:        "X-Forwarded-For multiple",
-remoteAddr:  "10.0.0.1:12345",
-xForwarded:  "203.0.113.195, 70.41.3.18, 150.172.238.178",
-expectedIP:  "203.0.113.195",
-},
-{
-name:       "X-Real-IP",
-remoteAddr: "10.0.0.1:12345",
-xRealIP:    "203.0.113.100",
-expectedIP: "203.0.113.100",
-},
-{
-name:        "X-Forwarded-For takes precedence over X-Real-IP",
-remoteAddr:  "10.0.0.1:12345",
-xForwarded:  "203.0.113.195",
-xRealIP:     "203.0.113.100",
-expectedIP:  "203.0.113.195",
-},
-}
+	tests := []struct {
+		name       string
+		remoteAddr string
+		xForwarded string
+		xRealIP    string
+		expectedIP string
+	}{
+		{
+			name:       "Remote addr only",
+			remoteAddr: "192.168.1.1:12345",
+			expectedIP: "192.168.1.1",
+		},
+		{
+			name:       "X-Forwarded-For single",
+			remoteAddr: "10.0.0.1:12345",
+			xForwarded: "203.0.113.195",
+			expectedIP: "203.0.113.195",
+		},
+		{
+			name:       "X-Forwarded-For multiple",
+			remoteAddr: "10.0.0.1:12345",
+			xForwarded: "203.0.113.195, 70.41.3.18, 150.172.238.178",
+			expectedIP: "203.0.113.195",
+		},
+		{
+			name:       "X-Real-IP",
+			remoteAddr: "10.0.0.1:12345",
+			xRealIP:    "203.0.113.100",
+			expectedIP: "203.0.113.100",
+		},
+		{
+			name:       "X-Forwarded-For takes precedence over X-Real-IP",
+			remoteAddr: "10.0.0.1:12345",
+			xForwarded: "203.0.113.195",
+			xRealIP:    "203.0.113.100",
+			expectedIP: "203.0.113.195",
+		},
+	}
 
-for _, tt := range tests {
-t.Run(tt.name, func(t *testing.T) {
-req := httptest.NewRequest(http.MethodPost, "/test", nil)
-req.RemoteAddr = tt.remoteAddr
-if tt.xForwarded != "" {
-req.Header.Set("X-Forwarded-For", tt.xForwarded)
-}
-if tt.xRealIP != "" {
-req.Header.Set("X-Real-IP", tt.xRealIP)
-}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/test", nil)
+			req.RemoteAddr = tt.remoteAddr
+			if tt.xForwarded != "" {
+				req.Header.Set("X-Forwarded-For", tt.xForwarded)
+			}
+			if tt.xRealIP != "" {
+				req.Header.Set("X-Real-IP", tt.xRealIP)
+			}
 
-ip := getClientIP(req)
-if ip != tt.expectedIP {
-t.Errorf("getClientIP() = %s, want %s", ip, tt.expectedIP)
-}
-})
-}
+			ip := getClientIP(req)
+			if ip != tt.expectedIP {
+				t.Errorf("getClientIP() = %s, want %s", ip, tt.expectedIP)
+			}
+		})
+	}
 }

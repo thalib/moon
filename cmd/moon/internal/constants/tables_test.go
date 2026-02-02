@@ -12,6 +12,7 @@ func TestTableConstants(t *testing.T) {
 		{"Users table", TableUsers, "moon_users"},
 		{"Refresh tokens table", TableRefreshTokens, "moon_refresh_tokens"},
 		{"API keys table", TableAPIKeys, "moon_apikeys"},
+		{"Blacklisted tokens table", TableBlacklistedTokens, "moon_blacklisted_tokens"},
 	}
 
 	for _, tt := range tests {
@@ -29,6 +30,7 @@ func TestSystemTables(t *testing.T) {
 		"moon_users",
 		"moon_refresh_tokens",
 		"moon_apikeys",
+		"moon_blacklisted_tokens",
 	}
 
 	if len(SystemTables) != len(expectedTables) {
@@ -58,6 +60,7 @@ func TestIsSystemTable(t *testing.T) {
 		{"Users table is system", "moon_users", true},
 		{"Refresh tokens table is system", "moon_refresh_tokens", true},
 		{"API keys table is system", "moon_apikeys", true},
+		{"Blacklisted tokens table is system", "moon_blacklisted_tokens", true},
 		{"Regular table is not system", "products", false},
 		{"Regular table with moon prefix is not system", "moon_products", false},
 		{"Empty string is not system", "", false},

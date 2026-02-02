@@ -6,8 +6,8 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"fmt"
-	"time"
 	"github.com/thalib/moon/cmd/moon/internal/constants"
+	"time"
 
 	"github.com/thalib/moon/cmd/moon/internal/database"
 )
@@ -41,7 +41,10 @@ func (r *RefreshTokenRepository) Create(ctx context.Context, token *RefreshToken
 		err := r.db.QueryRow(ctx, query,
 			token.UserID, token.TokenHash, token.ExpiresAt, token.CreatedAt, token.LastUsedAt,
 		).Scan(&token.ID)
-		return err
+		if err != nil {
+			return fmt.Errorf("failed to create refresh token: %w", err)
+		}
+		return nil
 	default:
 		query = fmt.Sprintf(`INSERT INTO %s (user_id, token_hash, expires_at, created_at, last_used_at)
 			VALUES (?, ?, ?, ?, ?)`, constants.TableRefreshTokens)
@@ -49,11 +52,11 @@ func (r *RefreshTokenRepository) Create(ctx context.Context, token *RefreshToken
 			token.UserID, token.TokenHash, token.ExpiresAt, token.CreatedAt, token.LastUsedAt,
 		)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to create refresh token: %w", err)
 		}
 		id, err := result.LastInsertId()
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to get refresh token ID: %w", err)
 		}
 		token.ID = id
 		return nil

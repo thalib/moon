@@ -26,10 +26,10 @@ type AuthHandler struct {
 // NewAuthHandler creates a new auth handler.
 func NewAuthHandler(db database.Driver, jwtSecret string, accessExpiry, refreshExpiry int) *AuthHandler {
 	return &AuthHandler{
-		db:           db,
-		userRepo:     auth.NewUserRepository(db),
-		tokenRepo:    auth.NewRefreshTokenRepository(db),
-		tokenService: auth.NewTokenService(jwtSecret, accessExpiry, refreshExpiry),
+		db:             db,
+		userRepo:       auth.NewUserRepository(db),
+		tokenRepo:      auth.NewRefreshTokenRepository(db),
+		tokenService:   auth.NewTokenService(jwtSecret, accessExpiry, refreshExpiry),
 		tokenBlacklist: auth.NewTokenBlacklist(db),
 		loginRateLimiter: middleware.NewLoginRateLimiter(middleware.LoginRateLimiterConfig{
 			MaxAttempts:   5,   // 5 failed attempts
@@ -41,10 +41,10 @@ func NewAuthHandler(db database.Driver, jwtSecret string, accessExpiry, refreshE
 // NewAuthHandlerWithRateLimiter creates a new auth handler with custom rate limiter config.
 func NewAuthHandlerWithRateLimiter(db database.Driver, jwtSecret string, accessExpiry, refreshExpiry, maxAttempts, windowSeconds int) *AuthHandler {
 	return &AuthHandler{
-		db:           db,
-		userRepo:     auth.NewUserRepository(db),
-		tokenRepo:    auth.NewRefreshTokenRepository(db),
-		tokenService: auth.NewTokenService(jwtSecret, accessExpiry, refreshExpiry),
+		db:             db,
+		userRepo:       auth.NewUserRepository(db),
+		tokenRepo:      auth.NewRefreshTokenRepository(db),
+		tokenService:   auth.NewTokenService(jwtSecret, accessExpiry, refreshExpiry),
 		tokenBlacklist: auth.NewTokenBlacklist(db),
 		loginRateLimiter: middleware.NewLoginRateLimiter(middleware.LoginRateLimiterConfig{
 			MaxAttempts:   maxAttempts,

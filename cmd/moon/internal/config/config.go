@@ -243,12 +243,12 @@ type RecoveryConfig struct {
 
 // CORSConfig holds CORS (Cross-Origin Resource Sharing) configuration.
 type CORSConfig struct {
-	Enabled          bool     `mapstructure:"enabled"`            // enable CORS support (default: false for security)
-	AllowedOrigins   []string `mapstructure:"allowed_origins"`    // list of allowed origins (e.g., ["https://example.com"])
-	AllowedMethods   []string `mapstructure:"allowed_methods"`    // list of allowed HTTP methods
-	AllowedHeaders   []string `mapstructure:"allowed_headers"`    // list of allowed request headers
-	AllowCredentials bool     `mapstructure:"allow_credentials"`  // allow credentials (cookies, auth headers)
-	MaxAge           int      `mapstructure:"max_age"`            // preflight cache duration in seconds
+	Enabled          bool     `mapstructure:"enabled"`           // enable CORS support (default: false for security)
+	AllowedOrigins   []string `mapstructure:"allowed_origins"`   // list of allowed origins (e.g., ["https://example.com"])
+	AllowedMethods   []string `mapstructure:"allowed_methods"`   // list of allowed HTTP methods
+	AllowedHeaders   []string `mapstructure:"allowed_headers"`   // list of allowed request headers
+	AllowCredentials bool     `mapstructure:"allow_credentials"` // allow credentials (cookies, auth headers)
+	MaxAge           int      `mapstructure:"max_age"`           // preflight cache duration in seconds
 }
 
 var globalConfig *AppConfig

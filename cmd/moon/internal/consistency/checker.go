@@ -113,7 +113,7 @@ func (c *Checker) Check(ctx context.Context) (*CheckResult, error) {
 		if constants.IsSystemTable(col) {
 			continue
 		}
-		
+
 		if !tableMap[col] {
 			issue := Issue{
 				Type:        IssueOrphanedRegistry,

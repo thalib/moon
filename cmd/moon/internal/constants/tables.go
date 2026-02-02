@@ -26,12 +26,15 @@ var SystemTables = []string{
 	TableBlacklistedTokens,
 }
 
+// systemTableMap is a map for O(1) lookup of system tables.
+var systemTableMap = map[string]bool{
+	TableUsers:             true,
+	TableRefreshTokens:     true,
+	TableAPIKeys:           true,
+	TableBlacklistedTokens: true,
+}
+
 // IsSystemTable checks if a given table name is a system table.
 func IsSystemTable(tableName string) bool {
-	for _, sysTable := range SystemTables {
-		if tableName == sysTable {
-			return true
-		}
-	}
-	return false
+	return systemTableMap[tableName]
 }

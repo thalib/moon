@@ -36,34 +36,34 @@ func (m *CORSMiddleware) Handle(next http.HandlerFunc) http.HandlerFunc {
 		}
 
 		origin := r.Header.Get("Origin")
-		
+
 		// Check if origin is allowed
 		if origin != "" && m.isOriginAllowed(origin) {
 			// Set Access-Control-Allow-Origin
 			w.Header().Set("Access-Control-Allow-Origin", origin)
-			
+
 			// Set Access-Control-Allow-Credentials
 			if m.config.AllowCredentials {
 				w.Header().Set("Access-Control-Allow-Credentials", "true")
 			}
-			
+
 			// Handle preflight OPTIONS request
 			if r.Method == http.MethodOptions {
 				// Set Access-Control-Allow-Methods
 				if len(m.config.AllowedMethods) > 0 {
 					w.Header().Set("Access-Control-Allow-Methods", strings.Join(m.config.AllowedMethods, ", "))
 				}
-				
+
 				// Set Access-Control-Allow-Headers
 				if len(m.config.AllowedHeaders) > 0 {
 					w.Header().Set("Access-Control-Allow-Headers", strings.Join(m.config.AllowedHeaders, ", "))
 				}
-				
+
 				// Set Access-Control-Max-Age
 				if m.config.MaxAge > 0 {
 					w.Header().Set("Access-Control-Max-Age", fmt.Sprintf("%d", m.config.MaxAge))
 				}
-				
+
 				w.WriteHeader(http.StatusNoContent)
 				return
 			}

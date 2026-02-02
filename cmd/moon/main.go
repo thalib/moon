@@ -302,22 +302,22 @@ func runConsistencyCheck(ctx context.Context, driver database.Driver, reg *regis
 
 // bootstrapAuth initializes authentication tables and creates bootstrap admin if configured
 func bootstrapAuth(ctx context.Context, driver database.Driver, cfg *config.AppConfig) error {
-// Create bootstrap config from app config
-var bootstrapCfg *auth.BootstrapConfig
-if cfg.Auth.BootstrapAdmin.Username != "" {
-bootstrapCfg = &auth.BootstrapConfig{
-Username: cfg.Auth.BootstrapAdmin.Username,
-Email:    cfg.Auth.BootstrapAdmin.Email,
-Password: cfg.Auth.BootstrapAdmin.Password,
-}
-}
+	// Create bootstrap config from app config
+	var bootstrapCfg *auth.BootstrapConfig
+	if cfg.Auth.BootstrapAdmin.Username != "" {
+		bootstrapCfg = &auth.BootstrapConfig{
+			Username: cfg.Auth.BootstrapAdmin.Username,
+			Email:    cfg.Auth.BootstrapAdmin.Email,
+			Password: cfg.Auth.BootstrapAdmin.Password,
+		}
+	}
 
-// Bootstrap authentication
-if err := auth.Bootstrap(ctx, driver, bootstrapCfg); err != nil {
-return fmt.Errorf("bootstrap failed: %w", err)
-}
+	// Bootstrap authentication
+	if err := auth.Bootstrap(ctx, driver, bootstrapCfg); err != nil {
+		return fmt.Errorf("bootstrap failed: %w", err)
+	}
 
-logging.Info("✓ Authentication bootstrap completed")
-fmt.Println("✓ Authentication bootstrap completed")
-return nil
+	logging.Info("✓ Authentication bootstrap completed")
+	fmt.Println("✓ Authentication bootstrap completed")
+	return nil
 }

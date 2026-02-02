@@ -7,8 +7,8 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"fmt"
-	"time"
 	"github.com/thalib/moon/cmd/moon/internal/constants"
+	"time"
 
 	"github.com/thalib/moon/cmd/moon/internal/database"
 	moonulid "github.com/thalib/moon/cmd/moon/internal/ulid"
@@ -68,7 +68,10 @@ func (r *APIKeyRepository) Create(ctx context.Context, apiKey *APIKey) error {
 			apiKey.ULID, apiKey.Name, apiKey.Description, apiKey.KeyHash,
 			apiKey.Role, apiKey.CanWrite, apiKey.CreatedAt,
 		).Scan(&apiKey.ID)
-		return err
+		if err != nil {
+			return fmt.Errorf("failed to create API key: %w", err)
+		}
+		return nil
 	default:
 		query = fmt.Sprintf(`INSERT INTO %s (ulid, name, description, key_hash, role, can_write, created_at)
 			VALUES (?, ?, ?, ?, ?, ?, ?)`, constants.TableAPIKeys)
@@ -77,11 +80,11 @@ func (r *APIKeyRepository) Create(ctx context.Context, apiKey *APIKey) error {
 			apiKey.Role, apiKey.CanWrite, apiKey.CreatedAt,
 		)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to create API key: %w", err)
 		}
 		id, err := result.LastInsertId()
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to get API key ID: %w", err)
 		}
 		apiKey.ID = id
 		return nil

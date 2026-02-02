@@ -147,27 +147,27 @@ func (s *Server) setupRoutes() {
 	authenticated := func(h http.HandlerFunc) http.HandlerFunc {
 		return s.corsMiddle.Handle(
 			s.loggingMiddleware(
-			s.authMiddleware(
-				s.rateLimiter.RateLimit(
-					s.authzMiddle.RequireAuthenticated(h)))))
+				s.authMiddleware(
+					s.rateLimiter.RateLimit(
+						s.authzMiddle.RequireAuthenticated(h)))))
 	}
 
 	// Admin only: CORS + logging + auth + rate limit + admin role
 	adminOnly := func(h http.HandlerFunc) http.HandlerFunc {
 		return s.corsMiddle.Handle(
 			s.loggingMiddleware(
-			s.authMiddleware(
-				s.rateLimiter.RateLimit(
-					s.authzMiddle.RequireAdmin(h)))))
+				s.authMiddleware(
+					s.rateLimiter.RateLimit(
+						s.authzMiddle.RequireAdmin(h)))))
 	}
 
 	// Write required: CORS + logging + auth + rate limit + write permission
 	writeRequired := func(h http.HandlerFunc) http.HandlerFunc {
 		return s.corsMiddle.Handle(
 			s.loggingMiddleware(
-			s.authMiddleware(
-				s.rateLimiter.RateLimit(
-					s.authzMiddle.RequireWrite(h)))))
+				s.authMiddleware(
+					s.rateLimiter.RateLimit(
+						s.authzMiddle.RequireWrite(h)))))
 	}
 
 	// Root message endpoint (only for exact "/" path with no prefix)

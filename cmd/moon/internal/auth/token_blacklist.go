@@ -33,37 +33,43 @@ func NewTokenBlacklist(db database.Driver) *TokenBlacklist {
 // Add adds a token to the blacklist
 func (b *TokenBlacklist) Add(ctx context.Context, token string, userID int64, expiresAt time.Time) error {
 	tokenHash := hashTokenForBlacklist(token)
-	
+
 	var query string
 	switch b.db.Dialect() {
 	case database.DialectPostgres:
 		query = fmt.Sprintf(`INSERT INTO %s (token_hash, user_id, expires_at, created_at)
 			VALUES ($1, $2, $3, $4)`, constants.TableBlacklistedTokens)
 		_, err := b.db.Exec(ctx, query, tokenHash, userID, expiresAt, time.Now())
-		return err
+		if err != nil {
+			return fmt.Errorf("failed to blacklist token: %w", err)
+		}
+		return nil
 	default:
 		query = fmt.Sprintf(`INSERT INTO %s (token_hash, user_id, expires_at, created_at)
 			VALUES (?, ?, ?, ?)`, constants.TableBlacklistedTokens)
 		_, err := b.db.Exec(ctx, query, tokenHash, userID, expiresAt, time.Now())
-		return err
+		if err != nil {
+			return fmt.Errorf("failed to blacklist token: %w", err)
+		}
+		return nil
 	}
 }
 
 // IsBlacklisted checks if a token is blacklisted
 func (b *TokenBlacklist) IsBlacklisted(ctx context.Context, token string) (bool, error) {
 	tokenHash := hashTokenForBlacklist(token)
-	
+
 	query := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE token_hash = ?", constants.TableBlacklistedTokens)
 	if b.db.Dialect() == database.DialectPostgres {
 		query = fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE token_hash = $1", constants.TableBlacklistedTokens)
 	}
-	
+
 	var count int
 	err := b.db.QueryRow(ctx, query, tokenHash).Scan(&count)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to check blacklist: %w", err)
 	}
-	
+
 	return count > 0, nil
 }
 
@@ -83,7 +89,7 @@ func (b *TokenBlacklist) CleanupExpired(ctx context.Context) error {
 	if b.db.Dialect() == database.DialectPostgres {
 		query = fmt.Sprintf("DELETE FROM %s WHERE expires_at < $1", constants.TableBlacklistedTokens)
 	}
-	
+
 	_, err := b.db.Exec(ctx, query, time.Now())
 	return err
 }
