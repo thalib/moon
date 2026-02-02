@@ -69,7 +69,7 @@ REFRESH_TOKEN=$(echo $response | jq -r '.refresh_token')
 
 # Use in subsequent requests
 curl -s "{{$ApiURL}}/collections:list" \
-  -H "Authorization: Bearer $ACCESS_TOKEN"
+  -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
 ```
 
 {{end}}{{if .APIKeyEnabled}}**API Key Authentication:** Include your API key in the {{.APIKeyHeader}} header:
@@ -162,7 +162,7 @@ Response: `status: live|down`
 ```bash
 curl -X POST "{{$ApiURL}}/auth:login" \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"moonadmin12#"}'
+  -d '{"username":"admin","password":"moonadmin12#"}' | jq .
 ```
 Use the username/password defined in the config file `samples/moon.conf` under `auth.bootstrap_admin`.
 
@@ -172,7 +172,7 @@ Use the username/password defined in the config file `samples/moon.conf` under `
 curl -X POST "{{$ApiURL}}/auth:logout" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"refresh_token":"$REFRESH_TOKEN"}'
+  -d '{"refresh_token":"$REFRESH_TOKEN"}' | jq .
 ```
 
 **Refresh Token**
@@ -180,14 +180,14 @@ curl -X POST "{{$ApiURL}}/auth:logout" \
 ```bash
 curl -X POST "{{$ApiURL}}/auth:refresh" \
   -H "Content-Type: application/json" \
-  -d '{"refresh_token":"$REFRESH_TOKEN"}'
+  -d '{"refresh_token":"$REFRESH_TOKEN"}' | jq .
 ```
 
 **Get Current User**
 
 ```bash
 curl -X GET "{{$ApiURL}}/auth:me" \
-  -H "Authorization: Bearer $ACCESS_TOKEN"
+  -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
 ```
 
 **Update Current User (Email)**
@@ -196,7 +196,7 @@ curl -X GET "{{$ApiURL}}/auth:me" \
 curl -X POST "{{$ApiURL}}/auth:me" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"email":"newemail@example.com"}'
+  -d '{"email":"newemail@example.com"}' | jq .
 ```
 
 **Update Current User (Change Password)**
@@ -205,7 +205,7 @@ curl -X POST "{{$ApiURL}}/auth:me" \
 curl -X POST "{{$ApiURL}}/auth:me" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"old_password":"moonadmin12#","password":"NewSecurePass456"}'
+  -d '{"old_password":"moonadmin12#","password":"NewSecurePass456"}' | jq .
 ```
 
 ## User Management Endpoints
@@ -648,7 +648,7 @@ Or view in browser: [{{$ApiURL}}/doc/md]({{$ApiURL}}/doc/md)
 Refresh documentation cache:
 ```bash
 curl -X POST "{{$ApiURL}}/doc:refresh" \
-  -H "Authorization: Bearer $ACCESS_TOKEN"
+  -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
 ```
 
 ---
