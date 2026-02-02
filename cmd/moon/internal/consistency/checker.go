@@ -74,7 +74,7 @@ func (c *Checker) Check(ctx context.Context) (*CheckResult, error) {
 	}
 
 	// Get all physical tables
-	tables, err := c.db.ListTables(checkCtx)
+	allTables, err := c.db.ListTables(checkCtx)
 	if err != nil {
 		// Check if we timed out
 		if checkCtx.Err() == context.DeadlineExceeded {
@@ -83,6 +83,14 @@ func (c *Checker) Check(ctx context.Context) (*CheckResult, error) {
 			return result, fmt.Errorf("%s", constants.ConsistencyErrorMessages.CheckTimeout)
 		}
 		return nil, fmt.Errorf("failed to list tables: %w", err)
+	}
+
+	// Filter out system tables - they should not be managed by consistency checker
+	tables := make([]string, 0, len(allTables))
+	for _, table := range allTables {
+		if !constants.IsSystemTable(table) {
+			tables = append(tables, table)
+		}
 	}
 
 	// Get all registered collections
@@ -101,6 +109,11 @@ func (c *Checker) Check(ctx context.Context) (*CheckResult, error) {
 
 	// Check for orphaned registry entries (in registry but table doesn't exist)
 	for _, col := range collections {
+		// Skip system tables in registry check
+		if constants.IsSystemTable(col) {
+			continue
+		}
+		
 		if !tableMap[col] {
 			issue := Issue{
 				Type:        IssueOrphanedRegistry,

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"time"
+	"github.com/thalib/moon/cmd/moon/internal/constants"
 
 	"github.com/thalib/moon/cmd/moon/internal/database"
 	moonulid "github.com/thalib/moon/cmd/moon/internal/ulid"
@@ -29,16 +30,16 @@ func (r *UserRepository) Create(ctx context.Context, user *User) error {
 	var query string
 	switch r.db.Dialect() {
 	case database.DialectPostgres:
-		query = `INSERT INTO users (ulid, username, email, password_hash, role, can_write, created_at, updated_at)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`
+		query = fmt.Sprintf(`INSERT INTO %s (ulid, username, email, password_hash, role, can_write, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`, constants.TableUsers)
 		err := r.db.QueryRow(ctx, query,
 			user.ULID, user.Username, user.Email, user.PasswordHash,
 			user.Role, user.CanWrite, user.CreatedAt, user.UpdatedAt,
 		).Scan(&user.ID)
 		return err
 	default:
-		query = `INSERT INTO users (ulid, username, email, password_hash, role, can_write, created_at, updated_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+		query = fmt.Sprintf(`INSERT INTO %s (ulid, username, email, password_hash, role, can_write, created_at, updated_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, constants.TableUsers)
 		result, err := r.db.Exec(ctx, query,
 			user.ULID, user.Username, user.Email, user.PasswordHash,
 			user.Role, user.CanWrite, user.CreatedAt, user.UpdatedAt,
@@ -57,9 +58,9 @@ func (r *UserRepository) Create(ctx context.Context, user *User) error {
 
 // GetByID retrieves a user by internal ID.
 func (r *UserRepository) GetByID(ctx context.Context, id int64) (*User, error) {
-	query := "SELECT id, ulid, username, email, password_hash, role, can_write, created_at, updated_at, last_login_at FROM users WHERE id = ?"
+	query := fmt.Sprintf("SELECT id, ulid, username, email, password_hash, role, can_write, created_at, updated_at, last_login_at FROM %s WHERE id = ?", constants.TableUsers)
 	if r.db.Dialect() == database.DialectPostgres {
-		query = "SELECT id, ulid, username, email, password_hash, role, can_write, created_at, updated_at, last_login_at FROM users WHERE id = $1"
+		query = fmt.Sprintf("SELECT id, ulid, username, email, password_hash, role, can_write, created_at, updated_at, last_login_at FROM %s WHERE id = $1", constants.TableUsers)
 	}
 
 	user := &User{}
@@ -78,9 +79,9 @@ func (r *UserRepository) GetByID(ctx context.Context, id int64) (*User, error) {
 
 // GetByULID retrieves a user by ULID.
 func (r *UserRepository) GetByULID(ctx context.Context, ulid string) (*User, error) {
-	query := "SELECT id, ulid, username, email, password_hash, role, can_write, created_at, updated_at, last_login_at FROM users WHERE ulid = ?"
+	query := fmt.Sprintf("SELECT id, ulid, username, email, password_hash, role, can_write, created_at, updated_at, last_login_at FROM %s WHERE ulid = ?", constants.TableUsers)
 	if r.db.Dialect() == database.DialectPostgres {
-		query = "SELECT id, ulid, username, email, password_hash, role, can_write, created_at, updated_at, last_login_at FROM users WHERE ulid = $1"
+		query = fmt.Sprintf("SELECT id, ulid, username, email, password_hash, role, can_write, created_at, updated_at, last_login_at FROM %s WHERE ulid = $1", constants.TableUsers)
 	}
 
 	user := &User{}
@@ -99,9 +100,9 @@ func (r *UserRepository) GetByULID(ctx context.Context, ulid string) (*User, err
 
 // GetByUsername retrieves a user by username.
 func (r *UserRepository) GetByUsername(ctx context.Context, username string) (*User, error) {
-	query := "SELECT id, ulid, username, email, password_hash, role, can_write, created_at, updated_at, last_login_at FROM users WHERE username = ?"
+	query := fmt.Sprintf("SELECT id, ulid, username, email, password_hash, role, can_write, created_at, updated_at, last_login_at FROM %s WHERE username = ?", constants.TableUsers)
 	if r.db.Dialect() == database.DialectPostgres {
-		query = "SELECT id, ulid, username, email, password_hash, role, can_write, created_at, updated_at, last_login_at FROM users WHERE username = $1"
+		query = fmt.Sprintf("SELECT id, ulid, username, email, password_hash, role, can_write, created_at, updated_at, last_login_at FROM %s WHERE username = $1", constants.TableUsers)
 	}
 
 	user := &User{}
@@ -120,9 +121,9 @@ func (r *UserRepository) GetByUsername(ctx context.Context, username string) (*U
 
 // GetByEmail retrieves a user by email.
 func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*User, error) {
-	query := "SELECT id, ulid, username, email, password_hash, role, can_write, created_at, updated_at, last_login_at FROM users WHERE email = ?"
+	query := fmt.Sprintf("SELECT id, ulid, username, email, password_hash, role, can_write, created_at, updated_at, last_login_at FROM %s WHERE email = ?", constants.TableUsers)
 	if r.db.Dialect() == database.DialectPostgres {
-		query = "SELECT id, ulid, username, email, password_hash, role, can_write, created_at, updated_at, last_login_at FROM users WHERE email = $1"
+		query = fmt.Sprintf("SELECT id, ulid, username, email, password_hash, role, can_write, created_at, updated_at, last_login_at FROM %s WHERE email = $1", constants.TableUsers)
 	}
 
 	user := &User{}
@@ -146,11 +147,11 @@ func (r *UserRepository) Update(ctx context.Context, user *User) error {
 	var query string
 	switch r.db.Dialect() {
 	case database.DialectPostgres:
-		query = `UPDATE users SET username = $1, email = $2, password_hash = $3, role = $4, 
-			can_write = $5, updated_at = $6, last_login_at = $7 WHERE id = $8`
+		query = fmt.Sprintf(`UPDATE %s SET username = $1, email = $2, password_hash = $3, role = $4, 
+			can_write = $5, updated_at = $6, last_login_at = $7 WHERE id = $8`, constants.TableUsers)
 	default:
-		query = `UPDATE users SET username = ?, email = ?, password_hash = ?, role = ?, 
-			can_write = ?, updated_at = ?, last_login_at = ? WHERE id = ?`
+		query = fmt.Sprintf(`UPDATE %s SET username = ?, email = ?, password_hash = ?, role = ?, 
+			can_write = ?, updated_at = ?, last_login_at = ? WHERE id = ?`, constants.TableUsers)
 	}
 
 	_, err := r.db.Exec(ctx, query,
@@ -169,9 +170,9 @@ func (r *UserRepository) UpdateLastLogin(ctx context.Context, userID int64) erro
 	var query string
 	switch r.db.Dialect() {
 	case database.DialectPostgres:
-		query = "UPDATE users SET last_login_at = $1, updated_at = $2 WHERE id = $3"
+		query = fmt.Sprintf("UPDATE %s SET last_login_at = $1, updated_at = $2 WHERE id = $3", constants.TableUsers)
 	default:
-		query = "UPDATE users SET last_login_at = ?, updated_at = ? WHERE id = ?"
+		query = fmt.Sprintf("UPDATE %s SET last_login_at = ?, updated_at = ? WHERE id = ?", constants.TableUsers)
 	}
 
 	_, err := r.db.Exec(ctx, query, now, now, userID)
@@ -183,9 +184,9 @@ func (r *UserRepository) UpdateLastLogin(ctx context.Context, userID int64) erro
 
 // Delete deletes a user from the database.
 func (r *UserRepository) Delete(ctx context.Context, id int64) error {
-	query := "DELETE FROM users WHERE id = ?"
+	query := fmt.Sprintf("DELETE FROM %s WHERE id = ?", constants.TableUsers)
 	if r.db.Dialect() == database.DialectPostgres {
-		query = "DELETE FROM users WHERE id = $1"
+		query = fmt.Sprintf("DELETE FROM %s WHERE id = $1", constants.TableUsers)
 	}
 
 	_, err := r.db.Exec(ctx, query, id)
@@ -198,7 +199,7 @@ func (r *UserRepository) Delete(ctx context.Context, id int64) error {
 // Count returns the total number of users.
 func (r *UserRepository) Count(ctx context.Context) (int64, error) {
 	var count int64
-	err := r.db.QueryRow(ctx, "SELECT COUNT(*) FROM users").Scan(&count)
+	err := r.db.QueryRow(ctx, fmt.Sprintf("SELECT COUNT(*) FROM %s", constants.TableUsers)).Scan(&count)
 	if err != nil {
 		return 0, fmt.Errorf("failed to count users: %w", err)
 	}
@@ -207,9 +208,9 @@ func (r *UserRepository) Count(ctx context.Context) (int64, error) {
 
 // Exists checks if a user exists by username or email.
 func (r *UserRepository) Exists(ctx context.Context, username, email string) (bool, error) {
-	query := "SELECT COUNT(*) FROM users WHERE username = ? OR email = ?"
+	query := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE username = ? OR email = ?", constants.TableUsers)
 	if r.db.Dialect() == database.DialectPostgres {
-		query = "SELECT COUNT(*) FROM users WHERE username = $1 OR email = $2"
+		query = fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE username = $1 OR email = $2", constants.TableUsers)
 	}
 
 	var count int64
@@ -226,16 +227,16 @@ func (r *UserRepository) UsernameExists(ctx context.Context, username string, ex
 	var args []any
 
 	if excludeID > 0 {
-		query = "SELECT COUNT(*) FROM users WHERE username = ? AND id != ?"
+		query = fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE username = ? AND id != ?", constants.TableUsers)
 		args = []any{username, excludeID}
 		if r.db.Dialect() == database.DialectPostgres {
-			query = "SELECT COUNT(*) FROM users WHERE username = $1 AND id != $2"
+			query = fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE username = $1 AND id != $2", constants.TableUsers)
 		}
 	} else {
-		query = "SELECT COUNT(*) FROM users WHERE username = ?"
+		query = fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE username = ?", constants.TableUsers)
 		args = []any{username}
 		if r.db.Dialect() == database.DialectPostgres {
-			query = "SELECT COUNT(*) FROM users WHERE username = $1"
+			query = fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE username = $1", constants.TableUsers)
 		}
 	}
 
@@ -253,16 +254,16 @@ func (r *UserRepository) EmailExists(ctx context.Context, email string, excludeI
 	var args []any
 
 	if excludeID > 0 {
-		query = "SELECT COUNT(*) FROM users WHERE email = ? AND id != ?"
+		query = fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE email = ? AND id != ?", constants.TableUsers)
 		args = []any{email, excludeID}
 		if r.db.Dialect() == database.DialectPostgres {
-			query = "SELECT COUNT(*) FROM users WHERE email = $1 AND id != $2"
+			query = fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE email = $1 AND id != $2", constants.TableUsers)
 		}
 	} else {
-		query = "SELECT COUNT(*) FROM users WHERE email = ?"
+		query = fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE email = ?", constants.TableUsers)
 		args = []any{email}
 		if r.db.Dialect() == database.DialectPostgres {
-			query = "SELECT COUNT(*) FROM users WHERE email = $1"
+			query = fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE email = $1", constants.TableUsers)
 		}
 	}
 
@@ -276,9 +277,9 @@ func (r *UserRepository) EmailExists(ctx context.Context, email string, excludeI
 
 // CountByRole returns the number of users with a specific role.
 func (r *UserRepository) CountByRole(ctx context.Context, role string) (int64, error) {
-	query := "SELECT COUNT(*) FROM users WHERE role = ?"
+	query := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE role = ?", constants.TableUsers)
 	if r.db.Dialect() == database.DialectPostgres {
-		query = "SELECT COUNT(*) FROM users WHERE role = $1"
+		query = fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE role = $1", constants.TableUsers)
 	}
 
 	var count int64
@@ -302,7 +303,7 @@ func (r *UserRepository) List(ctx context.Context, opts ListOptions) ([]*User, e
 	var args []any
 	argIdx := 1
 
-	baseSelect := "SELECT id, ulid, username, email, password_hash, role, can_write, created_at, updated_at, last_login_at FROM users"
+	baseSelect := fmt.Sprintf("SELECT id, ulid, username, email, password_hash, role, can_write, created_at, updated_at, last_login_at FROM %s", constants.TableUsers)
 
 	var conditions []string
 	if opts.AfterULID != "" {
@@ -371,9 +372,9 @@ func (r *UserRepository) List(ctx context.Context, opts ListOptions) ([]*User, e
 
 // DeleteByULID deletes a user by their ULID.
 func (r *UserRepository) DeleteByULID(ctx context.Context, ulid string) error {
-	query := "DELETE FROM users WHERE ulid = ?"
+	query := fmt.Sprintf("DELETE FROM %s WHERE ulid = ?", constants.TableUsers)
 	if r.db.Dialect() == database.DialectPostgres {
-		query = "DELETE FROM users WHERE ulid = $1"
+		query = fmt.Sprintf("DELETE FROM %s WHERE ulid = $1", constants.TableUsers)
 	}
 
 	result, err := r.db.Exec(ctx, query, ulid)

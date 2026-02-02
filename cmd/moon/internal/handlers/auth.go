@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -18,6 +19,7 @@ type AuthHandler struct {
 	userRepo         *auth.UserRepository
 	tokenRepo        *auth.RefreshTokenRepository
 	tokenService     *auth.TokenService
+	tokenBlacklist   *auth.TokenBlacklist
 	loginRateLimiter *middleware.LoginRateLimiter
 }
 
@@ -28,6 +30,7 @@ func NewAuthHandler(db database.Driver, jwtSecret string, accessExpiry, refreshE
 		userRepo:     auth.NewUserRepository(db),
 		tokenRepo:    auth.NewRefreshTokenRepository(db),
 		tokenService: auth.NewTokenService(jwtSecret, accessExpiry, refreshExpiry),
+		tokenBlacklist: auth.NewTokenBlacklist(db),
 		loginRateLimiter: middleware.NewLoginRateLimiter(middleware.LoginRateLimiterConfig{
 			MaxAttempts:   5,   // 5 failed attempts
 			WindowSeconds: 900, // 15 minutes
@@ -42,6 +45,7 @@ func NewAuthHandlerWithRateLimiter(db database.Driver, jwtSecret string, accessE
 		userRepo:     auth.NewUserRepository(db),
 		tokenRepo:    auth.NewRefreshTokenRepository(db),
 		tokenService: auth.NewTokenService(jwtSecret, accessExpiry, refreshExpiry),
+		tokenBlacklist: auth.NewTokenBlacklist(db),
 		loginRateLimiter: middleware.NewLoginRateLimiter(middleware.LoginRateLimiterConfig{
 			MaxAttempts:   maxAttempts,
 			WindowSeconds: windowSeconds,
@@ -208,7 +212,42 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		// Non-fatal, token might already be deleted
 	}
 
+	// Blacklist the current access token to invalidate it immediately
+	accessToken, err := h.extractAccessToken(r)
+	if err == nil && accessToken != "" {
+		// Parse the token to get expiration and user ID
+		claims, err := h.tokenService.ValidateAccessToken(accessToken)
+		if err == nil {
+			// Get user by ULID from claims
+			user, err := h.userRepo.GetByULID(ctx, claims.UserID)
+			if err == nil && user != nil {
+				expiresAt := claims.ExpiresAt.Time
+				_ = h.tokenBlacklist.Add(ctx, accessToken, user.ID, expiresAt)
+			}
+		}
+	}
+
 	writeJSON(w, http.StatusOK, map[string]string{"message": "logged out successfully"})
+}
+
+// extractAccessToken extracts the access token from the Authorization header
+func (h *AuthHandler) extractAccessToken(r *http.Request) (string, error) {
+	authHeader := r.Header.Get(constants.HeaderAuthorization)
+	if authHeader == "" {
+		return "", fmt.Errorf("authorization header is missing")
+	}
+
+	parts := strings.SplitN(authHeader, " ", 2)
+	if len(parts) != 2 || strings.ToLower(parts[0]) != strings.ToLower(constants.AuthSchemeBearer) {
+		return "", fmt.Errorf("invalid authorization header format")
+	}
+
+	token := strings.TrimSpace(parts[1])
+	if token == "" {
+		return "", fmt.Errorf("token is empty")
+	}
+
+	return token, nil
 }
 
 // Refresh handles POST /auth:refresh
@@ -396,6 +435,23 @@ func (h *AuthHandler) UpdateMe(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		user.PasswordHash = newHash
+
+		// Password changed - revoke all refresh tokens to force re-login
+		if err := h.tokenRepo.DeleteAllByUserID(ctx, user.ID); err != nil {
+			// Log but don't fail - password update is more important
+			writeError(w, http.StatusInternalServerError, "failed to revoke sessions")
+			return
+		}
+
+		// Blacklist the current access token
+		accessToken, err := h.extractAccessToken(r)
+		if err == nil && accessToken != "" {
+			claims, err := h.tokenService.ValidateAccessToken(accessToken)
+			if err == nil {
+				expiresAt := claims.ExpiresAt.Time
+				_ = h.tokenBlacklist.Add(ctx, accessToken, user.ID, expiresAt)
+			}
+		}
 	}
 
 	// Save changes
@@ -412,8 +468,13 @@ func (h *AuthHandler) UpdateMe(w http.ResponseWriter, r *http.Request) {
 		CanWrite: user.CanWrite,
 	}
 
+	message := "user updated successfully"
+	if req.Password != "" {
+		message = "password updated successfully, please login again"
+	}
+
 	writeJSON(w, http.StatusOK, map[string]any{
-		"message": "user updated successfully",
+		"message": message,
 		"user":    response,
 	})
 }

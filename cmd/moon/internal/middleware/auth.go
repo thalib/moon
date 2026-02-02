@@ -39,6 +39,12 @@ type JWTConfig struct {
 	UnprotectedPaths []string
 	RequiredRoles    map[string][]string // path -> required roles
 	ProtectByDefault bool
+	TokenBlacklist   TokenBlacklistChecker // Interface for checking token blacklist
+}
+
+// TokenBlacklistChecker is an interface for checking if a token is blacklisted
+type TokenBlacklistChecker interface {
+	IsBlacklisted(ctx context.Context, token string) (bool, error)
 }
 
 // JWTMiddleware provides JWT authentication middleware
@@ -76,6 +82,21 @@ func (m *JWTMiddleware) Authenticate(next http.HandlerFunc) http.HandlerFunc {
 			m.logAuthFailure(r, "missing or invalid authorization header", err)
 			m.writeAuthError(w, http.StatusUnauthorized, "Missing or invalid authorization header")
 			return
+		}
+
+		// Check if token is blacklisted (revoked)
+		if m.config.TokenBlacklist != nil {
+			blacklisted, err := m.config.TokenBlacklist.IsBlacklisted(r.Context(), token)
+			if err != nil {
+				m.logAuthFailure(r, "error checking token blacklist", err)
+				m.writeAuthError(w, http.StatusInternalServerError, "Authentication error")
+				return
+			}
+			if blacklisted {
+				m.logAuthFailure(r, "token has been revoked", nil)
+				m.writeAuthError(w, http.StatusUnauthorized, "Token has been revoked")
+				return
+			}
 		}
 
 		// Validate token

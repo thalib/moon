@@ -123,7 +123,15 @@ type DestroyResponse struct {
 
 // List handles GET /collections:list
 func (h *CollectionsHandler) List(w http.ResponseWriter, r *http.Request) {
-	collections := h.registry.List()
+	allCollections := h.registry.List()
+	
+	// Filter out system tables
+	collections := make([]string, 0, len(allCollections))
+	for _, col := range allCollections {
+		if !constants.IsSystemTable(col) {
+			collections = append(collections, col)
+		}
+	}
 
 	response := ListResponse{
 		Collections: collections,

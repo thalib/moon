@@ -65,6 +65,14 @@ var Defaults = struct {
 		DropOrphans  bool
 		CheckTimeout int
 	}
+	CORS struct {
+		Enabled          bool
+		AllowedOrigins   []string
+		AllowedMethods   []string
+		AllowedHeaders   []string
+		AllowCredentials bool
+		MaxAge           int
+	}
 	ConfigPath string
 }{
 	Server: struct {
@@ -139,6 +147,21 @@ var Defaults = struct {
 		DropOrphans:  false,
 		CheckTimeout: 5,
 	},
+	CORS: struct {
+		Enabled          bool
+		AllowedOrigins   []string
+		AllowedMethods   []string
+		AllowedHeaders   []string
+		AllowCredentials bool
+		MaxAge           int
+	}{
+		Enabled:          false, // Disabled by default for security
+		AllowedOrigins:   []string{},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Content-Type", "Authorization", "X-API-Key"},
+		AllowCredentials: true,
+		MaxAge:           3600, // 1 hour
+	},
 	ConfigPath: "/etc/moon.conf",
 }
 
@@ -152,6 +175,7 @@ type AppConfig struct {
 	APIKey   APIKeyConfig   `mapstructure:"apikey"`
 	Auth     AuthConfig     `mapstructure:"auth"`
 	Recovery RecoveryConfig `mapstructure:"recovery"`
+	CORS     CORSConfig     `mapstructure:"cors"`
 }
 
 // ServerConfig holds server-related configuration.
@@ -217,6 +241,16 @@ type RecoveryConfig struct {
 	CheckTimeout int  `mapstructure:"check_timeout"` // consistency check timeout in seconds
 }
 
+// CORSConfig holds CORS (Cross-Origin Resource Sharing) configuration.
+type CORSConfig struct {
+	Enabled          bool     `mapstructure:"enabled"`            // enable CORS support (default: false for security)
+	AllowedOrigins   []string `mapstructure:"allowed_origins"`    // list of allowed origins (e.g., ["https://example.com"])
+	AllowedMethods   []string `mapstructure:"allowed_methods"`    // list of allowed HTTP methods
+	AllowedHeaders   []string `mapstructure:"allowed_headers"`    // list of allowed request headers
+	AllowCredentials bool     `mapstructure:"allow_credentials"`  // allow credentials (cookies, auth headers)
+	MaxAge           int      `mapstructure:"max_age"`            // preflight cache duration in seconds
+}
+
 var globalConfig *AppConfig
 
 // Load initializes and loads the application configuration.
@@ -247,6 +281,12 @@ func Load(configPath string) (*AppConfig, error) {
 	v.SetDefault("recovery.auto_repair", Defaults.Recovery.AutoRepair)
 	v.SetDefault("recovery.drop_orphans", Defaults.Recovery.DropOrphans)
 	v.SetDefault("recovery.check_timeout", Defaults.Recovery.CheckTimeout)
+	v.SetDefault("cors.enabled", Defaults.CORS.Enabled)
+	v.SetDefault("cors.allowed_origins", Defaults.CORS.AllowedOrigins)
+	v.SetDefault("cors.allowed_methods", Defaults.CORS.AllowedMethods)
+	v.SetDefault("cors.allowed_headers", Defaults.CORS.AllowedHeaders)
+	v.SetDefault("cors.allow_credentials", Defaults.CORS.AllowCredentials)
+	v.SetDefault("cors.max_age", Defaults.CORS.MaxAge)
 
 	// Configure Viper to read from YAML config file only
 	// Explicitly disable TOML support

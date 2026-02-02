@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"time"
+	"github.com/thalib/moon/cmd/moon/internal/constants"
 
 	"github.com/thalib/moon/cmd/moon/internal/database"
 )
@@ -35,15 +36,15 @@ func (r *RefreshTokenRepository) Create(ctx context.Context, token *RefreshToken
 	var query string
 	switch r.db.Dialect() {
 	case database.DialectPostgres:
-		query = `INSERT INTO refresh_tokens (user_id, token_hash, expires_at, created_at, last_used_at)
-			VALUES ($1, $2, $3, $4, $5) RETURNING id`
+		query = fmt.Sprintf(`INSERT INTO %s (user_id, token_hash, expires_at, created_at, last_used_at)
+			VALUES ($1, $2, $3, $4, $5) RETURNING id`, constants.TableRefreshTokens)
 		err := r.db.QueryRow(ctx, query,
 			token.UserID, token.TokenHash, token.ExpiresAt, token.CreatedAt, token.LastUsedAt,
 		).Scan(&token.ID)
 		return err
 	default:
-		query = `INSERT INTO refresh_tokens (user_id, token_hash, expires_at, created_at, last_used_at)
-			VALUES (?, ?, ?, ?, ?)`
+		query = fmt.Sprintf(`INSERT INTO %s (user_id, token_hash, expires_at, created_at, last_used_at)
+			VALUES (?, ?, ?, ?, ?)`, constants.TableRefreshTokens)
 		result, err := r.db.Exec(ctx, query,
 			token.UserID, token.TokenHash, token.ExpiresAt, token.CreatedAt, token.LastUsedAt,
 		)
@@ -61,9 +62,9 @@ func (r *RefreshTokenRepository) Create(ctx context.Context, token *RefreshToken
 
 // GetByHash retrieves a refresh token by its hash.
 func (r *RefreshTokenRepository) GetByHash(ctx context.Context, tokenHash string) (*RefreshToken, error) {
-	query := "SELECT id, user_id, token_hash, expires_at, created_at, last_used_at FROM refresh_tokens WHERE token_hash = ?"
+	query := fmt.Sprintf("SELECT id, user_id, token_hash, expires_at, created_at, last_used_at FROM %s WHERE token_hash = ?", constants.TableRefreshTokens)
 	if r.db.Dialect() == database.DialectPostgres {
-		query = "SELECT id, user_id, token_hash, expires_at, created_at, last_used_at FROM refresh_tokens WHERE token_hash = $1"
+		query = fmt.Sprintf("SELECT id, user_id, token_hash, expires_at, created_at, last_used_at FROM %s WHERE token_hash = $1", constants.TableRefreshTokens)
 	}
 
 	token := &RefreshToken{}
@@ -84,9 +85,9 @@ func (r *RefreshTokenRepository) UpdateLastUsed(ctx context.Context, id int64) e
 	var query string
 	switch r.db.Dialect() {
 	case database.DialectPostgres:
-		query = "UPDATE refresh_tokens SET last_used_at = $1 WHERE id = $2"
+		query = fmt.Sprintf("UPDATE %s SET last_used_at = $1 WHERE id = $2", constants.TableRefreshTokens)
 	default:
-		query = "UPDATE refresh_tokens SET last_used_at = ? WHERE id = ?"
+		query = fmt.Sprintf("UPDATE %s SET last_used_at = ? WHERE id = ?", constants.TableRefreshTokens)
 	}
 
 	_, err := r.db.Exec(ctx, query, time.Now(), id)
@@ -98,9 +99,9 @@ func (r *RefreshTokenRepository) UpdateLastUsed(ctx context.Context, id int64) e
 
 // Delete deletes a refresh token from the database.
 func (r *RefreshTokenRepository) Delete(ctx context.Context, id int64) error {
-	query := "DELETE FROM refresh_tokens WHERE id = ?"
+	query := fmt.Sprintf("DELETE FROM %s WHERE id = ?", constants.TableRefreshTokens)
 	if r.db.Dialect() == database.DialectPostgres {
-		query = "DELETE FROM refresh_tokens WHERE id = $1"
+		query = fmt.Sprintf("DELETE FROM %s WHERE id = $1", constants.TableRefreshTokens)
 	}
 
 	_, err := r.db.Exec(ctx, query, id)
@@ -112,9 +113,9 @@ func (r *RefreshTokenRepository) Delete(ctx context.Context, id int64) error {
 
 // DeleteByHash deletes a refresh token by its hash.
 func (r *RefreshTokenRepository) DeleteByHash(ctx context.Context, tokenHash string) error {
-	query := "DELETE FROM refresh_tokens WHERE token_hash = ?"
+	query := fmt.Sprintf("DELETE FROM %s WHERE token_hash = ?", constants.TableRefreshTokens)
 	if r.db.Dialect() == database.DialectPostgres {
-		query = "DELETE FROM refresh_tokens WHERE token_hash = $1"
+		query = fmt.Sprintf("DELETE FROM %s WHERE token_hash = $1", constants.TableRefreshTokens)
 	}
 
 	_, err := r.db.Exec(ctx, query, tokenHash)
@@ -126,9 +127,9 @@ func (r *RefreshTokenRepository) DeleteByHash(ctx context.Context, tokenHash str
 
 // DeleteByUserID deletes all refresh tokens for a user.
 func (r *RefreshTokenRepository) DeleteByUserID(ctx context.Context, userID int64) error {
-	query := "DELETE FROM refresh_tokens WHERE user_id = ?"
+	query := fmt.Sprintf("DELETE FROM %s WHERE user_id = ?", constants.TableRefreshTokens)
 	if r.db.Dialect() == database.DialectPostgres {
-		query = "DELETE FROM refresh_tokens WHERE user_id = $1"
+		query = fmt.Sprintf("DELETE FROM %s WHERE user_id = $1", constants.TableRefreshTokens)
 	}
 
 	_, err := r.db.Exec(ctx, query, userID)
@@ -138,11 +139,16 @@ func (r *RefreshTokenRepository) DeleteByUserID(ctx context.Context, userID int6
 	return nil
 }
 
+// DeleteAllByUserID is an alias for DeleteByUserID for backwards compatibility
+func (r *RefreshTokenRepository) DeleteAllByUserID(ctx context.Context, userID int64) error {
+	return r.DeleteByUserID(ctx, userID)
+}
+
 // DeleteExpired deletes all expired refresh tokens.
 func (r *RefreshTokenRepository) DeleteExpired(ctx context.Context) (int64, error) {
-	query := "DELETE FROM refresh_tokens WHERE expires_at < ?"
+	query := fmt.Sprintf("DELETE FROM %s WHERE expires_at < ?", constants.TableRefreshTokens)
 	if r.db.Dialect() == database.DialectPostgres {
-		query = "DELETE FROM refresh_tokens WHERE expires_at < $1"
+		query = fmt.Sprintf("DELETE FROM %s WHERE expires_at < $1", constants.TableRefreshTokens)
 	}
 
 	result, err := r.db.Exec(ctx, query, time.Now())

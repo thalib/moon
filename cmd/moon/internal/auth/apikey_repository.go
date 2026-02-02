@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"time"
+	"github.com/thalib/moon/cmd/moon/internal/constants"
 
 	"github.com/thalib/moon/cmd/moon/internal/database"
 	moonulid "github.com/thalib/moon/cmd/moon/internal/ulid"
@@ -61,16 +62,16 @@ func (r *APIKeyRepository) Create(ctx context.Context, apiKey *APIKey) error {
 	var query string
 	switch r.db.Dialect() {
 	case database.DialectPostgres:
-		query = `INSERT INTO apikeys (ulid, name, description, key_hash, role, can_write, created_at)
-			VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`
+		query = fmt.Sprintf(`INSERT INTO %s (ulid, name, description, key_hash, role, can_write, created_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`, constants.TableAPIKeys)
 		err := r.db.QueryRow(ctx, query,
 			apiKey.ULID, apiKey.Name, apiKey.Description, apiKey.KeyHash,
 			apiKey.Role, apiKey.CanWrite, apiKey.CreatedAt,
 		).Scan(&apiKey.ID)
 		return err
 	default:
-		query = `INSERT INTO apikeys (ulid, name, description, key_hash, role, can_write, created_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?)`
+		query = fmt.Sprintf(`INSERT INTO %s (ulid, name, description, key_hash, role, can_write, created_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?)`, constants.TableAPIKeys)
 		result, err := r.db.Exec(ctx, query,
 			apiKey.ULID, apiKey.Name, apiKey.Description, apiKey.KeyHash,
 			apiKey.Role, apiKey.CanWrite, apiKey.CreatedAt,
@@ -89,9 +90,9 @@ func (r *APIKeyRepository) Create(ctx context.Context, apiKey *APIKey) error {
 
 // GetByID retrieves an API key by internal ID.
 func (r *APIKeyRepository) GetByID(ctx context.Context, id int64) (*APIKey, error) {
-	query := "SELECT id, ulid, name, description, key_hash, role, can_write, created_at, last_used_at FROM apikeys WHERE id = ?"
+	query := fmt.Sprintf("SELECT id, ulid, name, description, key_hash, role, can_write, created_at, last_used_at FROM %s WHERE id = ?", constants.TableAPIKeys)
 	if r.db.Dialect() == database.DialectPostgres {
-		query = "SELECT id, ulid, name, description, key_hash, role, can_write, created_at, last_used_at FROM apikeys WHERE id = $1"
+		query = fmt.Sprintf("SELECT id, ulid, name, description, key_hash, role, can_write, created_at, last_used_at FROM %s WHERE id = $1", constants.TableAPIKeys)
 	}
 
 	apiKey := &APIKey{}
@@ -110,9 +111,9 @@ func (r *APIKeyRepository) GetByID(ctx context.Context, id int64) (*APIKey, erro
 
 // GetByULID retrieves an API key by ULID.
 func (r *APIKeyRepository) GetByULID(ctx context.Context, ulid string) (*APIKey, error) {
-	query := "SELECT id, ulid, name, description, key_hash, role, can_write, created_at, last_used_at FROM apikeys WHERE ulid = ?"
+	query := fmt.Sprintf("SELECT id, ulid, name, description, key_hash, role, can_write, created_at, last_used_at FROM %s WHERE ulid = ?", constants.TableAPIKeys)
 	if r.db.Dialect() == database.DialectPostgres {
-		query = "SELECT id, ulid, name, description, key_hash, role, can_write, created_at, last_used_at FROM apikeys WHERE ulid = $1"
+		query = fmt.Sprintf("SELECT id, ulid, name, description, key_hash, role, can_write, created_at, last_used_at FROM %s WHERE ulid = $1", constants.TableAPIKeys)
 	}
 
 	apiKey := &APIKey{}
@@ -131,9 +132,9 @@ func (r *APIKeyRepository) GetByULID(ctx context.Context, ulid string) (*APIKey,
 
 // GetByHash retrieves an API key by its hash.
 func (r *APIKeyRepository) GetByHash(ctx context.Context, keyHash string) (*APIKey, error) {
-	query := "SELECT id, ulid, name, description, key_hash, role, can_write, created_at, last_used_at FROM apikeys WHERE key_hash = ?"
+	query := fmt.Sprintf("SELECT id, ulid, name, description, key_hash, role, can_write, created_at, last_used_at FROM %s WHERE key_hash = ?", constants.TableAPIKeys)
 	if r.db.Dialect() == database.DialectPostgres {
-		query = "SELECT id, ulid, name, description, key_hash, role, can_write, created_at, last_used_at FROM apikeys WHERE key_hash = $1"
+		query = fmt.Sprintf("SELECT id, ulid, name, description, key_hash, role, can_write, created_at, last_used_at FROM %s WHERE key_hash = $1", constants.TableAPIKeys)
 	}
 
 	apiKey := &APIKey{}
@@ -155,9 +156,9 @@ func (r *APIKeyRepository) Update(ctx context.Context, apiKey *APIKey) error {
 	var query string
 	switch r.db.Dialect() {
 	case database.DialectPostgres:
-		query = `UPDATE apikeys SET name = $1, description = $2, role = $3, can_write = $4, last_used_at = $5 WHERE id = $6`
+		query = fmt.Sprintf(`UPDATE %s SET name = $1, description = $2, role = $3, can_write = $4, last_used_at = $5 WHERE id = $6`, constants.TableAPIKeys)
 	default:
-		query = `UPDATE apikeys SET name = ?, description = ?, role = ?, can_write = ?, last_used_at = ? WHERE id = ?`
+		query = fmt.Sprintf(`UPDATE %s SET name = ?, description = ?, role = ?, can_write = ?, last_used_at = ? WHERE id = ?`, constants.TableAPIKeys)
 	}
 
 	_, err := r.db.Exec(ctx, query,
@@ -175,9 +176,9 @@ func (r *APIKeyRepository) UpdateLastUsed(ctx context.Context, id int64) error {
 	var query string
 	switch r.db.Dialect() {
 	case database.DialectPostgres:
-		query = "UPDATE apikeys SET last_used_at = $1 WHERE id = $2"
+		query = fmt.Sprintf("UPDATE %s SET last_used_at = $1 WHERE id = $2", constants.TableAPIKeys)
 	default:
-		query = "UPDATE apikeys SET last_used_at = ? WHERE id = ?"
+		query = fmt.Sprintf("UPDATE %s SET last_used_at = ? WHERE id = ?", constants.TableAPIKeys)
 	}
 
 	_, err := r.db.Exec(ctx, query, now, id)
@@ -189,9 +190,9 @@ func (r *APIKeyRepository) UpdateLastUsed(ctx context.Context, id int64) error {
 
 // Delete deletes an API key from the database.
 func (r *APIKeyRepository) Delete(ctx context.Context, id int64) error {
-	query := "DELETE FROM apikeys WHERE id = ?"
+	query := fmt.Sprintf("DELETE FROM %s WHERE id = ?", constants.TableAPIKeys)
 	if r.db.Dialect() == database.DialectPostgres {
-		query = "DELETE FROM apikeys WHERE id = $1"
+		query = fmt.Sprintf("DELETE FROM %s WHERE id = $1", constants.TableAPIKeys)
 	}
 
 	_, err := r.db.Exec(ctx, query, id)
@@ -203,7 +204,7 @@ func (r *APIKeyRepository) Delete(ctx context.Context, id int64) error {
 
 // List retrieves all API keys.
 func (r *APIKeyRepository) List(ctx context.Context) ([]*APIKey, error) {
-	query := "SELECT id, ulid, name, description, key_hash, role, can_write, created_at, last_used_at FROM apikeys ORDER BY created_at DESC"
+	query := fmt.Sprintf("SELECT id, ulid, name, description, key_hash, role, can_write, created_at, last_used_at FROM %s ORDER BY created_at DESC", constants.TableAPIKeys)
 
 	rows, err := r.db.Query(ctx, query)
 	if err != nil {
@@ -243,7 +244,7 @@ func (r *APIKeyRepository) ListPaginated(ctx context.Context, opts APIKeyListOpt
 	var args []any
 	argIdx := 1
 
-	baseSelect := "SELECT id, ulid, name, description, key_hash, role, can_write, created_at, last_used_at FROM apikeys"
+	baseSelect := fmt.Sprintf("SELECT id, ulid, name, description, key_hash, role, can_write, created_at, last_used_at FROM %s", constants.TableAPIKeys)
 
 	if opts.AfterULID != "" {
 		if r.db.Dialect() == database.DialectPostgres {
@@ -298,16 +299,16 @@ func (r *APIKeyRepository) NameExists(ctx context.Context, name string, excludeI
 	var args []any
 
 	if excludeID > 0 {
-		query = "SELECT COUNT(*) FROM apikeys WHERE name = ? AND id != ?"
+		query = fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE name = ? AND id != ?", constants.TableAPIKeys)
 		args = []any{name, excludeID}
 		if r.db.Dialect() == database.DialectPostgres {
-			query = "SELECT COUNT(*) FROM apikeys WHERE name = $1 AND id != $2"
+			query = fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE name = $1 AND id != $2", constants.TableAPIKeys)
 		}
 	} else {
-		query = "SELECT COUNT(*) FROM apikeys WHERE name = ?"
+		query = fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE name = ?", constants.TableAPIKeys)
 		args = []any{name}
 		if r.db.Dialect() == database.DialectPostgres {
-			query = "SELECT COUNT(*) FROM apikeys WHERE name = $1"
+			query = fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE name = $1", constants.TableAPIKeys)
 		}
 	}
 
@@ -324,9 +325,9 @@ func (r *APIKeyRepository) UpdateKeyHash(ctx context.Context, id int64, newHash 
 	var query string
 	switch r.db.Dialect() {
 	case database.DialectPostgres:
-		query = "UPDATE apikeys SET key_hash = $1 WHERE id = $2"
+		query = fmt.Sprintf("UPDATE %s SET key_hash = $1 WHERE id = $2", constants.TableAPIKeys)
 	default:
-		query = "UPDATE apikeys SET key_hash = ? WHERE id = ?"
+		query = fmt.Sprintf("UPDATE %s SET key_hash = ? WHERE id = ?", constants.TableAPIKeys)
 	}
 
 	_, err := r.db.Exec(ctx, query, newHash, id)
@@ -341,9 +342,9 @@ func (r *APIKeyRepository) UpdateMetadata(ctx context.Context, apiKey *APIKey) e
 	var query string
 	switch r.db.Dialect() {
 	case database.DialectPostgres:
-		query = `UPDATE apikeys SET name = $1, description = $2, can_write = $3 WHERE id = $4`
+		query = fmt.Sprintf(`UPDATE %s SET name = $1, description = $2, can_write = $3 WHERE id = $4`, constants.TableAPIKeys)
 	default:
-		query = `UPDATE apikeys SET name = ?, description = ?, can_write = ? WHERE id = ?`
+		query = fmt.Sprintf(`UPDATE %s SET name = ?, description = ?, can_write = ? WHERE id = ?`, constants.TableAPIKeys)
 	}
 
 	_, err := r.db.Exec(ctx, query, apiKey.Name, apiKey.Description, apiKey.CanWrite, apiKey.ID)
