@@ -95,11 +95,22 @@ func (h *DataHandler) List(w http.ResponseWriter, r *http.Request, collectionNam
 	limitStr := r.URL.Query().Get(constants.QueryParamLimit)
 	after := r.URL.Query().Get("after") // ULID cursor
 
+	// Parse and validate limit (PRD-046)
 	limit := constants.DefaultPaginationLimit
 	if limitStr != "" {
-		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
+		if l, err := strconv.Atoi(limitStr); err == nil {
 			limit = l
 		}
+	}
+
+	// Enforce pagination limits (PRD-046)
+	if limit < constants.MinPageSize {
+		writeError(w, http.StatusBadRequest, fmt.Sprintf("limit must be at least %d", constants.MinPageSize))
+		return
+	}
+	if limit > constants.MaxPaginationLimit {
+		writeError(w, http.StatusBadRequest, fmt.Sprintf("limit cannot exceed %d", constants.MaxPaginationLimit))
+		return
 	}
 
 	// Validate after cursor if provided
@@ -547,6 +558,7 @@ type filterParam struct {
 // parseFilters parses filter query parameters from URL
 // Expected format: ?column[operator]=value
 // Example: ?price[gt]=100&name[like]=moon
+// Enforces MaxFiltersPerRequest limit (PRD-048)
 func parseFilters(r *http.Request) ([]filterParam, error) {
 	var filters []filterParam
 	filterRegex := regexp.MustCompile(`^(.+)\[(eq|ne|gt|lt|gte|lte|like|in)\]$`)
@@ -561,6 +573,11 @@ func parseFilters(r *http.Request) ([]filterParam, error) {
 		if matches == nil {
 			// Skip if not a filter parameter
 			continue
+		}
+
+		// Check filter count limit (PRD-048)
+		if len(filters) >= constants.MaxFiltersPerRequest {
+			return nil, fmt.Errorf("maximum number of filters (%d) exceeded", constants.MaxFiltersPerRequest)
 		}
 
 		column := matches[1]
@@ -683,6 +700,7 @@ type sortField struct {
 
 // parseSort parses the sort query parameter
 // Supports: ?sort=field (ASC), ?sort=-field (DESC), ?sort=field1,-field2 (multiple)
+// Enforces MaxSortFieldsPerRequest limit (PRD-048)
 func parseSort(r *http.Request) ([]sortField, error) {
 	sortParam := r.URL.Query().Get("sort")
 	if sortParam == "" {
@@ -696,6 +714,11 @@ func parseSort(r *http.Request) ([]sortField, error) {
 		part = strings.TrimSpace(part)
 		if part == "" {
 			continue
+		}
+
+		// Check sort fields count limit (PRD-048)
+		if len(fields) >= constants.MaxSortFieldsPerRequest {
+			return nil, fmt.Errorf("maximum number of sort fields (%d) exceeded", constants.MaxSortFieldsPerRequest)
 		}
 
 		var field sortField
