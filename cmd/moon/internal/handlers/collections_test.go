@@ -103,7 +103,7 @@ func TestCreate_Success(t *testing.T) {
 	defer driver.Close()
 
 	createReq := CreateRequest{
-		Name: "users",
+		Name: "customers",
 		Columns: []registry.Column{
 			{Name: "name", Type: registry.TypeString, Nullable: false},
 			{Name: "email", Type: registry.TypeString, Nullable: false, Unique: true},
@@ -126,8 +126,8 @@ func TestCreate_Success(t *testing.T) {
 		t.Fatalf("Failed to decode response: %v", err)
 	}
 
-	if response.Collection.Name != "users" {
-		t.Errorf("Expected collection name 'users', got '%s'", response.Collection.Name)
+	if response.Collection.Name != "customers" {
+		t.Errorf("Expected collection name 'customers', got '%s'", response.Collection.Name)
 	}
 
 	if len(response.Collection.Columns) != 3 {
@@ -701,7 +701,7 @@ func TestUpdate_RenameColumns_Success(t *testing.T) {
 
 	// Create a collection
 	createReq := CreateRequest{
-		Name: "users",
+		Name: "customers",
 		Columns: []registry.Column{
 			{Name: "user_name", Type: registry.TypeString, Nullable: false},
 			{Name: "email", Type: registry.TypeString, Nullable: false},
@@ -714,7 +714,7 @@ func TestUpdate_RenameColumns_Success(t *testing.T) {
 
 	// Rename column
 	updateReq := UpdateRequest{
-		Name: "users",
+		Name: "customers",
 		RenameColumns: []RenameColumn{
 			{OldName: "user_name", NewName: "username"},
 		},

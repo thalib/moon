@@ -186,7 +186,7 @@ func TestCollectionsHandler_List_WithData(t *testing.T) {
 	// Create some collections
 	collections := []map[string]any{
 		{
-			"name": "users",
+			"name": "customers",
 			"columns": []map[string]any{
 				{"name": "name", "type": "string"},
 			},
