@@ -34,6 +34,7 @@ type Server struct {
 	version        string
 	rateLimiter    *middleware.RateLimitMiddleware
 	authzMiddle    *middleware.AuthorizationMiddleware
+	corsMiddle     *middleware.CORSMiddleware
 	tokenService   *auth.TokenService
 	tokenBlacklist *auth.TokenBlacklist
 	apiKeyRepo     *auth.APIKeyRepository
@@ -55,6 +56,16 @@ func New(cfg *config.AppConfig, db database.Driver, reg *registry.SchemaRegistry
 		rateLimiterConfig.APIKeyRPM = config.Defaults.Auth.RateLimit.APIKeyRPM
 	}
 
+	// Create CORS middleware with config values
+	corsConfig := middleware.CORSConfig{
+		Enabled:          cfg.CORS.Enabled,
+		AllowedOrigins:   cfg.CORS.AllowedOrigins,
+		AllowedMethods:   cfg.CORS.AllowedMethods,
+		AllowedHeaders:   cfg.CORS.AllowedHeaders,
+		AllowCredentials: cfg.CORS.AllowCredentials,
+		MaxAge:           cfg.CORS.MaxAge,
+	}
+
 	// Create token service for authentication
 	accessExpiry := cfg.JWT.AccessExpiry
 	if accessExpiry == 0 {
@@ -70,6 +81,7 @@ func New(cfg *config.AppConfig, db database.Driver, reg *registry.SchemaRegistry
 		version:        version,
 		rateLimiter:    middleware.NewRateLimitMiddleware(rateLimiterConfig),
 		authzMiddle:    middleware.NewAuthorizationMiddleware(),
+		corsMiddle:     middleware.NewCORSMiddleware(corsConfig),
 		tokenService:   tokenService,
 		tokenBlacklist: auth.NewTokenBlacklist(db),
 		apiKeyRepo:     auth.NewAPIKeyRepository(db),
@@ -121,38 +133,41 @@ func (s *Server) setupRoutes() {
 	prefix := s.config.Server.Prefix
 
 	// Middleware helper functions for cleaner route definitions
-	// Public endpoints: only logging
+	// Public endpoints: CORS + logging
 	public := func(h http.HandlerFunc) http.HandlerFunc {
-		return s.loggingMiddleware(h)
+		return s.corsMiddle.Handle(s.loggingMiddleware(h))
 	}
 
-	// Auth endpoints: logging + auth (login/refresh don't need rate limit or authz)
+	// Auth endpoints: CORS + logging + auth (login/refresh don't need rate limit or authz)
 	authNoLimit := func(h http.HandlerFunc) http.HandlerFunc {
-		return s.loggingMiddleware(h)
+		return s.corsMiddle.Handle(s.loggingMiddleware(h))
 	}
 
-	// Authenticated: logging + auth + rate limit (any authenticated entity)
+	// Authenticated: CORS + logging + auth + rate limit (any authenticated entity)
 	authenticated := func(h http.HandlerFunc) http.HandlerFunc {
-		return s.loggingMiddleware(
+		return s.corsMiddle.Handle(
+			s.loggingMiddleware(
 			s.authMiddleware(
 				s.rateLimiter.RateLimit(
-					s.authzMiddle.RequireAuthenticated(h))))
+					s.authzMiddle.RequireAuthenticated(h)))))
 	}
 
-	// Admin only: logging + auth + rate limit + admin role
+	// Admin only: CORS + logging + auth + rate limit + admin role
 	adminOnly := func(h http.HandlerFunc) http.HandlerFunc {
-		return s.loggingMiddleware(
+		return s.corsMiddle.Handle(
+			s.loggingMiddleware(
 			s.authMiddleware(
 				s.rateLimiter.RateLimit(
-					s.authzMiddle.RequireAdmin(h))))
+					s.authzMiddle.RequireAdmin(h)))))
 	}
 
-	// Write required: logging + auth + rate limit + write permission
+	// Write required: CORS + logging + auth + rate limit + write permission
 	writeRequired := func(h http.HandlerFunc) http.HandlerFunc {
-		return s.loggingMiddleware(
+		return s.corsMiddle.Handle(
+			s.loggingMiddleware(
 			s.authMiddleware(
 				s.rateLimiter.RateLimit(
-					s.authzMiddle.RequireWrite(h))))
+					s.authzMiddle.RequireWrite(h)))))
 	}
 
 	// Root message endpoint (only for exact "/" path with no prefix)
