@@ -17,7 +17,7 @@
 | Service     | moon                                                |
 | Base URL    | `{{.BaseURL}}`                                      |
 | URL Prefix  | {{if .Prefix}}`{{.Prefix}}`{{else}}N/A{{end}}       |
-| Documentation Version     | 1.4.0                                 |
+| Documentation Version     | 1.5.0                                 |
 | Github URL  | https://github.com/thalib/moon                      |
 
 {{if .Prefix}} All endpoints are prefixed with `{{.Prefix}}`. {{end}}
@@ -1005,7 +1005,7 @@ This machine-readable appendix enables automated client generation and reduces a
 {
   "service": "moon",
   "version": "{{.Version}}",
-  "document_version": "1.4.0",
+  "document_version": "1.5.0",
   "base_url": "{{.BaseURL}}",
   {{if .Prefix}}"url_prefix": "{{.Prefix}}",{{else}}"url_prefix": null,{{end}}
 
