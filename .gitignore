@@ -174,3 +174,11 @@ config.toml
 .env.local
 .gocache
 * copy.md
+# Add test scripts and temporary files
+test_api.sh
+test_docs.sh
+test_moon.conf
+test_results.txt
+verify_endpoints.sh
+final_verification.sh
+final_results.txt
