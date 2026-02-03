@@ -7,9 +7,7 @@
 - Prefer API keys for server-side apps.
 - Use JWT only for user-facing authentication.
 - Do not assume foreign keys; model relations manually.
-
-Moon is a dynamic headless engine that provides a RESTful API for managing database tables and records without manual migrations. All endpoints follow the AIP-136 custom actions pattern using a colon separator between the resource and action.
-
+- Endpoints use AIP-136 custom actions (colon separator).
 
 | Property    | Value                                               |
 |-------------|-----------------------------------------------------|
@@ -44,6 +42,13 @@ Moon is a dynamic headless engine that provides a RESTful API for managing datab
 - [JSON Appendix](#json-appendix)
 
 ## Intro
+
+Moon enables rapid, migrationless management of database tables and records through a dynamic RESTful API.
+
+
+
+
+### Moon Terminology
 
 Moon stores data in the format: Collection, Field, and Record.
 
@@ -905,7 +910,7 @@ Moon supports Cross-Origin Resource Sharing (CORS) for browser-based clients.
 
 The server accepts the following HTTP methods via CORS:
 
-- `GET`, `POST`, `OPTIONS`
+- `GET`, `POST`
 
 ### OPTIONS Requests
 
