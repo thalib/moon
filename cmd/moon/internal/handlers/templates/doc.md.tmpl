@@ -17,7 +17,7 @@
 | Service     | moon                                                |
 | Base URL    | `{{.BaseURL}}`                                      |
 | URL Prefix  | {{if .Prefix}}`{{.Prefix}}`{{else}}N/A{{end}}       |
-| Documentation Version     | 1.4.0                                 |
+| Documentation Version     | 1.5.1                                 |
 | Github URL  | https://github.com/thalib/moon                      |
 
 {{if .Prefix}} All endpoints are prefixed with `{{.Prefix}}`. {{end}}
@@ -830,10 +830,12 @@ curl "{{$ApiURL}}/products:list?after=01ARZ3NDEKTSV4RRFFQ69G5FBX&limit=10" \
 
 **Schema:** ``?schema``
 
-All GET endpoints support the  query parameter: `?schema` works with filters, pagination, sorting, field selection, and search.
+Data access GET endpoints (`/{collection}:list` and `/{collection}:get`) support the `?schema` query parameter. This parameter works with filters, pagination, sorting, field selection, and search.
 
 - `?schema` or `?schema=true`: Returns both data and schema.
 - `?schema=only`: Returns only schema, omits data.
+
+***Note:*** The `?schema` parameter is **only available for data access endpoints** (e.g., `/products:list`, `/users_data:get`). It is **not supported** on management endpoints like `/collections:list`, `/users:list`, `/apikeys:list`, or `/collections:get`.
 
 Example Return only schema:
 ```bash
@@ -1005,7 +1007,7 @@ This machine-readable appendix enables automated client generation and reduces a
 {
   "service": "moon",
   "version": "{{.Version}}",
-  "document_version": "1.4.0",
+  "document_version": "1.5.1",
   "base_url": "{{.BaseURL}}",
   {{if .Prefix}}"url_prefix": "{{.Prefix}}",{{else}}"url_prefix": null,{{end}}
 
