@@ -134,6 +134,20 @@ The following types are deprecated and will return an error:
 
 Moon implements industry-standard API patterns for consistent client experience.
 
+### HTTP Methods
+
+**Moon only supports GET and POST HTTP methods.** All other HTTP methods (PUT, DELETE, PATCH, etc.) are not supported and will return a `405 Method Not Allowed` error.
+
+- **GET** is used for read operations (list, get, count, aggregation queries)
+- **POST** is used for write operations (create, update, destroy) and authentication operations
+- **OPTIONS** is supported for CORS preflight requests only
+
+This design choice:
+- Simplifies routing and middleware logic
+- Works universally with all HTTP clients and proxies
+- Follows the AIP-136 custom actions pattern where the action is in the URL (`:create`, `:update`, `:destroy`)
+- Ensures compatibility with restrictive network environments that may filter uncommon HTTP methods
+
 ### Rate Limiting Headers
 
 When rate limiting is enabled, all responses include rate limit headers:
@@ -199,8 +213,6 @@ cors:
   allowed_methods:
     - GET
     - POST
-    - PUT
-    - DELETE
     - OPTIONS
   allowed_headers:
     - Content-Type
@@ -209,6 +221,8 @@ cors:
   allow_credentials: true
   max_age: 3600
 ```
+
+**Note:** Only GET, POST, and OPTIONS methods are supported by the Moon server. Including other methods (PUT, DELETE, PATCH) in the `allowed_methods` configuration will not enable them on the server.
 
 CORS headers exposed to browsers:
 - `X-RateLimit-Limit`

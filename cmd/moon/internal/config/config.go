@@ -176,7 +176,7 @@ var Defaults = struct {
 	}{
 		Enabled:          false, // Disabled by default for security
 		AllowedOrigins:   []string{},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedMethods:   []string{"GET", "POST", "OPTIONS"},
 		AllowedHeaders:   []string{"Content-Type", "Authorization", "X-API-Key"},
 		AllowCredentials: true,
 		MaxAge:           3600, // 1 hour

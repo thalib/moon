@@ -15,7 +15,7 @@
 | Service     | moon                                                |
 | Base URL    | `{{.BaseURL}}`                                      |
 | URL Prefix  | {{if .Prefix}}`{{.Prefix}}`{{else}}N/A{{end}}       |
-| Documentation Version     | 1.2.0                                 |
+| Documentation Version     | 1.3.0                                 |
 | Github URL  | https://github.com/thalib/moon                      |
 
 {{if .Prefix}} All endpoints are prefixed with `{{.Prefix}}`. {{end}}
@@ -82,6 +82,19 @@ Moon is designed as a lightweight, dynamic backend. It intentionally does **not*
 - **Joins:** No SQL joins between collections. Model relationships at the application layer.
 - **Triggers/Hooks:** No database-level triggers or event hooks.
 - **Background Jobs:** No built-in job queue or async task processing.
+
+### Supported HTTP Methods
+
+**Moon only supports GET and POST HTTP methods.** All other HTTP methods (PUT, DELETE, PATCH, etc.) are not supported.
+
+- **GET** is used for read operations (list, get, count, aggregation queries)
+- **POST** is used for write operations (create, update, destroy) and authentication operations
+- **OPTIONS** is supported for CORS preflight requests only
+
+This design:
+- Simplifies the API and makes it universally compatible
+- Uses the AIP-136 custom actions pattern where the action is in the URL (`:create`, `:update`, `:destroy`)
+- Works with all HTTP clients and restrictive network environments
 
 ## Authentication 
 
@@ -1023,7 +1036,7 @@ This machine-readable appendix enables automated client generation and reduces a
 {
   "service": "moon",
   "version": "{{.Version}}",
-  "document_version": "1.2.0",
+  "document_version": "1.3.0",
   "base_url": "{{.BaseURL}}",
   {{if .Prefix}}"url_prefix": "{{.Prefix}}",{{else}}"url_prefix": null,{{end}}
 
