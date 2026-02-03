@@ -45,9 +45,6 @@
 
 Moon enables rapid, migrationless management of database tables and records through a dynamic RESTful API.
 
-
-
-
 ### Moon Terminology
 
 Moon stores data in the format: Collection, Field, and Record.
@@ -82,19 +79,27 @@ Moon is designed as a lightweight, dynamic backend. It intentionally does **not*
 - **Joins:** No SQL joins between collections. Model relationships at the application layer.
 - **Triggers/Hooks:** No database-level triggers or event hooks.
 - **Background Jobs:** No built-in job queue or async task processing.
+- Supported HTTP Methods: GET, POST and OPTIONS only
 
-### Supported HTTP Methods
+---
 
-**Moon only supports GET and POST HTTP methods.** All other HTTP methods (PUT, DELETE, PATCH, etc.) are not supported.
+## Documentation
 
-- **GET** is used for read operations (list, get, count, aggregation queries)
-- **POST** is used for write operations (create, update, destroy) and authentication operations
-- **OPTIONS** is supported for CORS preflight requests only
+View HTML documentation in your browser: [{{$ApiURL}}/doc/]({{$ApiURL}}/doc/)
 
-This design:
-- Simplifies the API and makes it universally compatible
-- Uses the AIP-136 custom actions pattern where the action is in the URL (`:create`, `:update`, `:destroy`)
-- Works with all HTTP clients and restrictive network environments
+Get Markdown documentation (for humans and AI coding agents) via curl:
+```bash
+curl "{{$ApiURL}}/doc/md"
+```
+Or view in browser: [{{$ApiURL}}/doc/md]({{$ApiURL}}/doc/md)
+
+Refresh documentation cache:
+```bash
+curl -X POST "{{$ApiURL}}/doc:refresh" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
+```
+
+---
 
 ## Authentication 
 
@@ -282,7 +287,9 @@ curl -X GET "{{$ApiURL}}/auth:me" \
   -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
 ```
 
-**Update Current User (Email)**
+**Update Current User**
+
+e.g: Change email
 
 ```bash
 curl -X POST "{{$ApiURL}}/auth:me" \
@@ -291,7 +298,7 @@ curl -X POST "{{$ApiURL}}/auth:me" \
   -d '{"email":"newemail@example.com"}' | jq .
 ```
 
-**Update Current User (Change Password)**
+e.g: Change Password
 
 ```bash
 curl -X POST "{{$ApiURL}}/auth:me" \
@@ -300,15 +307,15 @@ curl -X POST "{{$ApiURL}}/auth:me" \
   -d '{"old_password":"moonadmin12#","password":"NewSecurePass456"}' | jq .
 ```
 
-## User Management Endpoints
+## User Management Endpoints (Admin Only)
 
 | Endpoint        | Method | Description                              |
 |-----------------|--------|------------------------------------------|
-| /users:list     | GET    | List all users (admin only)              |
-| /users:get      | GET    | Get specific user by ID (admin only)     |
-| /users:create   | POST   | Create new user (admin only)             |
+| /users:list     | GET    | List all users                           |
+| /users:get      | GET    | Get specific user by ID                  |
+| /users:create   | POST   | Create new user                          |
 | /users:update   | POST   | Update user properties or admin actions  |
-| /users:destroy  | POST   | Delete user account (admin only)         |
+| /users:destroy  | POST   | Delete user account                      |
 
 **List All Users**
 
@@ -353,7 +360,7 @@ Response includes the new user with `user.id`:
 }
 ```
 
-**Update User Properties**
+**Update User**
 
 ```bash
 curl -X POST "{{$ApiURL}}/users:update?id=<USER_ID>" \
@@ -365,7 +372,7 @@ curl -X POST "{{$ApiURL}}/users:update?id=<USER_ID>" \
   }' | jq .
 ```
 
-**Admin Actions: Reset User Password**
+**Reset User Password**
 
 Admins can reset a user's password using the `reset_password` action:
 
@@ -379,7 +386,7 @@ curl -X POST "{{$ApiURL}}/users:update?id=<USER_ID>" \
   }' | jq .
 ```
 
-**Admin Actions: Revoke All User Sessions**
+**Revoke All User Sessions**
 
 Admins can invalidate all refresh tokens for a user using the `revoke_sessions` action:
 
@@ -397,15 +404,15 @@ curl -X POST "{{$ApiURL}}/users:destroy?id=<USER_ID>" \
   -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
 ```
 
-## API Key Management Endpoints
+## API Key Management Endpoints (Admin Only)
 
 | Endpoint         | Method | Description                                 |
 |------------------|--------|---------------------------------------------|
-| /apikeys:list    | GET    | List all API keys (metadata only, admin)    |
-| /apikeys:get     | GET    | Get specific API key metadata (admin only)  |
-| /apikeys:create  | POST   | Create new API key (admin only)             |
+| /apikeys:list    | GET    | List all API keys                           |
+| /apikeys:get     | GET    | Get specific API key                        |
+| /apikeys:create  | POST   | Create new API key                          |
 | /apikeys:update  | POST   | Update API key metadata or rotate key       |
-| /apikeys:destroy | POST   | Delete API key (admin only)                 |
+| /apikeys:destroy | POST   | Delete API key                              |
 
 **List API Keys**
 
@@ -414,7 +421,7 @@ curl -X GET "{{$ApiURL}}/apikeys:list" \
   -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
 ```
 
-**Get API Key Metadata**
+**Get API Key**
 
 ```bash
 curl -X GET "{{$ApiURL}}/apikeys:get?id=$API_KEY_ID" \
@@ -946,81 +953,29 @@ Access-Control-Max-Age: 3600
 
 ### CORS Configuration
 
-- **Allowed Origins:** Configurable via `cors.allowed_origins` in `moon.conf`
+- **Allowed Origins:** Configurable via `cors.allowed_origins` in config file
 - **Allowed Headers:** `Authorization`, `Content-Type`, `X-API-Key`
 - **Credentials:** Supported when origin is explicitly allowed (not `*`)
 
 ---
 
-## Security Best Practices
+## Rule
 
-### Authentication
+### Do's
 
-1. **Use JWT for User-Facing Apps:**
-   - Short-lived access tokens (15 minutes default)
-   - Refresh tokens for session management
-   - Store tokens securely (HttpOnly cookies recommended)
+- Authentication: JWT for user-facing apps, API keys for server-to-server.
+- User Roles: `user`: limited access, `admin`: full control.
+- Input Validation: Moon validates types and constraints; always sanitize input.
+- Network Security
+- Use HTTPS in production.
+- Set specific allowed origins for CORS.
 
-2. **Use API Keys for Server-to-Server:**
-   - Long-lived, high-rate-limit keys
-   - Store keys in environment variables or secret managers
-   - Never commit keys to version control
-   - Rotate keys regularly using the `:update` action with `"action": "rotate"`
+### Don'ts
 
-### Authorization
-
-1. **Principle of Least Privilege:**
-   - Use `role: "user"` for read-only or limited-write access
-   - Reserve `role: "admin"` for trusted users/services only
-   - Set `can_write: false` on API keys when read-only access is sufficient
-
-2. **Admin Endpoints:**
-   - All user, API key, and collection management endpoints require admin role
-   - Regular users can only access data endpoints within their permissions
-
-### Input Validation
-
-1. **Always Validate Input:**
-   - Moon validates data types and column constraints
-   - Application layer should validate business logic rules
-   - Sanitize user input before querying
-
-2. **Query Safety:**
-   - Use parameterized filters (e.g., `?field[eq]=value`)
-   - Avoid constructing raw SQL queries
-   - Moon prevents SQL injection via prepared statements
-
-### Network Security
-
-1. **Use HTTPS in Production:**
-   - Always use TLS/SSL for production deployments
-   - Never transmit tokens or API keys over unencrypted connections
-
-2. **Rate Limiting:**
-   - Monitor rate limit headers to avoid hitting limits
-   - Implement exponential backoff for retries
-
-3. **CORS:**
-   - Configure specific allowed origins in production
-   - Avoid using `*` wildcard for sensitive applications
-
----
-
-## Documentation
-
-View HTML documentation in your browser: [{{$ApiURL}}/doc/]({{$ApiURL}}/doc/)
-
-Get Markdown documentation (for humans and AI coding agents) via curl:
-```bash
-curl "{{$ApiURL}}/doc/md"
-```
-Or view in browser: [{{$ApiURL}}/doc/md]({{$ApiURL}}/doc/md)
-
-Refresh documentation cache:
-```bash
-curl -X POST "{{$ApiURL}}/doc:refresh" \
-  -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
-```
+- No Joins: Model relationships at application layer.
+- No Transactions: Each request is independent.
+- No Triggers/Hooks: Handle logic at application layer.
+- No Background Jobs: Use external job queues for async tasks.
 
 ---
 
