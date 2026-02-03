@@ -302,9 +302,9 @@ type PaginationConfig struct {
 
 // LimitsConfig holds system limits for schema and query constraints.
 type LimitsConfig struct {
-	MaxCollections          int `mapstructure:"max_collections"`            // maximum number of collections
-	MaxColumnsPerCollection int `mapstructure:"max_columns_per_collection"` // maximum columns per collection
-	MaxFiltersPerRequest    int `mapstructure:"max_filters_per_request"`    // maximum filter parameters per request
+	MaxCollections          int `mapstructure:"max_collections"`             // maximum number of collections
+	MaxColumnsPerCollection int `mapstructure:"max_columns_per_collection"`  // maximum columns per collection
+	MaxFiltersPerRequest    int `mapstructure:"max_filters_per_request"`     // maximum filter parameters per request
 	MaxSortFieldsPerRequest int `mapstructure:"max_sort_fields_per_request"` // maximum sort fields per request
 }
 

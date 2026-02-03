@@ -133,7 +133,12 @@ func (s *Server) setupRoutes() {
 	prefix := s.config.Server.Prefix
 
 	// Middleware helper functions for cleaner route definitions
-	// Public endpoints: CORS + logging
+	// Public endpoints: Public CORS (Access-Control-Allow-Origin: *) + logging (PRD-052)
+	publicCORS := func(h http.HandlerFunc) http.HandlerFunc {
+		return s.corsMiddle.HandlePublic(s.loggingMiddleware(h))
+	}
+
+	// Public endpoints: Standard CORS + logging (for endpoints like root message)
 	public := func(h http.HandlerFunc) http.HandlerFunc {
 		return s.corsMiddle.Handle(s.loggingMiddleware(h))
 	}
@@ -179,13 +184,16 @@ func (s *Server) setupRoutes() {
 	// PUBLIC ENDPOINTS (No Auth)
 	// ==========================================
 
-	// Health check endpoint (always at /health, respects prefix)
+	// Health check endpoint (always at /health, respects prefix) - PRD-052: Public CORS
 	healthPath := prefix + "/health"
-	s.mux.HandleFunc("GET "+healthPath, public(s.healthHandler))
+	s.mux.HandleFunc("GET "+healthPath, publicCORS(s.healthHandler))
+	s.mux.HandleFunc("OPTIONS "+healthPath, publicCORS(s.healthHandler))
 
-	// Documentation endpoints (public)
-	s.mux.HandleFunc("GET "+prefix+"/doc/", public(docHandler.HTML))
-	s.mux.HandleFunc("GET "+prefix+"/doc/md", public(docHandler.Markdown))
+	// Documentation endpoints (public) - PRD-052: Public CORS
+	s.mux.HandleFunc("GET "+prefix+"/doc/", publicCORS(docHandler.HTML))
+	s.mux.HandleFunc("OPTIONS "+prefix+"/doc/", publicCORS(docHandler.HTML))
+	s.mux.HandleFunc("GET "+prefix+"/doc/md", publicCORS(docHandler.Markdown))
+	s.mux.HandleFunc("OPTIONS "+prefix+"/doc/md", publicCORS(docHandler.Markdown))
 
 	// ==========================================
 	// AUTH ENDPOINTS (No role check)

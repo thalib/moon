@@ -69,9 +69,9 @@ const (
 	CodeQueryTimeout       ErrorCode = "QUERY_TIMEOUT"
 
 	// Request errors
-	CodeBadRequest       ErrorCode = "BAD_REQUEST"
-	CodeMethodNotAllowed ErrorCode = "METHOD_NOT_ALLOWED"
-	CodeTooManyRequests  ErrorCode = "TOO_MANY_REQUESTS"
+	CodeBadRequest        ErrorCode = "BAD_REQUEST"
+	CodeMethodNotAllowed  ErrorCode = "METHOD_NOT_ALLOWED"
+	CodeTooManyRequests   ErrorCode = "TOO_MANY_REQUESTS"
 	CodeRateLimitExceeded ErrorCode = "RATE_LIMIT_EXCEEDED"
 )
 

@@ -107,3 +107,33 @@ func (m *CORSMiddleware) isOriginAllowed(origin string) bool {
 
 	return false
 }
+
+// HandlePublic adds public CORS headers (Access-Control-Allow-Origin: *) for public endpoints (PRD-052)
+// This is used for health checks, documentation, and other non-sensitive endpoints
+func (m *CORSMiddleware) HandlePublic(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Always set Access-Control-Allow-Origin to * for public endpoints
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+
+		// Set Access-Control-Allow-Methods for GET requests
+		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+
+		// Handle preflight OPTIONS request
+		if r.Method == http.MethodOptions {
+			// Set Access-Control-Allow-Headers
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+			// Set Access-Control-Max-Age
+			if m.config.MaxAge > 0 {
+				w.Header().Set("Access-Control-Max-Age", fmt.Sprintf("%d", m.config.MaxAge))
+			} else {
+				w.Header().Set("Access-Control-Max-Age", "3600")
+			}
+
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		next(w, r)
+	}
+}

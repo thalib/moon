@@ -638,3 +638,131 @@ func TestDynamicCollectionEndpoints_MultipleCollections(t *testing.T) {
 		})
 	}
 }
+
+// TestPublicCORSHeaders tests PRD-052: Public CORS for Health and Docs Endpoints
+func TestPublicCORSHeaders(t *testing.T) {
+	srv := setupTestServer(t)
+
+	tests := []struct {
+		name           string
+		path           string
+		description    string
+		expectCORS     bool
+		expectWildcard bool
+	}{
+		{
+			name:           "health_endpoint",
+			path:           "/health",
+			description:    "Health endpoint should have Access-Control-Allow-Origin: *",
+			expectCORS:     true,
+			expectWildcard: true,
+		},
+		{
+			name:           "doc_html_endpoint",
+			path:           "/doc/",
+			description:    "Doc HTML endpoint should have Access-Control-Allow-Origin: *",
+			expectCORS:     true,
+			expectWildcard: true,
+		},
+		{
+			name:           "doc_markdown_endpoint",
+			path:           "/doc/md",
+			description:    "Doc Markdown endpoint should have Access-Control-Allow-Origin: *",
+			expectCORS:     true,
+			expectWildcard: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, tt.path, nil)
+			// Set an Origin header to simulate cross-origin request
+			req.Header.Set("Origin", "https://example.com")
+			w := httptest.NewRecorder()
+
+			srv.mux.ServeHTTP(w, req)
+
+			// Check for CORS header
+			corsHeader := w.Header().Get("Access-Control-Allow-Origin")
+			if tt.expectCORS {
+				if corsHeader == "" {
+					t.Errorf("%s: Expected Access-Control-Allow-Origin header, got none", tt.description)
+				}
+				if tt.expectWildcard && corsHeader != "*" {
+					t.Errorf("%s: Expected Access-Control-Allow-Origin: *, got %s", tt.description, corsHeader)
+				}
+			}
+		})
+	}
+}
+
+// TestPublicCORSPreflight tests CORS preflight OPTIONS requests for public endpoints
+func TestPublicCORSPreflight(t *testing.T) {
+	srv := setupTestServer(t)
+
+	tests := []struct {
+		name string
+		path string
+	}{
+		{"health_preflight", "/health"},
+		{"doc_html_preflight", "/doc/"},
+		{"doc_md_preflight", "/doc/md"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodOptions, tt.path, nil)
+			req.Header.Set("Origin", "https://example.com")
+			req.Header.Set("Access-Control-Request-Method", "GET")
+			w := httptest.NewRecorder()
+
+			srv.mux.ServeHTTP(w, req)
+
+			// OPTIONS should return 204 No Content
+			if w.Code != http.StatusNoContent {
+				t.Errorf("Expected status %d for OPTIONS request, got %d", http.StatusNoContent, w.Code)
+			}
+
+			// Check CORS headers
+			corsOrigin := w.Header().Get("Access-Control-Allow-Origin")
+			if corsOrigin != "*" {
+				t.Errorf("Expected Access-Control-Allow-Origin: *, got %s", corsOrigin)
+			}
+
+			corsMethods := w.Header().Get("Access-Control-Allow-Methods")
+			if corsMethods == "" {
+				t.Error("Expected Access-Control-Allow-Methods header, got none")
+			}
+		})
+	}
+}
+
+// TestAuthEndpointsDoNotHaveWildcardCORS tests that auth endpoints do not have wildcard CORS
+func TestAuthEndpointsDoNotHaveWildcardCORS(t *testing.T) {
+	srv := setupTestServer(t)
+
+	tests := []struct {
+		name string
+		path string
+	}{
+		{"auth_login", "/auth:login"},
+		{"auth_refresh", "/auth:refresh"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, tt.path, nil)
+			req.Header.Set("Origin", "https://example.com")
+			w := httptest.NewRecorder()
+
+			srv.mux.ServeHTTP(w, req)
+
+			// Auth endpoints should not have wildcard CORS by default
+			// (they should use the standard CORS middleware which requires config)
+			corsHeader := w.Header().Get("Access-Control-Allow-Origin")
+			if corsHeader == "*" {
+				t.Errorf("%s should not have Access-Control-Allow-Origin: *, got %s", tt.path, corsHeader)
+			}
+		})
+	}
+}
