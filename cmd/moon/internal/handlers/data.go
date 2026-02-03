@@ -1000,6 +1000,12 @@ func parseRows(rows *sql.Rows, collection *registry.Collection) ([]map[string]an
 		return nil, err
 	}
 
+	// Create a map of column names to their types for boolean conversion (PRD-051)
+	columnTypes := make(map[string]registry.ColumnType)
+	for _, col := range collection.Columns {
+		columnTypes[col.Name] = col.Type
+	}
+
 	result := []map[string]any{}
 
 	for rows.Next() {
@@ -1023,6 +1029,12 @@ func parseRows(rows *sql.Rows, collection *registry.Collection) ([]map[string]an
 				val = string(b)
 			}
 
+			// Convert boolean values (PRD-051: Boolean API Response Uniformity)
+			// SQLite stores booleans as integers (0/1), we need to convert to true/false
+			if colType, exists := columnTypes[col]; exists && colType == registry.TypeBoolean {
+				val = convertToBoolean(val)
+			}
+
 			// Map internal 'id' column to nothing (never expose it)
 			// Map 'ulid' column to 'id' in API response (per PRD requirement)
 			if col == "id" {
@@ -1044,6 +1056,43 @@ func parseRows(rows *sql.Rows, collection *registry.Collection) ([]map[string]an
 	}
 
 	return result, nil
+}
+
+// convertToBoolean converts various boolean representations to Go bool (PRD-051)
+func convertToBoolean(val any) bool {
+	if val == nil {
+		return false
+	}
+
+	switch v := val.(type) {
+	case bool:
+		return v
+	case int:
+		return v != 0
+	case int8:
+		return v != 0
+	case int16:
+		return v != 0
+	case int32:
+		return v != 0
+	case int64:
+		return v != 0
+	case uint:
+		return v != 0
+	case uint8:
+		return v != 0
+	case uint16:
+		return v != 0
+	case uint32:
+		return v != 0
+	case uint64:
+		return v != 0
+	case string:
+		// Handle string representations
+		return v == "1" || v == "true" || v == "TRUE" || v == "t" || v == "T"
+	default:
+		return false
+	}
 }
 
 // validateFields validates request data against collection schema
