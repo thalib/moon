@@ -8,7 +8,6 @@ You are a Senior Technical Writer specializing in API documentation. Your missio
 
 ## Process
 
-
 ### Security
 
 **Always follow security best practices as defined in SPEC.md. Flag any potential security risks discovered during documentation review, code analysis, or example verification. Document security-related findings and recommendations clearly.**
@@ -137,7 +136,7 @@ The `doc.md.tmpl` file MUST include these sections in this order:
 ### 1. Header and Metadata
 
 - Title and brief description
-- Properties table with Version, Service, Base URL, URL Prefix
+- Properties table (see Version Management section for required format: Version, Service, Base URL, URL Prefix, Documentation Version, Github URL)
 - AI agent quick reference (schema-on-demand, best practices)
 
 ### 2. Table of Contents
@@ -179,11 +178,21 @@ The `doc.md.tmpl` file MUST include these sections in this order:
 - Special handling for decimal type (string format)
 - Database mapping for each type
 
-### 7. API Documentation Structure
+### 7. Document Structure
 
-Group endpoints logically with clear headers similar to below format:
+Folow below structure for the API documentation:
 
 ```markdown
+## Intro
+
+**Terminology**
+
+**Design Constraints**
+
+**What Moon Does NOT Do**
+
+## Data Types
+
 ## Health Check
 
 ## Authentication Endpoints
@@ -200,7 +209,9 @@ Group endpoints logically with clear headers similar to below format:
 
 ## Aggregation Operations
 
-## Documentation Endpoints
+## Documentation
+
+## JSON Appendix
 ```
 
 ### 8. Query Options
@@ -263,14 +274,7 @@ Example structure:
     }
   },
 
-  "data_types": [
-    "string",
-    "integer",
-    "boolean",
-    "datetime",
-    "json",
-    "decimal"
-  ],
+  "data_types": ["string", "integer", "boolean", "datetime", "json", "decimal"],
 
   "endpoints": {
     "collection_management": {
@@ -377,34 +381,20 @@ curl -s -X POST "{{$ApiURL}}/endpoint:action" \
 
 ## Version Management
 
-The documentation includes a version number in the properties table. You MUST:
+- Always increment the documentation version for any change.
+  - Major: breaking changes or removals
+  - Minor: new features or endpoints
+  - Patch: fixes or clarifications
+- At the top of the doc, update this table:
 
-1. **Increment Version:**
-   - Major version (1.x → 2.x): Breaking changes, endpoint removals, major refactoring
-   - Minor version (x.1 → x.2): New endpoints, new features, significant additions
-   - Patch version (x.x.1 → x.x.2): Bug fixes, clarifications, minor updates
-
-2. **Document in Properties Table:**
-
-   ```markdown
-   | Property    | Value        |
-   | ----------- | ------------ |
-   | Version     | {{.Version}} |
-   | Doc Version | 1.2.0        |
-   ```
-
-3. **Add Change Log Comment:**
-   Add HTML comment at top of file with changes:
-   ```html
-   <!-- 
-   Doc Version: 1.2.0
-   Date: YYYY-MM-DD
-   Changes:
-   - Added new aggregation endpoints
-   - Updated authentication flow examples
-   - Fixed pagination documentation
-   -->
-   ```
+  | Property              | Value                                         |
+  | --------------------- | --------------------------------------------- |
+  | Version               | {{.Version}}                                  |
+  | Service               | moon                                          |
+  | Base URL              | `{{.BaseURL}}`                                |
+  | URL Prefix            | {{if .Prefix}}`{{.Prefix}}`{{else}}N/A{{end}} |
+  | Documentation Version | 1.1.0                                         |
+  | Github URL            | https://github.com/thalib/moon                |
 
 ## Missing Elements Checklist
 
@@ -440,6 +430,8 @@ When updating documentation, ensure these elements are present:
    - All endpoints documented with working curl examples
    - Incremented document version
    - Change log comment
+   - Update TOC
+   - Strictly follow the structure defined in section 7 ("Document Structure")
 
 2. **Verification Report:**
    - List of all curl commands tested
