@@ -40,10 +40,10 @@ type DataListRequest struct {
 
 // DataListResponse represents response for list operation
 type DataListResponse struct {
-	Data       []map[string]any `json:"data,omitempty"` // Omit when schema=only (PRD-053)
-	Schema     *schema.Schema   `json:"schema,omitempty"`
-	NextCursor *string          `json:"next_cursor,omitempty"` // Next ULID cursor, null if no more data
-	Limit      int              `json:"limit,omitempty"`
+	Data       []map[string]any `json:"data,omitempty"`    // Omit when schema=only (PRD-053)
+	Schema     *schema.Schema   `json:"schema,omitempty"`  // Omit when not requested
+	NextCursor *string          `json:"next_cursor"`       // Next ULID cursor, null if no more data
+	Limit      int              `json:"limit"`             // Always include pagination limit
 }
 
 // DataGetResponse represents response for get operation
