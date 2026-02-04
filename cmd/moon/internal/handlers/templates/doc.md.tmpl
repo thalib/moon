@@ -124,7 +124,25 @@ Supported column data types:
 
 ---
 
-## Documentation
+## Public Endpoints
+
+**Health Check**
+
+```bash
+curl -s  http://localhost:6006/health | jq .
+```
+
+Response: `status: live|down`
+
+```bash
+{
+  "name": "moon",
+  "status": "live",
+  "version": "1.99"
+}
+```
+
+**Documentation**
 
 View HTML documentation in your browser: [{{$ApiURL}}/doc/]({{$ApiURL}}/doc/)
 
@@ -254,23 +272,6 @@ All errors follow a consistent JSON structure:
 {
   "error": "Rate limit exceeded. Try again later.",
   "code": 429
-}
-```
----
-
-## Health Check
-
-```bash
-curl -s  http://localhost:6006/health | jq .
-```
-
-Response: `status: live|down`
-
-```bash
-{
-  "name": "moon",
-  "status": "live",
-  "version": "1.99"
 }
 ```
 
