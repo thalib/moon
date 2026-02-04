@@ -700,6 +700,7 @@ These endpoints manage records within a specific collection. Replace `{collectio
 |----------|--------|-------------|
 | `{{.Prefix}}/{collection}:list` | GET | List all records |
 | `{{.Prefix}}/{collection}:get` | GET | Get a single record (requires `?id=...`) |
+| `{{.Prefix}}/{collection}:schema` | GET | Get collection schema |
 | `{{.Prefix}}/{collection}:create` | POST | Create a new record |
 | `{{.Prefix}}/{collection}:update` | POST | Update an existing record |
 | `{{.Prefix}}/{collection}:destroy` | POST | Delete a record |
@@ -828,42 +829,30 @@ curl "{{$ApiURL}}/products:list?after=01ARZ3NDEKTSV4RRFFQ69G5FBX&limit=10" \
   -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
 ```
 
-**Schema:** ``?schema``
+**Schema Retrieval**
 
-Data access GET endpoints (`/{collection}:list` and `/{collection}:get`) support the `?schema` query parameter. This parameter works with filters, pagination, sorting, field selection, and search.
+To retrieve the schema for a collection, use the dedicated schema endpoint:
 
-- `?schema` or `?schema=true`: Returns both data and schema.
-- `?schema=only`: Returns only schema, omits data.
-
-***Note:*** The `?schema` parameter is **only available for data access endpoints** (e.g., `/products:list`, `/users_data:get`). It is **not supported** on management endpoints like `/collections:list`, `/users:list`, `/apikeys:list`, or `/collections:get`.
-
-Example Return only schema:
 ```bash
-curl "{{$ApiURL}}/products:list?schema=only" -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
+curl "{{$ApiURL}}/products:schema" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
 ```
 
-Response with schema:
+Response format:
 
 ```json
 {
-  "data": [
-    { "id": "01...", "title": "Wireless Mouse", "price": "29.99" }
-  ],
-  "schema": {
-    "collection": "products",
-    "fields": [
-      { "name": "id", "type": "string", "nullable": false, "primary_key": true },
-      { "name": "title", "type": "string", "nullable": false },
-      { "name": "price", "type": "decimal", "nullable": false }
-    ],
-    "primary_key": "id",
-    "metadata": {
-      "created_at": "datetime",
-      "updated_at": "datetime"
-    }
-  }
+  "collection": "products",
+  "fields": [
+    { "name": "id", "type": "string", "nullable": false },
+    { "name": "title", "type": "string", "nullable": false },
+    { "name": "price", "type": "integer", "nullable": false },
+    { "name": "description", "type": "string", "nullable": true }
+  ]
 }
 ```
+
+The schema endpoint requires authentication and returns `404` if the collection does not exist.
 
 **Combined Query Examples:**
 

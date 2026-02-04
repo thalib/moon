@@ -604,6 +604,14 @@ func (s *Server) dynamicDataHandler(dataHandler *handlers.DataHandler, aggregati
 			authenticated(func(w http.ResponseWriter, r *http.Request) {
 				aggregationHandler.Max(w, r, collectionName)
 			})(w, r)
+		case "schema":
+			if r.Method != http.MethodGet {
+				s.writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
+				return
+			}
+			authenticated(func(w http.ResponseWriter, r *http.Request) {
+				dataHandler.Schema(w, r, collectionName)
+			})(w, r)
 		default:
 			s.writeError(w, http.StatusNotFound, "Unknown action")
 		}
