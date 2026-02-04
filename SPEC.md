@@ -430,6 +430,7 @@ These endpoints manage the records within a specific collection.
 | ---------------------- | ------ | -------------------------------------------------- |
 | `GET /{name}:list`     | `GET`  | Fetch all records from the specified table.        |
 | `GET /{name}:get`      | `GET`  | Fetch a single record by its unique ID.            |
+| `GET /{name}:schema`   | `GET`  | Retrieve the schema for a specific collection.     |
 | `POST /{name}:create`  | `POST` | Insert a new record (validated against the cache). |
 | `POST /{name}:update`  | `POST` | Update an existing record.                         |
 | `POST /{name}:destroy` | `POST` | Delete a record from the table.                    |
@@ -483,20 +484,41 @@ The list endpoint supports powerful query parameters for filtering, sorting, sea
 - Returns `next_cursor` in the response when more results are available
 - Example: `?after=01ARZ3NDEKTSV4RRFFQ69G5FBX`
 
-**Schema Parameter:**
-
-- Syntax: `?schema=true|only`
-- Controls schema inclusion in response:
-  - No parameter (default): Returns data only
-  - `schema=true`: Returns both data AND schema metadata
-  - `schema=only`: Returns ONLY schema (no data query, useful for validation)
-- Example: `?schema=true&limit=10`
-- Schema includes column names, types, constraints for the collection
-
 **Combined Example:**
 
 ```
-GET /products:list?q=laptop&price[gt]=500&title[contains]=pro&sort=-price&fields=name,price&limit=10&schema=true
+GET /products:list?q=laptop&price[gt]=500&title[contains]=pro&sort=-price&fields=name,price&limit=10
+```
+
+#### Schema Retrieval
+
+To retrieve the schema (field names, types, and constraints) for a specific collection, use the dedicated schema endpoint:
+
+**Endpoint:** `GET /{collection}:schema`
+
+**Response Format:**
+```json
+{
+  "collection": "products",
+  "fields": [
+    { "name": "id", "type": "string", "nullable": false },
+    { "name": "title", "type": "string", "nullable": false },
+    { "name": "price", "type": "integer", "nullable": false },
+    { "name": "description", "type": "string", "nullable": true }
+  ]
+}
+```
+
+**Authentication:** Required (Bearer token or API key)
+
+**Error Responses:**
+- `401 Unauthorized`: Missing or invalid authentication
+- `404 Not Found`: Collection does not exist
+- `500 Internal Server Error`: Unexpected errors
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer $ACCESS_TOKEN" https://api.example.com/products:schema
 ```
 
 ### C. Aggregation Operations (`/{collectionName}`)
