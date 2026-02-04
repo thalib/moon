@@ -25,20 +25,17 @@
 ## Table of Contents
 
 - [Intro](#intro)
+- [Public Endpoints](#public-endpoints)
 - [Authentication](#authentication)
 - [Response Format](#response-format)
-- [Data Types](#data-types)
-- [Health Check](#health-check)
 - [Auth Endpoints](#auth-endpoints)
-- [User Management Endpoints](#user-management-endpoints)
-- [API Key Management Endpoints](#api-key-management-endpoints)
+- [User Management Endpoints (Admin Only)](#user-management-endpoints-admin-only)
+- [API Key Management Endpoints (Admin Only)](#api-key-management-endpoints-admin-only)
 - [Collection Management](#collection-management)
 - [Data Access](#data-access)
 - [Query Options](#query-options)
 - [Aggregation Operations](#aggregation-operations)
-- [Rate Limiting](#rate-limiting)
-- [CORS Configuration](#cors-configuration)
-- [Documentation](#documentation)
+- [Security](#security)
 - [JSON Appendix](#json-appendix)
 
 ## Intro
@@ -952,7 +949,9 @@ curl "{{$ApiURL}}/products:max?field=quantity" \
 
 ---
 
-## Rate Limiting
+## Security
+
+**Rate Limiting**
 
 Every response includes rate limit information in the headers:
 
@@ -984,7 +983,7 @@ Wait until the time specified in `X-RateLimit-Reset` before retrying.
 
 ---
 
-## CORS Configuration
+**CORS Configuration**
 
 Moon supports Cross-Origin Resource Sharing (CORS) for browser-based clients.
 
