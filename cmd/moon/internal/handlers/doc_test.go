@@ -472,3 +472,279 @@ func TestDocHandler_CopyButtonHTML(t *testing.T) {
 		t.Error("expected pre element to have position: relative and padding-right")
 	}
 }
+
+func TestDocHandler_JSONAppendixPresence(t *testing.T) {
+	// Setup with collections
+	reg := registry.NewSchemaRegistry()
+	reg.Set(&registry.Collection{
+		Name: "users",
+		Columns: []registry.Column{
+			{Name: "name", Type: registry.TypeString, Nullable: false},
+			{Name: "email", Type: registry.TypeString, Nullable: false},
+		},
+	})
+	reg.Set(&registry.Collection{
+		Name: "products",
+		Columns: []registry.Column{
+			{Name: "title", Type: registry.TypeString, Nullable: false},
+			{Name: "price", Type: registry.TypeInteger, Nullable: false},
+		},
+	})
+
+	cfg := &config.AppConfig{
+		Server: config.ServerConfig{
+			Host:   "localhost",
+			Port:   6006,
+			Prefix: "",
+		},
+		JWT: config.JWTConfig{
+			Secret: "test-secret",
+			Expiry: 3600,
+		},
+		APIKey: config.APIKeyConfig{
+			Enabled: true,
+			Header:  "X-API-KEY",
+		},
+	}
+
+	handler := NewDocHandler(reg, cfg, "1.99")
+
+	// Test Markdown
+	req := httptest.NewRequest(http.MethodGet, "/doc/llms-full.txt", nil)
+	rec := httptest.NewRecorder()
+	handler.Markdown(rec, req)
+
+	body := rec.Body.String()
+
+	// Check for JSON Appendix section
+	if !strings.Contains(body, "## JSON Appendix") {
+		t.Error("expected JSON Appendix section")
+	}
+
+	// Check for key JSON fields
+	if !strings.Contains(body, `"service": "moon"`) {
+		t.Error("expected service field in JSON appendix")
+	}
+	if !strings.Contains(body, `"version": "1.99"`) {
+		t.Error("expected version field in JSON appendix")
+	}
+	if !strings.Contains(body, `"registered_collections"`) {
+		t.Error("expected registered_collections field in JSON appendix")
+	}
+
+	// Check that collections are present
+	if !strings.Contains(body, `"users"`) {
+		t.Error("expected users collection in JSON appendix")
+	}
+	if !strings.Contains(body, `"products"`) {
+		t.Error("expected products collection in JSON appendix")
+	}
+
+	// Check that fields are present
+	if !strings.Contains(body, `"name"`) {
+		t.Error("expected name field in JSON appendix")
+	}
+	if !strings.Contains(body, `"email"`) {
+		t.Error("expected email field in JSON appendix")
+	}
+	if !strings.Contains(body, `"title"`) {
+		t.Error("expected title field in JSON appendix")
+	}
+	if !strings.Contains(body, `"price"`) {
+		t.Error("expected price field in JSON appendix")
+	}
+
+	// Check that field types are present
+	if !strings.Contains(body, `"type": "string"`) {
+		t.Error("expected string type in JSON appendix")
+	}
+	if !strings.Contains(body, `"type": "integer"`) {
+		t.Error("expected integer type in JSON appendix")
+	}
+
+	// Check authentication modes
+	if !strings.Contains(body, `"jwt"`) {
+		t.Error("expected jwt auth mode in JSON appendix")
+	}
+	if !strings.Contains(body, `"api_key"`) {
+		t.Error("expected api_key auth mode in JSON appendix")
+	}
+}
+
+func TestDocHandler_JSONAppendixDeterminism(t *testing.T) {
+	// Setup config
+	cfg := &config.AppConfig{
+		Server: config.ServerConfig{
+			Host:   "localhost",
+			Port:   6006,
+			Prefix: "",
+		},
+		JWT: config.JWTConfig{
+			Secret: "test-secret",
+			Expiry: 3600,
+		},
+	}
+
+	// Create two registries with collections added in different order
+	reg1 := registry.NewSchemaRegistry()
+	reg1.Set(&registry.Collection{
+		Name: "zebras",
+		Columns: []registry.Column{
+			{Name: "stripe_count", Type: registry.TypeInteger, Nullable: false},
+			{Name: "name", Type: registry.TypeString, Nullable: false},
+		},
+	})
+	reg1.Set(&registry.Collection{
+		Name: "aardvarks",
+		Columns: []registry.Column{
+			{Name: "weight", Type: registry.TypeInteger, Nullable: false},
+			{Name: "name", Type: registry.TypeString, Nullable: false},
+		},
+	})
+
+	reg2 := registry.NewSchemaRegistry()
+	reg2.Set(&registry.Collection{
+		Name: "aardvarks",
+		Columns: []registry.Column{
+			{Name: "name", Type: registry.TypeString, Nullable: false},
+			{Name: "weight", Type: registry.TypeInteger, Nullable: false},
+		},
+	})
+	reg2.Set(&registry.Collection{
+		Name: "zebras",
+		Columns: []registry.Column{
+			{Name: "name", Type: registry.TypeString, Nullable: false},
+			{Name: "stripe_count", Type: registry.TypeInteger, Nullable: false},
+		},
+	})
+
+	// Generate documentation with both registries
+	handler1 := NewDocHandler(reg1, cfg, "1.99")
+	req1 := httptest.NewRequest(http.MethodGet, "/doc/llms-full.txt", nil)
+	rec1 := httptest.NewRecorder()
+	handler1.Markdown(rec1, req1)
+	body1 := rec1.Body.String()
+
+	handler2 := NewDocHandler(reg2, cfg, "1.99")
+	req2 := httptest.NewRequest(http.MethodGet, "/doc/llms-full.txt", nil)
+	rec2 := httptest.NewRecorder()
+	handler2.Markdown(rec2, req2)
+	body2 := rec2.Body.String()
+
+	// Both should produce identical JSON appendix sections
+	if body1 != body2 {
+		t.Error("expected identical JSON appendix regardless of insertion order")
+
+		// Extract and compare JSON sections for debugging
+		startMarker := "## JSON Appendix"
+		idx1 := strings.Index(body1, startMarker)
+		idx2 := strings.Index(body2, startMarker)
+
+		if idx1 != -1 && idx2 != -1 {
+			json1 := body1[idx1:]
+			json2 := body2[idx2:]
+
+			if json1 != json2 {
+				t.Logf("JSON appendix sections differ")
+				t.Logf("First 500 chars of json1: %s", json1[:min(500, len(json1))])
+				t.Logf("First 500 chars of json2: %s", json2[:min(500, len(json2))])
+			}
+		}
+	}
+}
+
+func TestDocHandler_JSONAppendixRefresh(t *testing.T) {
+	// Setup with initial collection
+	reg := registry.NewSchemaRegistry()
+	reg.Set(&registry.Collection{
+		Name: "users",
+		Columns: []registry.Column{
+			{Name: "name", Type: registry.TypeString, Nullable: false},
+		},
+	})
+
+	cfg := &config.AppConfig{
+		Server: config.ServerConfig{
+			Host:   "localhost",
+			Port:   6006,
+			Prefix: "",
+		},
+	}
+
+	handler := NewDocHandler(reg, cfg, "1.99")
+
+	// Generate initial documentation
+	req1 := httptest.NewRequest(http.MethodGet, "/doc/llms-full.txt", nil)
+	rec1 := httptest.NewRecorder()
+	handler.Markdown(rec1, req1)
+	body1 := rec1.Body.String()
+
+	// Extract the JSON Appendix section
+	startMarker := "## JSON Appendix"
+	startIdx := strings.Index(body1, startMarker)
+	if startIdx == -1 {
+		t.Fatal("JSON Appendix section not found")
+	}
+	jsonSection1 := body1[startIdx:]
+
+	// Verify users is present in JSON appendix
+	if !strings.Contains(jsonSection1, `"name": "users"`) {
+		t.Error("expected users collection in initial JSON appendix registered_collections")
+	}
+	// Verify products collection is not present in registered_collections
+	if strings.Contains(jsonSection1, `"name": "products"`) {
+		t.Error("did not expect products collection in initial JSON appendix registered_collections")
+	}
+
+	// Add a new collection to the registry
+	reg.Set(&registry.Collection{
+		Name: "products",
+		Columns: []registry.Column{
+			{Name: "title", Type: registry.TypeString, Nullable: false},
+			{Name: "price", Type: registry.TypeInteger, Nullable: false},
+		},
+	})
+
+	// Refresh the cache to clear it
+	req2 := httptest.NewRequest(http.MethodPost, "/doc:refresh", nil)
+	rec2 := httptest.NewRecorder()
+	handler.RefreshCache(rec2, req2)
+
+	if rec2.Code != http.StatusOK {
+		t.Errorf("expected refresh to return 200, got %d", rec2.Code)
+	}
+
+	// Generate documentation again (should rebuild with new collection)
+	req3 := httptest.NewRequest(http.MethodGet, "/doc/llms-full.txt", nil)
+	rec3 := httptest.NewRecorder()
+	handler.Markdown(rec3, req3)
+	body3 := rec3.Body.String()
+
+	// Extract the JSON Appendix section from refreshed doc
+	startIdx3 := strings.Index(body3, startMarker)
+	if startIdx3 == -1 {
+		t.Fatal("JSON Appendix section not found after refresh")
+	}
+	jsonSection3 := body3[startIdx3:]
+
+	// Verify both collections are now present in registered_collections
+	if !strings.Contains(jsonSection3, `"name": "users"`) {
+		t.Error("expected users collection in refreshed JSON appendix")
+	}
+	if !strings.Contains(jsonSection3, `"name": "products"`) {
+		t.Error("expected products collection in refreshed JSON appendix")
+	}
+	if !strings.Contains(jsonSection3, `"name": "title"`) {
+		t.Error("expected title field in refreshed JSON appendix")
+	}
+	if !strings.Contains(jsonSection3, `"name": "price"`) {
+		t.Error("expected price field in refreshed JSON appendix")
+	}
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
