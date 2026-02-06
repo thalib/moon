@@ -4,7 +4,7 @@
 # Moon – Instructions and API Documentation for AI Coding Agents
 
 > **Quick Start:**
-> 1. [View HTML docs]({{$ApiURL}}/doc/) or [Markdown docs]({{$ApiURL}}/doc/md)
+> 1. [View HTML docs]({{$ApiURL}}/doc/) or [Markdown docs]({{$ApiURL}}/doc/llms-full.txt)
 > 2. [Authenticate](#authentication) (see below)
 > 3. [Try a sample request](#collection-management)
 > 4. [See JSON Appendix](#json-appendix) for machine-readable spec
@@ -80,7 +80,7 @@ Moon is intentionally minimal. It does **not** support:
 - **Encryption at Rest:** No built-in data encryption at rest.
 - **Admin UI:** API-only; no built-in web UI or dashboard.
 - **HTTP Methods:** Only supports `GET`, `POST`, and `OPTIONS` (no `PUT`, `PATCH`, or `DELETE`).
-- **Public endpoints:** `/health`, `/doc`, `/doc/md`.
+- **Public endpoints:** `/health`, `/doc`, `/doc/llms-full.txt`.
 
 **Design Constraints**
 
@@ -145,9 +145,9 @@ View HTML documentation in your browser: [{{$ApiURL}}/doc/]({{$ApiURL}}/doc/)
 
 Get Markdown documentation (for humans and AI coding agents) via curl:
 ```bash
-curl "{{$ApiURL}}/doc/md"
+curl "{{$ApiURL}}/doc/llms-full.txt"
 ```
-Or view in browser: [{{$ApiURL}}/doc/md]({{$ApiURL}}/doc/md)
+Or view in browser: [{{$ApiURL}}/doc/llms-full.txt]({{$ApiURL}}/doc/llms-full.txt)
 
 Refresh documentation cache:
 ```bash
