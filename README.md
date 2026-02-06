@@ -23,7 +23,7 @@ Moon is an API-first, migration-less backend in Go. Manage database schemas and 
 - In-memory schema registry for fast validation
 - Multi-database: SQLite, PostgreSQL, MySQL
 - Predictable API pattern (AIP-136 custom actions)
-- Built-in HTML & Markdown documentation (`/doc/`, `/doc/md`)
+- Built-in HTML & Markdown documentation (`/doc/`, `/doc/llms-full.txt`)
 - Server-side aggregations (`:count`, `:sum`, etc.)
 - Docker-ready, efficient (<50MB RAM)
 - **JWT & API key authentication** (mandatory)
@@ -70,7 +70,7 @@ See [INSTALL.md](INSTALL.md) for complete setup including Docker deployment.
 Moon provides comprehensive, auto-generated API documentation:
 
 - **HTML Documentation**: Visit `http://localhost:6006/doc/` in your browser for a complete, interactive API reference
-- **Markdown Documentation**: Access `http://localhost:6006/doc/md` for terminal-friendly or AI-agent documentation
+- **Markdown Documentation**: Access `http://localhost:6006/doc/llms-full.txt` for terminal-friendly or AI-agent documentation
 - Configuration: See `samples/moon.conf` for comprehensive, spec-compliant configuration
 - Testing: See `scripts/test-runner.sh`
 

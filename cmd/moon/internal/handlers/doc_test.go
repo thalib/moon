@@ -102,7 +102,7 @@ func TestDocHandler_Markdown(t *testing.T) {
 	handler := NewDocHandler(reg, cfg, "1.99")
 
 	// Test
-	req := httptest.NewRequest(http.MethodGet, "/doc/md", nil)
+	req := httptest.NewRequest(http.MethodGet, "/doc/llms-full.txt", nil)
 	rec := httptest.NewRecorder()
 
 	handler.Markdown(rec, req)
@@ -290,7 +290,7 @@ func TestDocHandler_WithCollections(t *testing.T) {
 	handler := NewDocHandler(reg, cfg, "1.99")
 
 	// Test Markdown - verify handler has access to collections via registry
-	req := httptest.NewRequest(http.MethodGet, "/doc/md", nil)
+	req := httptest.NewRequest(http.MethodGet, "/doc/llms-full.txt", nil)
 	rec := httptest.NewRecorder()
 	handler.Markdown(rec, req)
 
@@ -317,7 +317,7 @@ func TestDocHandler_QuickstartSection(t *testing.T) {
 	handler := NewDocHandler(reg, cfg, "1.99")
 
 	// Test Markdown
-	req := httptest.NewRequest(http.MethodGet, "/doc/md", nil)
+	req := httptest.NewRequest(http.MethodGet, "/doc/llms-full.txt", nil)
 	rec := httptest.NewRecorder()
 	handler.Markdown(rec, req)
 
@@ -389,7 +389,7 @@ func TestDocHandler_ExampleRequests(t *testing.T) {
 	handler := NewDocHandler(reg, cfg, "1.99")
 
 	// Test Markdown
-	req := httptest.NewRequest(http.MethodGet, "/doc/md", nil)
+	req := httptest.NewRequest(http.MethodGet, "/doc/llms-full.txt", nil)
 	rec := httptest.NewRecorder()
 	handler.Markdown(rec, req)
 

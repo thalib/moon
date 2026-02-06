@@ -583,11 +583,11 @@ Moon provides human- and AI-readable documentation endpoints that automatically 
 
 **Note:** All endpoints below are shown without a prefix. If a prefix is configured, prepend it to all paths.
 
-| Endpoint                | Method | Purpose                                                              |
-| ----------------------- | ------ | -------------------------------------------------------------------- |
-| `GET /doc/`             | `GET`  | Retrieve HTML documentation (single-page, styled)                    |
-| `GET /doc/markdown`     | `GET`  | Retrieve Markdown documentation (for AI agents and markdown readers) |
-| `POST /doc:refresh`     | `POST` | Clear cached documentation and force regeneration                    |
+| Endpoint                     | Method | Purpose                                                              |
+| ---------------------------- | ------ | -------------------------------------------------------------------- |
+| `GET /doc/`                  | `GET`  | Retrieve HTML documentation (single-page, styled)                    |
+| `GET /doc/llms-full.txt`     | `GET`  | Retrieve Markdown documentation (for AI agents and markdown readers) |
+| `POST /doc:refresh`          | `POST` | Clear cached documentation and force regeneration                    |
 
 **Features:**
 
@@ -739,7 +739,7 @@ The server acts as a "Smart Bridge" between the user and the database.
 
 ## Interface & Integration Layer
 
-- **Documentation Endpoints:** Human- and AI-readable documentation is available via `/doc/` (HTML) and `/doc/md` (Markdown) endpoints (see Section 2.D for details).
+- **Documentation Endpoints:** Human- and AI-readable documentation is available via `/doc/` (HTML) and `/doc/llms-full.txt` (Markdown) endpoints (see Section 2.D for details).
 - **Middleware Security:** A high-speed JWT and API Key layer that enforces simple allow/deny permissions per endpoint before the request reaches the dynamic handlers.
 - **Advanced Auth Controls:**
   - JWT role-based authorization per path

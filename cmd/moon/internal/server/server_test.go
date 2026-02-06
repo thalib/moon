@@ -666,7 +666,7 @@ func TestPublicCORSHeaders(t *testing.T) {
 		},
 		{
 			name:           "doc_markdown_endpoint",
-			path:           "/doc/md",
+			path:           "/doc/llms-full.txt",
 			description:    "Doc Markdown endpoint should have Access-Control-Allow-Origin: *",
 			expectCORS:     true,
 			expectWildcard: true,
@@ -706,7 +706,7 @@ func TestPublicCORSPreflight(t *testing.T) {
 	}{
 		{"health_preflight", "/health"},
 		{"doc_html_preflight", "/doc/"},
-		{"doc_md_preflight", "/doc/md"},
+		{"doc_llms_full_preflight", "/doc/llms-full.txt"},
 	}
 
 	for _, tt := range tests {

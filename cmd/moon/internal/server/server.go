@@ -190,10 +190,10 @@ func (s *Server) setupRoutes() {
 	s.mux.HandleFunc("OPTIONS "+healthPath, publicCORS(s.healthHandler))
 
 	// Documentation endpoints (public) - PRD-052: Public CORS
-	s.mux.HandleFunc("GET "+prefix+"/doc/", publicCORS(docHandler.HTML))
-	s.mux.HandleFunc("OPTIONS "+prefix+"/doc/", publicCORS(docHandler.HTML))
-	s.mux.HandleFunc("GET "+prefix+"/doc/md", publicCORS(docHandler.Markdown))
-	s.mux.HandleFunc("OPTIONS "+prefix+"/doc/md", publicCORS(docHandler.Markdown))
+	s.mux.HandleFunc("GET "+prefix+"/doc/{$}", publicCORS(docHandler.HTML))
+	s.mux.HandleFunc("OPTIONS "+prefix+"/doc/{$}", publicCORS(docHandler.HTML))
+	s.mux.HandleFunc("GET "+prefix+"/doc/llms-full.txt", publicCORS(docHandler.Markdown))
+	s.mux.HandleFunc("OPTIONS "+prefix+"/doc/llms-full.txt", publicCORS(docHandler.Markdown))
 
 	// ==========================================
 	// AUTH ENDPOINTS (No role check)
