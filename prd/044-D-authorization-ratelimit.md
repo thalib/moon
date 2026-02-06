@@ -100,7 +100,7 @@ func (m *AuthorizationMiddleware) RequireWrite() func(http.Handler) http.Handler
 **FR-2.1: Public Endpoints (No Auth)**
 - `GET /health`
 - `GET /doc/`
-- `GET /doc/md`
+- `GET /doc/llms-full.txt`
 
 **FR-2.2: Public Auth Endpoints (No Role Check)**
 - `POST /auth:login`

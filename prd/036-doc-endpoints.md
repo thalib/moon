@@ -1,3 +1,5 @@
+> **Note:** This PRD has been superseded. The `/doc/md` endpoint has been moved to `/doc/llms-full.txt` with no backward compatibility. See current implementation in SPEC.md.
+
 ## Overview
 - Provide human- and AI-readable documentation endpoints without relying on OpenAPI/Swagger UIs.
 - Add two documentation endpoints: `/doc/` for a simple one-page HTML doc and `/doc/md` for a Markdown doc.

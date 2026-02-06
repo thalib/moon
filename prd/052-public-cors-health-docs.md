@@ -1,6 +1,6 @@
 ## Overview
 - **Problem:** External monitoring services, documentation portals, and browser-based integration tools are currently blocked from accessing system health and documentation endpoints due to restrictive Cross-Origin Resource Sharing (CORS) policies.
-- **Context:** The `/health`, `/doc`, and `/doc/md` endpoints provide public, non-sensitive information essential for operational visibility and developer integration.
+- **Context:** The `/health`, `/doc`, and `/doc/llms-full.txt` endpoints provide public, non-sensitive information essential for operational visibility and developer integration.
 - **Solution:** Explicitly configure the application's CORS middleware to permit requests from any origin (`*`) for these specific endpoints, bypassing standard security restrictions applied to data-sensitive API routes.
 
 ## Requirements
@@ -9,7 +9,7 @@
 - **Public Access:** The following endpoints must be publicly accessible from any origin:
   - `GET /health`
   - `GET /doc`
-  - `GET /doc/md`
+  - `GET /doc/llms-full.txt`
 - **CORS Headers:** Responses from these endpoints must include the header `Access-Control-Allow-Origin: *`.
 - **No Authentication:** These endpoints must bypass any global authentication middleware (JWT, API Key) if applied generally to the root.
 - **Security Isolation:** This open CORS policy must **not** apply to other API endpoints (e.g., `/api/v1/*`), which must retain their strict CORS and authentication settings.
@@ -23,13 +23,13 @@
 **Endpoints affected:**
 - `GET /health`
 - `GET /doc`
-- `GET /doc/md`
+- `GET /doc/llms-full.txt`
 
 **Expected Header Output:**
 ```http
 HTTP/1.1 200 OK
 Access-Control-Allow-Origin: *
-Content-Type: application/json (or text/markdown for /doc/md)
+Content-Type: application/json (or text/markdown for /doc/llms-full.txt)
 ...
 ```
 

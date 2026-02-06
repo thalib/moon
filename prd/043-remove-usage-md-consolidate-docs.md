@@ -1,5 +1,7 @@
 # PRD-043: Remove USAGE.md and Consolidate Documentation
 
+> **Note:** This PRD has been superseded. The `/doc/md` endpoint referenced in this document has been moved to `/doc/llms-full.txt` with no backward compatibility. See current implementation in SPEC.md.
+
 ## Overview
 
 ### Problem Statement
