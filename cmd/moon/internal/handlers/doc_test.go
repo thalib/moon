@@ -634,16 +634,16 @@ func TestDocHandler_JSONAppendixDeterminism(t *testing.T) {
 	// Both should produce identical JSON appendix sections
 	if body1 != body2 {
 		t.Error("expected identical JSON appendix regardless of insertion order")
-		
+
 		// Extract and compare JSON sections for debugging
 		startMarker := "## JSON Appendix"
 		idx1 := strings.Index(body1, startMarker)
 		idx2 := strings.Index(body2, startMarker)
-		
+
 		if idx1 != -1 && idx2 != -1 {
 			json1 := body1[idx1:]
 			json2 := body2[idx2:]
-			
+
 			if json1 != json2 {
 				t.Logf("JSON appendix sections differ")
 				t.Logf("First 500 chars of json1: %s", json1[:min(500, len(json1))])

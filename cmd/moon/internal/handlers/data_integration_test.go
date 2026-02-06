@@ -536,4 +536,3 @@ func TestDataHandler_BooleanResponseUniformity(t *testing.T) {
 		t.Logf("Warning: Response may not contain JSON boolean literals. Body: %s", bodyStr)
 	}
 }
-
