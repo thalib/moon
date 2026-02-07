@@ -201,7 +201,9 @@ func (s *Server) setupRoutes() {
 
 	// Login and refresh don't need auth/rate limit (they have their own rate limiting)
 	s.mux.HandleFunc("POST "+prefix+"/auth:login", authNoLimit(authHandler.Login))
+	s.mux.HandleFunc("OPTIONS "+prefix+"/auth:login", authNoLimit(s.corsPreflightHandler))
 	s.mux.HandleFunc("POST "+prefix+"/auth:refresh", authNoLimit(authHandler.Refresh))
+	s.mux.HandleFunc("OPTIONS "+prefix+"/auth:refresh", authNoLimit(s.corsPreflightHandler))
 
 	// ==========================================
 	// AUTHENTICATED ENDPOINTS (Any Role)
@@ -209,17 +211,22 @@ func (s *Server) setupRoutes() {
 
 	// Logout requires authentication
 	s.mux.HandleFunc("POST "+prefix+"/auth:logout", authenticated(authHandler.Logout))
+	s.mux.HandleFunc("OPTIONS "+prefix+"/auth:logout", authenticated(s.corsPreflightHandler))
 
 	// Me endpoints require authentication
 	s.mux.HandleFunc("GET "+prefix+"/auth:me", authenticated(authHandler.GetMe))
+	s.mux.HandleFunc("OPTIONS "+prefix+"/auth:me", authenticated(s.corsPreflightHandler))
 	s.mux.HandleFunc("POST "+prefix+"/auth:me", authenticated(authHandler.UpdateMe))
 
 	// Collections read endpoints (any authenticated user)
 	s.mux.HandleFunc("GET "+prefix+"/collections:list", authenticated(collectionsHandler.List))
+	s.mux.HandleFunc("OPTIONS "+prefix+"/collections:list", authenticated(s.corsPreflightHandler))
 	s.mux.HandleFunc("GET "+prefix+"/collections:get", authenticated(collectionsHandler.Get))
+	s.mux.HandleFunc("OPTIONS "+prefix+"/collections:get", authenticated(s.corsPreflightHandler))
 
 	// Doc refresh requires authentication
 	s.mux.HandleFunc("POST "+prefix+"/doc:refresh", authenticated(docHandler.RefreshCache))
+	s.mux.HandleFunc("OPTIONS "+prefix+"/doc:refresh", authenticated(s.corsPreflightHandler))
 
 	// ==========================================
 	// ADMIN ONLY ENDPOINTS
@@ -227,22 +234,35 @@ func (s *Server) setupRoutes() {
 
 	// User management endpoints (admin only)
 	s.mux.HandleFunc("GET "+prefix+"/users:list", adminOnly(usersHandler.List))
+	s.mux.HandleFunc("OPTIONS "+prefix+"/users:list", adminOnly(s.corsPreflightHandler))
 	s.mux.HandleFunc("GET "+prefix+"/users:get", adminOnly(usersHandler.Get))
+	s.mux.HandleFunc("OPTIONS "+prefix+"/users:get", adminOnly(s.corsPreflightHandler))
 	s.mux.HandleFunc("POST "+prefix+"/users:create", adminOnly(usersHandler.Create))
+	s.mux.HandleFunc("OPTIONS "+prefix+"/users:create", adminOnly(s.corsPreflightHandler))
 	s.mux.HandleFunc("POST "+prefix+"/users:update", adminOnly(usersHandler.Update))
+	s.mux.HandleFunc("OPTIONS "+prefix+"/users:update", adminOnly(s.corsPreflightHandler))
 	s.mux.HandleFunc("POST "+prefix+"/users:destroy", adminOnly(usersHandler.Destroy))
+	s.mux.HandleFunc("OPTIONS "+prefix+"/users:destroy", adminOnly(s.corsPreflightHandler))
 
 	// API key management endpoints (admin only)
 	s.mux.HandleFunc("GET "+prefix+"/apikeys:list", adminOnly(apiKeysHandler.List))
+	s.mux.HandleFunc("OPTIONS "+prefix+"/apikeys:list", adminOnly(s.corsPreflightHandler))
 	s.mux.HandleFunc("GET "+prefix+"/apikeys:get", adminOnly(apiKeysHandler.Get))
+	s.mux.HandleFunc("OPTIONS "+prefix+"/apikeys:get", adminOnly(s.corsPreflightHandler))
 	s.mux.HandleFunc("POST "+prefix+"/apikeys:create", adminOnly(apiKeysHandler.Create))
+	s.mux.HandleFunc("OPTIONS "+prefix+"/apikeys:create", adminOnly(s.corsPreflightHandler))
 	s.mux.HandleFunc("POST "+prefix+"/apikeys:update", adminOnly(apiKeysHandler.Update))
+	s.mux.HandleFunc("OPTIONS "+prefix+"/apikeys:update", adminOnly(s.corsPreflightHandler))
 	s.mux.HandleFunc("POST "+prefix+"/apikeys:destroy", adminOnly(apiKeysHandler.Destroy))
+	s.mux.HandleFunc("OPTIONS "+prefix+"/apikeys:destroy", adminOnly(s.corsPreflightHandler))
 
 	// Collections management endpoints (admin only)
 	s.mux.HandleFunc("POST "+prefix+"/collections:create", adminOnly(collectionsHandler.Create))
+	s.mux.HandleFunc("OPTIONS "+prefix+"/collections:create", adminOnly(s.corsPreflightHandler))
 	s.mux.HandleFunc("POST "+prefix+"/collections:update", adminOnly(collectionsHandler.Update))
+	s.mux.HandleFunc("OPTIONS "+prefix+"/collections:update", adminOnly(s.corsPreflightHandler))
 	s.mux.HandleFunc("POST "+prefix+"/collections:destroy", adminOnly(collectionsHandler.Destroy))
+	s.mux.HandleFunc("OPTIONS "+prefix+"/collections:destroy", adminOnly(s.corsPreflightHandler))
 
 	// ==========================================
 	// DYNAMIC DATA ENDPOINTS
@@ -453,6 +473,14 @@ func (s *Server) healthHandler(w http.ResponseWriter, r *http.Request) {
 	// Always return HTTP 200, even if service is down
 	// Clients must check the "status" field to determine service health
 	s.writeJSON(w, http.StatusOK, response)
+}
+
+// corsPreflightHandler handles CORS preflight OPTIONS requests.
+// The CORS middleware wrapping this handler sets all necessary headers and returns 204.
+// This handler exists solely to provide a route for OPTIONS requests.
+func (s *Server) corsPreflightHandler(w http.ResponseWriter, r *http.Request) {
+	// The CORS middleware handles everything for OPTIONS requests
+	// This is just a no-op handler that allows the route to exist
 }
 
 // Root message handler - returns a friendly message at the root path

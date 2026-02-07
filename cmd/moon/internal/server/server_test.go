@@ -766,3 +766,100 @@ func TestAuthEndpointsDoNotHaveWildcardCORS(t *testing.T) {
 		})
 	}
 }
+
+// TestAuthEndpointsCORSPreflight tests CORS preflight OPTIONS requests for auth endpoints
+func TestAuthEndpointsCORSPreflight(t *testing.T) {
+	// Setup server with CORS enabled
+	cfg := &config.AppConfig{
+		Server: config.ServerConfig{
+			Port: 6006,
+			Host: "0.0.0.0",
+		},
+		Database: config.DatabaseConfig{
+			Connection: "sqlite",
+			Database:   ":memory:",
+		},
+		Logging: config.LoggingConfig{
+			Path: "/tmp",
+		},
+		JWT: config.JWTConfig{
+			Secret: "test-secret",
+			Expiry: 3600,
+		},
+		CORS: config.CORSConfig{
+			Enabled:          true,
+			AllowedOrigins:   []string{"https://app.example.com"},
+			AllowedMethods:   []string{"GET", "POST", "OPTIONS"},
+			AllowedHeaders:   []string{"Content-Type", "Authorization"},
+			AllowCredentials: true,
+			MaxAge:           3600,
+		},
+	}
+
+	dbConfig := database.Config{
+		ConnectionString: "sqlite://:memory:",
+	}
+
+	driver, err := database.NewDriver(dbConfig)
+	if err != nil {
+		t.Fatalf("Failed to create database driver: %v", err)
+	}
+
+	if err := driver.Connect(context.Background()); err != nil {
+		t.Fatalf("Failed to connect to database: %v", err)
+	}
+
+	reg := registry.NewSchemaRegistry()
+	srv := New(cfg, driver, reg, "1-test")
+
+	tests := []struct {
+		name         string
+		path         string
+		expectStatus int
+	}{
+		{"auth_login", "/auth:login", http.StatusNoContent},
+		{"auth_refresh", "/auth:refresh", http.StatusNoContent},
+		{"auth_logout", "/auth:logout", http.StatusNoContent},
+		{"auth_me", "/auth:me", http.StatusNoContent},
+		{"collections_list", "/collections:list", http.StatusNoContent},
+		{"collections_get", "/collections:get", http.StatusNoContent},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodOptions, tt.path, nil)
+			req.Header.Set("Origin", "https://app.example.com")
+			req.Header.Set("Access-Control-Request-Method", "POST")
+			req.Header.Set("Access-Control-Request-Headers", "Content-Type, Authorization")
+			w := httptest.NewRecorder()
+
+			srv.mux.ServeHTTP(w, req)
+
+			// Should return 204 No Content for OPTIONS preflight
+			if w.Code != tt.expectStatus {
+				t.Errorf("Expected status %d for OPTIONS %s, got %d", tt.expectStatus, tt.path, w.Code)
+			}
+
+			// Check CORS headers
+			corsOrigin := w.Header().Get("Access-Control-Allow-Origin")
+			if corsOrigin != "https://app.example.com" {
+				t.Errorf("Expected Access-Control-Allow-Origin: https://app.example.com, got %s", corsOrigin)
+			}
+
+			corsMethods := w.Header().Get("Access-Control-Allow-Methods")
+			if corsMethods == "" {
+				t.Errorf("Expected Access-Control-Allow-Methods header to be set")
+			}
+
+			corsHeaders := w.Header().Get("Access-Control-Allow-Headers")
+			if corsHeaders == "" {
+				t.Errorf("Expected Access-Control-Allow-Headers header to be set")
+			}
+
+			corsMaxAge := w.Header().Get("Access-Control-Max-Age")
+			if corsMaxAge == "" {
+				t.Errorf("Expected Access-Control-Max-Age header to be set")
+			}
+		})
+	}
+}
