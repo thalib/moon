@@ -64,6 +64,7 @@ func New(cfg *config.AppConfig, db database.Driver, reg *registry.SchemaRegistry
 		AllowedHeaders:   cfg.CORS.AllowedHeaders,
 		AllowCredentials: cfg.CORS.AllowCredentials,
 		MaxAge:           cfg.CORS.MaxAge,
+		Endpoints:        convertCORSEndpoints(cfg.CORS.Endpoints), // PRD-058
 	}
 
 	// Create token service for authentication
@@ -133,9 +134,9 @@ func (s *Server) setupRoutes() {
 	prefix := s.config.Server.Prefix
 
 	// Middleware helper functions for cleaner route definitions
-	// Public endpoints: Public CORS (Access-Control-Allow-Origin: *) + logging (PRD-052)
-	publicCORS := func(h http.HandlerFunc) http.HandlerFunc {
-		return s.corsMiddle.HandlePublic(s.loggingMiddleware(h))
+	// Dynamic CORS: Uses endpoint registration with auth bypass support (PRD-058)
+	dynamicCORS := func(h http.HandlerFunc) http.HandlerFunc {
+		return s.corsMiddle.HandleDynamic(s.loggingMiddleware(h))
 	}
 
 	// Public endpoints: Standard CORS + logging (for endpoints like root message)
@@ -184,16 +185,16 @@ func (s *Server) setupRoutes() {
 	// PUBLIC ENDPOINTS (No Auth)
 	// ==========================================
 
-	// Health check endpoint (always at /health, respects prefix) - PRD-052: Public CORS
+	// Health check endpoint (always at /health, respects prefix) - PRD-058: Dynamic CORS
 	healthPath := prefix + "/health"
-	s.mux.HandleFunc("GET "+healthPath, publicCORS(s.healthHandler))
-	s.mux.HandleFunc("OPTIONS "+healthPath, publicCORS(s.healthHandler))
+	s.mux.HandleFunc("GET "+healthPath, dynamicCORS(s.healthHandler))
+	s.mux.HandleFunc("OPTIONS "+healthPath, dynamicCORS(s.healthHandler))
 
-	// Documentation endpoints (public) - PRD-052: Public CORS
-	s.mux.HandleFunc("GET "+prefix+"/doc/{$}", publicCORS(docHandler.HTML))
-	s.mux.HandleFunc("OPTIONS "+prefix+"/doc/{$}", publicCORS(docHandler.HTML))
-	s.mux.HandleFunc("GET "+prefix+"/doc/llms-full.txt", publicCORS(docHandler.Markdown))
-	s.mux.HandleFunc("OPTIONS "+prefix+"/doc/llms-full.txt", publicCORS(docHandler.Markdown))
+	// Documentation endpoints (public) - PRD-058: Dynamic CORS
+	s.mux.HandleFunc("GET "+prefix+"/doc/{$}", dynamicCORS(docHandler.HTML))
+	s.mux.HandleFunc("OPTIONS "+prefix+"/doc/{$}", dynamicCORS(docHandler.HTML))
+	s.mux.HandleFunc("GET "+prefix+"/doc/llms-full.txt", dynamicCORS(docHandler.Markdown))
+	s.mux.HandleFunc("OPTIONS "+prefix+"/doc/llms-full.txt", dynamicCORS(docHandler.Markdown))
 
 	// ==========================================
 	// AUTH ENDPOINTS (No role check)
@@ -307,6 +308,12 @@ func (s *Server) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
+		// Check if this endpoint should bypass authentication (PRD-058)
+		if s.shouldBypassAuth(r.URL.Path) {
+			next(w, r)
+			return
+		}
+
 		// Try JWT authentication first (Authorization: Bearer <token>)
 		authHeader := r.Header.Get(constants.HeaderAuthorization)
 		if authHeader != "" {
@@ -385,6 +392,19 @@ func (s *Server) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+// shouldBypassAuth checks if the request path should bypass authentication (PRD-058)
+func (s *Server) shouldBypassAuth(path string) bool {
+	// Check CORS endpoint registration
+	if s.corsMiddle != nil {
+		endpointConfig := s.corsMiddle.MatchEndpoint(path)
+		if endpointConfig != nil && endpointConfig.BypassAuth {
+			log.Printf("INFO: Authentication bypassed for %s (CORS endpoint configuration)", path)
+			return true
+		}
+	}
+	return false
+}
+
 // writeAuthError writes an authentication error response.
 func (s *Server) writeAuthError(w http.ResponseWriter, statusCode int, message string) {
 	w.Header().Set(constants.HeaderContentType, constants.MIMEApplicationJSON)
@@ -404,6 +424,23 @@ type responseWriter struct {
 func (rw *responseWriter) WriteHeader(code int) {
 	rw.statusCode = code
 	rw.ResponseWriter.WriteHeader(code)
+}
+
+// convertCORSEndpoints converts config.CORSEndpointConfig to middleware.CORSEndpointConfig (PRD-058)
+func convertCORSEndpoints(cfgEndpoints []config.CORSEndpointConfig) []middleware.CORSEndpointConfig {
+	endpoints := make([]middleware.CORSEndpointConfig, len(cfgEndpoints))
+	for i, cfg := range cfgEndpoints {
+		endpoints[i] = middleware.CORSEndpointConfig{
+			Path:             cfg.Path,
+			PatternType:      cfg.PatternType,
+			AllowedOrigins:   cfg.AllowedOrigins,
+			AllowedMethods:   cfg.AllowedMethods,
+			AllowedHeaders:   cfg.AllowedHeaders,
+			AllowCredentials: cfg.AllowCredentials,
+			BypassAuth:       cfg.BypassAuth,
+		}
+	}
+	return endpoints
 }
 
 // Start starts the HTTP server

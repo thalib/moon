@@ -997,26 +997,36 @@ Wait until the time specified in `X-RateLimit-Reset` before retrying.
 
 **CORS Configuration**
 
-Moon supports Cross-Origin Resource Sharing (CORS) for browser-based clients.
+Moon supports Cross-Origin Resource Sharing (CORS) for browser-based clients with dynamic endpoint registration.
 
-- **Methods:** `GET`, `POST`
-- **OPTIONS:** Check allowed methods/headers for any endpoint:
+- **Public Endpoints (No Authentication):**
+  - `GET /health` - Health check
+  - `GET /doc` - API documentation (HTML)
+  - `GET /doc/llms-full.txt` - API documentation (Markdown)
+
+- **CORS Headers:**
+  ```
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Methods: GET, POST, OPTIONS
+  Access-Control-Allow-Headers: Authorization, Content-Type
+  Access-Control-Max-Age: 3600
+  ```
+
+- **Pattern-Based Configuration:** CORS policies can be configured per endpoint or pattern (exact, prefix, suffix, contains) in the configuration file.
+  - Administrators can register additional CORS-enabled endpoints
+  - Per-endpoint origin restrictions
+  - Authentication bypass for public endpoints
+  - See `SPEC.md` for detailed configuration options
+
+- **OPTIONS Preflight:** Check allowed methods/headers for any endpoint:
   ```bash
   curl -s -X OPTIONS "{{$ApiURL}}/collections:list" \
     -H "Origin: http://localhost:3000" \
     -H "Access-Control-Request-Method: GET" | jq .
   ```
-- **Response Headers:**
-  ```
-  Access-Control-Allow-Origin: *
-  Access-Control-Allow-Methods: GET, POST, OPTIONS
-  Access-Control-Allow-Headers: Authorization, Content-Type, X-API-Key
-  Access-Control-Max-Age: 3600
-  ```
-- **Configurable:** Origins via `cors.allowed_origins` in config file
-- **Allowed Headers:** `Authorization`, `Content-Type`, `X-API-Key`
-  - **Credentials:** Supported when origin is explicitly allowed (not `*`).
-  - **Note:** If you need to send cookies or credentials, set a specific allowed origin in your config (not `*`).
+
+- **Credentials:** Supported when origin is explicitly allowed (not `*`).
+  - Note: If you need to send cookies or credentials, set a specific allowed origin in your config (not `*`).
 
 ---
 

@@ -217,14 +217,52 @@ cors:
   allowed_headers:
     - Content-Type
     - Authorization
-    - X-API-KEY
   allow_credentials: true
   max_age: 3600
+  
+  # Endpoint-specific CORS registration (PRD-058)
+  endpoints:
+    - path: "/health"
+      pattern_type: "exact"
+      allowed_origins: ["*"]
+      allowed_methods: ["GET", "OPTIONS"]
+      allowed_headers: ["Content-Type"]
+      allow_credentials: false
+      bypass_auth: true
+    
+    - path: "/doc/"
+      pattern_type: "prefix"
+      allowed_origins: ["*"]
+      allowed_methods: ["GET", "OPTIONS"]
+      allowed_headers: ["Content-Type"]
+      allow_credentials: false
+      bypass_auth: true
 ```
 
 **Note:** Only GET, POST, and OPTIONS methods are supported by the Moon server. Including other methods (PUT, DELETE, PATCH) in the `allowed_methods` configuration will not enable them on the server.
 
-**Public Endpoints:** The `/health` and `/doc/*` endpoints always have CORS enabled with `Access-Control-Allow-Origin: *` regardless of the CORS configuration. This ensures these endpoints are accessible from any origin for health checks and documentation.
+**CORS Endpoint Registration (PRD-058):**
+
+Moon supports dynamic CORS endpoint registration with pattern matching:
+
+- **Pattern Types:**
+  - `exact`: Matches exact path only (e.g., `/health` matches `/health` but not `/health/status`)
+  - `prefix`: Matches path prefix (e.g., `/doc/` matches `/doc/`, `/doc/api`, `/doc/llms-full.txt`)
+  - `suffix`: Matches path suffix (e.g., `*.json` matches `/data/users.json`)
+  - `contains`: Matches if path contains substring (e.g., `/public/` matches any path with `/public/`)
+
+- **Priority:** When multiple patterns match, the most specific match is used:
+  1. Exact matches (highest priority)
+  2. Longest prefix matches
+  3. Longest suffix matches
+  4. Longest contains matches
+  5. Global CORS configuration (fallback)
+
+- **Authentication Bypass:** Set `bypass_auth: true` to skip authentication for public endpoints (health, docs, status).
+
+- **Default Endpoints:** If `cors.endpoints` is not specified, these defaults are applied:
+  - `/health` (exact, `*`, no auth)
+  - `/doc/` (prefix, `*`, no auth - matches `/doc`, `/doc/`, `/doc/llms-full.txt`, etc.)
 
 CORS headers exposed to browsers:
 - `X-RateLimit-Limit`

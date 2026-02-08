@@ -5,6 +5,7 @@ package config
 
 import (
 	"fmt"
+	"log"
 	"path/filepath"
 	"strings"
 
@@ -77,6 +78,7 @@ var Defaults = struct {
 		AllowedHeaders   []string
 		AllowCredentials bool
 		MaxAge           int
+		Endpoints        []CORSEndpointConfig
 	}
 	Pagination struct {
 		DefaultPageSize int
@@ -179,6 +181,7 @@ var Defaults = struct {
 		AllowedHeaders   []string
 		AllowCredentials bool
 		MaxAge           int
+		Endpoints        []CORSEndpointConfig
 	}{
 		Enabled:          false, // Disabled by default for security
 		AllowedOrigins:   []string{},
@@ -186,6 +189,26 @@ var Defaults = struct {
 		AllowedHeaders:   []string{"Content-Type", "Authorization", "X-API-Key"},
 		AllowCredentials: true,
 		MaxAge:           3600, // 1 hour
+		Endpoints: []CORSEndpointConfig{
+			{
+				Path:             "/health",
+				PatternType:      "exact",
+				AllowedOrigins:   []string{"*"},
+				AllowedMethods:   []string{"GET", "OPTIONS"},
+				AllowedHeaders:   []string{"Content-Type"},
+				AllowCredentials: false,
+				BypassAuth:       true,
+			},
+			{
+				Path:             "/doc/",     // Prefix pattern matches /doc, /doc/, /doc/llms-full.txt, etc.
+				PatternType:      "prefix",
+				AllowedOrigins:   []string{"*"},
+				AllowedMethods:   []string{"GET", "OPTIONS"},
+				AllowedHeaders:   []string{"Content-Type"},
+				AllowCredentials: false,
+				BypassAuth:       true,
+			},
+		},
 	},
 	Pagination: struct {
 		DefaultPageSize int
@@ -294,12 +317,24 @@ type RecoveryConfig struct {
 
 // CORSConfig holds CORS (Cross-Origin Resource Sharing) configuration.
 type CORSConfig struct {
-	Enabled          bool     `mapstructure:"enabled"`           // enable CORS support (default: false for security)
-	AllowedOrigins   []string `mapstructure:"allowed_origins"`   // list of allowed origins (e.g., ["https://example.com"])
-	AllowedMethods   []string `mapstructure:"allowed_methods"`   // list of allowed HTTP methods
-	AllowedHeaders   []string `mapstructure:"allowed_headers"`   // list of allowed request headers
-	AllowCredentials bool     `mapstructure:"allow_credentials"` // allow credentials (cookies, auth headers)
-	MaxAge           int      `mapstructure:"max_age"`           // preflight cache duration in seconds
+	Enabled          bool                 `mapstructure:"enabled"`           // enable CORS support (default: false for security)
+	AllowedOrigins   []string             `mapstructure:"allowed_origins"`   // list of allowed origins (e.g., ["https://example.com"])
+	AllowedMethods   []string             `mapstructure:"allowed_methods"`   // list of allowed HTTP methods
+	AllowedHeaders   []string             `mapstructure:"allowed_headers"`   // list of allowed request headers
+	AllowCredentials bool                 `mapstructure:"allow_credentials"` // allow credentials (cookies, auth headers)
+	MaxAge           int                  `mapstructure:"max_age"`           // preflight cache duration in seconds
+	Endpoints        []CORSEndpointConfig `mapstructure:"endpoints"`         // endpoint-specific CORS registration (PRD-058)
+}
+
+// CORSEndpointConfig represents a single CORS endpoint registration
+type CORSEndpointConfig struct {
+	Path             string   `mapstructure:"path"`              // endpoint path or pattern
+	PatternType      string   `mapstructure:"pattern_type"`      // pattern matching type: exact, prefix, suffix, contains
+	AllowedOrigins   []string `mapstructure:"allowed_origins"`   // allowed origins for this endpoint
+	AllowedMethods   []string `mapstructure:"allowed_methods"`   // allowed HTTP methods for this endpoint
+	AllowedHeaders   []string `mapstructure:"allowed_headers"`   // allowed request headers for this endpoint
+	AllowCredentials bool     `mapstructure:"allow_credentials"` // allow credentials for this endpoint
+	BypassAuth       bool     `mapstructure:"bypass_auth"`       // skip authentication for this endpoint (default: false)
 }
 
 // PaginationConfig holds pagination settings for list endpoints.
@@ -357,6 +392,7 @@ func Load(configPath string) (*AppConfig, error) {
 	v.SetDefault("cors.allowed_headers", Defaults.CORS.AllowedHeaders)
 	v.SetDefault("cors.allow_credentials", Defaults.CORS.AllowCredentials)
 	v.SetDefault("cors.max_age", Defaults.CORS.MaxAge)
+	v.SetDefault("cors.endpoints", Defaults.CORS.Endpoints)
 	v.SetDefault("pagination.default_page_size", Defaults.Pagination.DefaultPageSize)
 	v.SetDefault("pagination.max_page_size", Defaults.Pagination.MaxPageSize)
 	v.SetDefault("limits.max_collections", Defaults.Limits.MaxCollections)
@@ -477,6 +513,72 @@ func validate(cfg *AppConfig) error {
 	}
 	if cfg.Limits.MaxSortFieldsPerRequest <= 0 {
 		cfg.Limits.MaxSortFieldsPerRequest = Defaults.Limits.MaxSortFieldsPerRequest
+	}
+
+	// Validate CORS endpoint configuration (PRD-058)
+	if err := validateCORSEndpoints(&cfg.CORS); err != nil {
+		return fmt.Errorf("CORS configuration validation failed: %w", err)
+	}
+
+	return nil
+}
+
+// validateCORSEndpoints validates CORS endpoint configuration
+func validateCORSEndpoints(cors *CORSConfig) error {
+	validPatternTypes := map[string]bool{
+		"exact":    true,
+		"prefix":   true,
+		"suffix":   true,
+		"contains": true,
+	}
+
+	for i, endpoint := range cors.Endpoints {
+		// Validate path is non-empty
+		if endpoint.Path == "" {
+			return fmt.Errorf("cors.endpoints[%d]: path cannot be empty", i)
+		}
+
+		// Validate pattern_type
+		if endpoint.PatternType == "" {
+			// Default to "exact" if not specified
+			cors.Endpoints[i].PatternType = "exact"
+		} else if !validPatternTypes[endpoint.PatternType] {
+			return fmt.Errorf("cors.endpoints[%d]: invalid pattern_type '%s', must be one of: exact, prefix, suffix, contains", i, endpoint.PatternType)
+		}
+
+		// Validate allowed_origins is non-empty
+		if len(endpoint.AllowedOrigins) == 0 {
+			return fmt.Errorf("cors.endpoints[%d]: allowed_origins cannot be empty", i)
+		}
+
+		// Check for wildcard mixed with specific origins
+		hasWildcard := false
+		hasSpecific := false
+		for _, origin := range endpoint.AllowedOrigins {
+			if origin == "*" {
+				hasWildcard = true
+			} else {
+				hasSpecific = true
+			}
+		}
+		if hasWildcard && hasSpecific {
+			return fmt.Errorf("cors.endpoints[%d]: cannot mix wildcard '*' with specific origins", i)
+		}
+
+		// Warn if allow_credentials with wildcard origin (unusual but not invalid)
+		if endpoint.AllowCredentials && hasWildcard {
+			log.Printf("WARN: cors.endpoints[%d] (%s): allow_credentials=true with wildcard origin '*' is not recommended and may not work in modern browsers", i, endpoint.Path)
+		}
+
+		// Warn if bypass_auth with non-wildcard origins (unusual configuration)
+		if endpoint.BypassAuth && !hasWildcard {
+			log.Printf("WARN: cors.endpoints[%d] (%s): bypass_auth=true with restricted origins is an unusual configuration", i, endpoint.Path)
+		}
+
+		// Log authentication bypass for audit trail
+		if endpoint.BypassAuth {
+			log.Printf("INFO: CORS endpoint registered with authentication bypass: %s (%s pattern)", endpoint.Path, endpoint.PatternType)
+		}
 	}
 
 	return nil

@@ -30,6 +30,29 @@ func setupTestServer(t *testing.T) *Server {
 			Secret: "test-secret",
 			Expiry: 3600,
 		},
+		CORS: config.CORSConfig{
+			Enabled: true,
+			Endpoints: []config.CORSEndpointConfig{
+				{
+					Path:             "/health",
+					PatternType:      "exact",
+					AllowedOrigins:   []string{"*"},
+					AllowedMethods:   []string{"GET", "OPTIONS"},
+					AllowedHeaders:   []string{"Content-Type"},
+					AllowCredentials: false,
+					BypassAuth:       true,
+				},
+				{
+					Path:             "/doc/",
+					PatternType:      "prefix",
+					AllowedOrigins:   []string{"*"},
+					AllowedMethods:   []string{"GET", "OPTIONS"},
+					AllowedHeaders:   []string{"Content-Type"},
+					AllowCredentials: false,
+					BypassAuth:       true,
+				},
+			},
+		},
 	}
 
 	dbConfig := database.Config{
@@ -282,6 +305,29 @@ func setupTestServerWithPrefix(t *testing.T, prefix string) *Server {
 		JWT: config.JWTConfig{
 			Secret: "test-secret",
 			Expiry: 3600,
+		},
+		CORS: config.CORSConfig{
+			Enabled: true,
+			Endpoints: []config.CORSEndpointConfig{
+				{
+					Path:             prefix + "/health",
+					PatternType:      "exact",
+					AllowedOrigins:   []string{"*"},
+					AllowedMethods:   []string{"GET", "OPTIONS"},
+					AllowedHeaders:   []string{"Content-Type"},
+					AllowCredentials: false,
+					BypassAuth:       true,
+				},
+				{
+					Path:             prefix + "/doc/",
+					PatternType:      "prefix",
+					AllowedOrigins:   []string{"*"},
+					AllowedMethods:   []string{"GET", "OPTIONS"},
+					AllowedHeaders:   []string{"Content-Type"},
+					AllowCredentials: false,
+					BypassAuth:       true,
+				},
+			},
 		},
 	}
 

@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 )
@@ -15,6 +16,18 @@ type CORSConfig struct {
 	ExposedHeaders   []string // Headers exposed to browser (PRD-049)
 	AllowCredentials bool
 	MaxAge           int
+	Endpoints        []CORSEndpointConfig // Endpoint-specific CORS registration (PRD-058)
+}
+
+// CORSEndpointConfig represents a single CORS endpoint registration
+type CORSEndpointConfig struct {
+	Path             string
+	PatternType      string
+	AllowedOrigins   []string
+	AllowedMethods   []string
+	AllowedHeaders   []string
+	AllowCredentials bool
+	BypassAuth       bool
 }
 
 // CORSMiddleware handles Cross-Origin Resource Sharing (CORS)
@@ -136,4 +149,136 @@ func (m *CORSMiddleware) HandlePublic(next http.HandlerFunc) http.HandlerFunc {
 
 		next(w, r)
 	}
+}
+
+// MatchEndpoint checks if a request path matches any registered CORS endpoint
+// Returns the matching endpoint configuration, or nil if no match
+func (m *CORSMiddleware) MatchEndpoint(path string) *CORSEndpointConfig {
+	var bestMatch *CORSEndpointConfig
+	var bestMatchScore int
+
+	for i := range m.config.Endpoints {
+		endpoint := &m.config.Endpoints[i]
+		if matches, score := endpoint.Matches(path); matches {
+			if score > bestMatchScore {
+				bestMatch = endpoint
+				bestMatchScore = score
+			}
+		}
+	}
+
+	if bestMatch != nil {
+		log.Printf("DEBUG: CORS endpoint match: path=%s, pattern=%s (%s), score=%d, bypassed_auth=%t",
+			path, bestMatch.Path, bestMatch.PatternType, bestMatchScore, bestMatch.BypassAuth)
+	}
+
+	return bestMatch
+}
+
+// Matches checks if this endpoint config matches the given path
+// Returns (matched bool, score int) where higher scores indicate more specific matches
+func (e *CORSEndpointConfig) Matches(path string) (bool, int) {
+	switch e.PatternType {
+	case "exact":
+		if path == e.Path {
+			return true, 1000 + len(e.Path) // Highest priority
+		}
+	case "prefix":
+		cleanPattern := strings.TrimSuffix(e.Path, "/*")
+		if strings.HasPrefix(path, cleanPattern) {
+			return true, 500 + len(cleanPattern) // Priority by prefix length
+		}
+	case "suffix":
+		cleanPattern := strings.TrimPrefix(e.Path, "*")
+		if strings.HasSuffix(path, cleanPattern) {
+			return true, 300 + len(cleanPattern) // Priority by suffix length
+		}
+	case "contains":
+		cleanPattern := strings.Trim(e.Path, "*")
+		if strings.Contains(path, cleanPattern) {
+			return true, 100 + len(cleanPattern) // Lowest priority
+		}
+	}
+	return false, 0
+}
+
+// HandleDynamic applies CORS based on endpoint registration or falls back to global config (PRD-058)
+func (m *CORSMiddleware) HandleDynamic(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Check if request path matches a registered CORS endpoint
+		endpointConfig := m.MatchEndpoint(r.URL.Path)
+
+		if endpointConfig != nil {
+			// Apply endpoint-specific CORS
+			m.applyCORSHeaders(w, r, endpointConfig.AllowedOrigins,
+				endpointConfig.AllowedMethods,
+				endpointConfig.AllowedHeaders,
+				endpointConfig.AllowCredentials)
+
+			// Handle OPTIONS preflight
+			if r.Method == http.MethodOptions {
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+
+			next(w, r)
+			return
+		}
+
+		// Fall back to standard CORS handler
+		m.Handle(next)(w, r)
+	}
+}
+
+// applyCORSHeaders is a helper to apply CORS headers based on configuration
+func (m *CORSMiddleware) applyCORSHeaders(w http.ResponseWriter, r *http.Request,
+	origins, methods, headers []string,
+	allowCredentials bool) {
+	origin := r.Header.Get("Origin")
+
+	// Check if origin is allowed
+	if origin != "" && m.isOriginAllowedFor(origin, origins) {
+		// For wildcard, use "*" directly
+		if len(origins) == 1 && origins[0] == "*" {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+		} else {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+		}
+
+		if allowCredentials {
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+		}
+
+		if len(methods) > 0 {
+			w.Header().Set("Access-Control-Allow-Methods", strings.Join(methods, ", "))
+		}
+
+		if len(headers) > 0 {
+			w.Header().Set("Access-Control-Allow-Headers", strings.Join(headers, ", "))
+		}
+
+		if m.config.MaxAge > 0 {
+			w.Header().Set("Access-Control-Max-Age", fmt.Sprintf("%d", m.config.MaxAge))
+		}
+
+		// Set exposed headers (PRD-049)
+		if len(m.config.ExposedHeaders) > 0 {
+			w.Header().Set("Access-Control-Expose-Headers", strings.Join(m.config.ExposedHeaders, ", "))
+		}
+	}
+}
+
+// isOriginAllowedFor checks if origin is in the specific allowed list
+func (m *CORSMiddleware) isOriginAllowedFor(origin string, allowedOrigins []string) bool {
+	if len(allowedOrigins) == 0 {
+		return false
+	}
+
+	for _, allowed := range allowedOrigins {
+		if allowed == "*" || allowed == origin {
+			return true
+		}
+	}
+
+	return false
 }

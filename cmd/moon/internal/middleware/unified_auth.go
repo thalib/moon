@@ -21,6 +21,7 @@ type UnifiedAuthConfig struct {
 	ProtectedPaths         []string
 	UnprotectedPaths       []string
 	ProtectByDefault       bool
+	CORSMiddleware         *CORSMiddleware // Used to check for auth bypass (PRD-058)
 }
 
 // UnifiedAuthMiddleware provides unified authentication supporting both JWT and API keys
@@ -36,10 +37,29 @@ func NewUnifiedAuthMiddleware(config UnifiedAuthConfig) *UnifiedAuthMiddleware {
 	}
 }
 
+// ShouldBypassAuth checks if the request path should bypass authentication (PRD-058)
+func (m *UnifiedAuthMiddleware) ShouldBypassAuth(path string) bool {
+	// Check CORS endpoint registration
+	if m.config.CORSMiddleware != nil {
+		endpointConfig := m.config.CORSMiddleware.MatchEndpoint(path)
+		if endpointConfig != nil && endpointConfig.BypassAuth {
+			log.Printf("INFO: Authentication bypassed for %s (CORS endpoint configuration)", path)
+			return true
+		}
+	}
+	return false
+}
+
 // Authenticate is the main unified authentication middleware
 func (m *UnifiedAuthMiddleware) Authenticate(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
+
+		// Check if this endpoint should bypass authentication (PRD-058)
+		if m.ShouldBypassAuth(path) {
+			next(w, r)
+			return
+		}
 
 		// Check if path is explicitly unprotected
 		if m.isUnprotected(path) {
