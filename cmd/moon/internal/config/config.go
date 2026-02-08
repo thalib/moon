@@ -592,9 +592,11 @@ func validateCORSEndpoints(cors *CORSConfig) error {
 			return fmt.Errorf("cors.endpoints[%d]: invalid pattern_type '%s', must be one of: exact, prefix, suffix, contains", i, endpoint.PatternType)
 		}
 
-		// Validate allowed_origins is non-empty
+		// allowed_origins can be empty - it will fall back to global allowed_origins
+		// This allows for flexible endpoint-specific configurations
 		if len(endpoint.AllowedOrigins) == 0 {
-			return fmt.Errorf("cors.endpoints[%d]: allowed_origins cannot be empty", i)
+			// Empty origins will use global configuration - this is valid
+			continue
 		}
 
 		// Check for wildcard mixed with specific origins

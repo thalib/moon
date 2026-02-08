@@ -200,12 +200,55 @@ func TestResponseWriter(t *testing.T) {
 
 // Test that dynamic endpoints properly respond to CORS preflight (OPTIONS)
 func TestDynamicDataEndpointPreflight(t *testing.T) {
-	srv := setupTestServer(t)
+	// Create a test server with CORS properly configured for data endpoints
+	cfg := &config.AppConfig{
+		Server: config.ServerConfig{
+			Port: 6006,
+			Host: "0.0.0.0",
+		},
+		Database: config.DatabaseConfig{
+			Connection: "sqlite",
+			Database:   ":memory:",
+		},
+		Logging: config.LoggingConfig{
+			Path: "/tmp",
+		},
+		JWT: config.JWTConfig{
+			Secret: "test-secret",
+			Expiry: 3600,
+		},
+		CORS: config.CORSConfig{
+			Enabled:        true,
+			AllowedOrigins: []string{"*"},
+			AllowedMethods: []string{"GET", "POST", "OPTIONS"},
+			AllowedHeaders: []string{"Content-Type", "Authorization"},
+			Endpoints: append(config.Defaults.CORS.Endpoints,
+				config.CORSEndpointConfig{
+					Path:           "*:schema",
+					PatternType:    "suffix",
+					AllowedOrigins: []string{}, // Will fall back to global wildcard
+					AllowedMethods: []string{"GET", "OPTIONS"},
+					AllowedHeaders: []string{"Content-Type", "Authorization"},
+				},
+			),
+		},
+	}
 
-	// Enable global CORS allowed origins so preflight is accepted
-	srv.config.CORS.Enabled = true
-	srv.corsMiddle.config.Enabled = true
-	srv.corsMiddle.config.AllowedOrigins = []string{"*"}
+	dbConfig := database.Config{
+		ConnectionString: "sqlite://:memory:",
+	}
+
+	driver, err := database.NewDriver(dbConfig)
+	if err != nil {
+		t.Fatalf("Failed to create database driver: %v", err)
+	}
+
+	if err := driver.Connect(context.Background()); err != nil {
+		t.Fatalf("Failed to connect to database: %v", err)
+	}
+
+	reg := registry.NewSchemaRegistry()
+	srv := New(cfg, driver, reg, "1-test")
 
 	req := httptest.NewRequest(http.MethodOptions, "/products:schema", nil)
 	req.Header.Set("Origin", "http://localhost:5173")

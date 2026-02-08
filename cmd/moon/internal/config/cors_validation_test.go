@@ -110,9 +110,9 @@ func TestValidateCORSEndpoints(t *testing.T) {
 					},
 				},
 			},
-			wantError:   true,
-			errContains: "allowed_origins cannot be empty",
-			description: "Empty allowed_origins should fail validation",
+			wantError:   false,
+			errContains: "",
+			description: "Empty allowed_origins is valid - falls back to global origins",
 		},
 		{
 			name: "wildcard_mixed_with_specific",
