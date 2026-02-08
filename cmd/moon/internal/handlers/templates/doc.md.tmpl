@@ -152,7 +152,7 @@ Or view in browser: [{{$ApiURL}}/doc/llms-full.txt]({{$ApiURL}}/doc/llms-full.tx
 Refresh documentation cache:
 ```bash
 curl -X POST "{{$ApiURL}}/doc:refresh" \
-  -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
+  -H "X-API-Key: $ACCESS_TOKEN" | jq .
 ```
 
 ---
