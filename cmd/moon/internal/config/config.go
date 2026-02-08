@@ -137,7 +137,7 @@ var Defaults = struct {
 		Header  string
 	}{
 		Enabled: false,
-		Header:  "X-API-KEY", // Deprecated, now always uses Authorization: Bearer
+		Header:  "X-API-KEY", // DEPRECATED: Retained for config parsing only. Not used in code (removed in PRD-059).
 	},
 	Auth: struct {
 		RateLimit struct {

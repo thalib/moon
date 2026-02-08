@@ -168,7 +168,7 @@ func (m *CORSMiddleware) MatchEndpoint(path string) *CORSEndpointConfig {
 	}
 
 	if bestMatch != nil {
-		log.Printf("DEBUG: CORS endpoint match: path=%s, pattern=%s (%s), score=%d, bypassed_auth=%t",
+		log.Printf("DEBUG: CORS endpoint match: path=%s, pattern=%s (%s), score=%d, bypass_auth=%t",
 			path, bestMatch.Path, bestMatch.PatternType, bestMatchScore, bestMatch.BypassAuth)
 	}
 

@@ -16,11 +16,10 @@ const (
 	// Purpose: Contains JWT bearer tokens for authentication
 	HeaderAuthorization = "Authorization"
 
-	// HeaderAPIKey is the custom header for API key authentication.
-	// Used in: middleware/apikey.go
-	// Purpose: Alternative authentication mechanism using API keys
-	// Note: Default header name can be overridden in config
-	// DEPRECATED: X-API-Key header is no longer supported. Use Authorization: Bearer <token>
+	// HeaderAPIKey is the legacy custom header for API key authentication.
+	// DEPRECATED: X-API-Key header is no longer supported (removed in PRD-059).
+	// This constant is retained only for reference in error messages and migration documentation.
+	// All authentication now uses Authorization: Bearer <token> exclusively.
 	HeaderAPIKey = "X-API-Key"
 
 	// HeaderContentType is the standard HTTP Content-Type header.

@@ -247,7 +247,7 @@ Moon supports dynamic CORS endpoint registration with pattern matching:
 
 - **Pattern Types:**
   - `exact`: Matches exact path only (e.g., `/health` matches `/health` but not `/health/status`)
-  - `prefix`: Matches path prefix (e.g., `/doc/` matches `/doc/`, `/doc/api`, `/doc/llms-full.txt`)
+  - `prefix`: Matches path prefix (e.g., `/doc/` matches `/doc/api`, `/doc/llms-full.txt`. Note: `/doc/` does not match `/doc` without trailing slash)
   - `suffix`: Matches path suffix (e.g., `*.json` matches `/data/users.json`)
   - `contains`: Matches if path contains substring (e.g., `/public/` matches any path with `/public/`)
 
@@ -262,7 +262,7 @@ Moon supports dynamic CORS endpoint registration with pattern matching:
 
 - **Default Endpoints:** If `cors.endpoints` is not specified, these defaults are applied:
   - `/health` (exact, `*`, no auth)
-  - `/doc/` (prefix, `*`, no auth - matches `/doc`, `/doc/`, `/doc/llms-full.txt`, etc.)
+  - `/doc/` (prefix, `*`, no auth - matches all paths starting with `/doc/` including `/doc/` and `/doc/llms-full.txt`)
 
 CORS headers exposed to browsers:
 - `X-RateLimit-Limit`

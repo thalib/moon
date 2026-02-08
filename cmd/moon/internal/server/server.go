@@ -398,7 +398,7 @@ func (s *Server) shouldBypassAuth(path string) bool {
 	if s.corsMiddle != nil {
 		endpointConfig := s.corsMiddle.MatchEndpoint(path)
 		if endpointConfig != nil && endpointConfig.BypassAuth {
-			log.Printf("INFO: Authentication bypassed for %s (CORS endpoint configuration)", path)
+			// Note: Logging done in unified_auth.go to avoid duplicate log entries
 			return true
 		}
 	}
