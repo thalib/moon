@@ -198,6 +198,34 @@ func TestResponseWriter(t *testing.T) {
 	}
 }
 
+// Test that dynamic endpoints properly respond to CORS preflight (OPTIONS)
+func TestDynamicDataEndpointPreflight(t *testing.T) {
+	srv := setupTestServer(t)
+
+	// Enable global CORS allowed origins so preflight is accepted
+	srv.config.CORS.Enabled = true
+	srv.corsMiddle.config.Enabled = true
+	srv.corsMiddle.config.AllowedOrigins = []string{"*"}
+
+	req := httptest.NewRequest(http.MethodOptions, "/products:schema", nil)
+	req.Header.Set("Origin", "http://localhost:5173")
+	req.Header.Set("Access-Control-Request-Method", "GET")
+	req.Header.Set("Access-Control-Request-Headers", "authorization")
+
+	w := httptest.NewRecorder()
+
+	// Serve via mux to exercise middleware and routing
+	srv.mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNoContent {
+		t.Errorf("Expected status code %d for preflight, got %d", http.StatusNoContent, w.Code)
+	}
+
+	if got := w.Header().Get("Access-Control-Allow-Origin"); got == "" {
+		t.Errorf("Expected Access-Control-Allow-Origin header, got none")
+	}
+}
+
 func TestWriteJSON(t *testing.T) {
 	srv := setupTestServer(t)
 

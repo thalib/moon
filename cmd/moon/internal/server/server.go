@@ -272,9 +272,12 @@ func (s *Server) setupRoutes() {
 	// Data access endpoints (dynamic collections with :action pattern)
 	// This also serves as catch-all when prefix is empty
 	if prefix == "" {
-		s.mux.HandleFunc("/", s.loggingMiddleware(s.dynamicDataHandler(dataHandler, aggregationHandler, authenticated, writeRequired)))
+		// Apply dynamic CORS handling to dynamic data endpoints so OPTIONS preflight
+		// requests are handled by the CORS middleware instead of falling through
+		// to the dynamic handler which would return 405 for OPTIONS.
+		s.mux.HandleFunc("/", dynamicCORS(s.dynamicDataHandler(dataHandler, aggregationHandler, authenticated, writeRequired)))
 	} else {
-		s.mux.HandleFunc(prefix+"/", s.loggingMiddleware(s.dynamicDataHandler(dataHandler, aggregationHandler, authenticated, writeRequired)))
+		s.mux.HandleFunc(prefix+"/", dynamicCORS(s.dynamicDataHandler(dataHandler, aggregationHandler, authenticated, writeRequired)))
 		// Catch-all for 404 when prefix is set
 		s.mux.HandleFunc("/", s.loggingMiddleware(s.notFoundHandler))
 	}
