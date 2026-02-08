@@ -1132,7 +1132,8 @@ func validateFields(data map[string]any, collection *registry.Collection) error 
 	for _, col := range collection.Columns {
 		validFields[col.Name] = true
 	}
-	// Allow ulid in request data (will be ignored during creation)
+	// Allow system columns (id, ulid) in request data
+	validFields["id"] = true
 	validFields["ulid"] = true
 
 	for field := range data {

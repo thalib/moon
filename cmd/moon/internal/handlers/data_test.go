@@ -287,6 +287,56 @@ func TestDataHandler_Update_NotFound(t *testing.T) {
 	}
 }
 
+func TestDataHandler_Update_WithIDInData(t *testing.T) {
+	reg := registry.NewSchemaRegistry()
+	collection := &registry.Collection{
+		Name: "products",
+		Columns: []registry.Column{
+			{Name: "name", Type: registry.TypeString, Nullable: false},
+			{Name: "brand", Type: registry.TypeString, Nullable: false},
+		},
+	}
+	reg.Set(collection)
+
+	driver := &mockDataDriver{
+		dialect: database.DialectSQLite,
+		execFunc: func(ctx context.Context, query string, args ...any) (sql.Result, error) {
+			return mockResult{rowsAffected: 1}, nil
+		},
+	}
+	handler := NewDataHandler(driver, reg)
+
+	// Test case where "id" is included in data map (should be allowed as system field)
+	reqBody := UpdateDataRequest{
+		ID: "01KGYMMW8ZFKRDH5ZVHQJ30RR8",
+		Data: map[string]any{
+			"id":    "01KGYMMW8ZFKRDH5ZVHQJ30RR8", // This should be allowed
+			"name":  "Chain Link Fence 2x2",
+			"brand": "Bestfence",
+		},
+	}
+	body, _ := json.Marshal(reqBody)
+
+	req := httptest.NewRequest(http.MethodPost, "/products:update", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	handler.Update(w, req, "products")
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status %d, got %d. Body: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	// Verify response
+	var resp UpdateDataResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	if resp.Data["id"] != "01KGYMMW8ZFKRDH5ZVHQJ30RR8" {
+		t.Errorf("expected id '01KGYMMW8ZFKRDH5ZVHQJ30RR8', got %v", resp.Data["id"])
+	}
+}
+
 func TestDataHandler_Destroy_Success(t *testing.T) {
 	reg := registry.NewSchemaRegistry()
 	collection := &registry.Collection{
