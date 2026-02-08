@@ -129,14 +129,20 @@ Supported column data types:
 curl -s  http://localhost:6006/health | jq .
 ```
 
-Response: `status: live|down`
-
-```bash
+**Response (200 OK):**
+```json
 {
   "name": "moon",
   "status": "live",
   "version": "1.99"
 }
+```
+
+**Response Headers:**
+```
+HTTP/1.1 200 OK
+Content-Type: application/json
+Access-Control-Allow-Origin: *
 ```
 
 **Documentation**
@@ -153,6 +159,13 @@ Refresh documentation cache:
 ```bash
 curl -X POST "{{$ApiURL}}/doc:refresh" \
   -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "Documentation cache refreshed successfully"
+}
 ```
 
 ---
@@ -308,6 +321,40 @@ curl -X POST "{{$ApiURL}}/auth:login" \
 ```
 Use the username/password defined in the config file `samples/moon.conf` under `auth.bootstrap_admin`.
 
+**Response (200 OK):**
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMDFKWFI3...",
+  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMDFKWFI3...",
+  "token_type": "Bearer",
+  "expires_in": 900,
+  "user": {
+    "id": "01JXRZ7HDKTSV4RRFFQ69G5FAA",
+    "username": "admin",
+    "email": "admin@example.com",
+    "role": "admin",
+    "created_at": "2026-01-15T10:30:00Z"
+  }
+}
+```
+
+**Response Headers:**
+```
+HTTP/1.1 200 OK
+Content-Type: application/json
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 99
+X-RateLimit-Reset: 1706875200
+```
+
+**Error Response (401 Unauthorized):**
+```json
+{
+  "error": "Invalid username or password",
+  "code": 401
+}
+```
+
 **Logout**
 
 ```bash
@@ -315,6 +362,22 @@ curl -X POST "{{$ApiURL}}/auth:logout" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"refresh_token":"$REFRESH_TOKEN"}' | jq .
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "Logged out successfully"
+}
+```
+
+**Response Headers:**
+```
+HTTP/1.1 200 OK
+Content-Type: application/json
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 98
+X-RateLimit-Reset: 1706875200
 ```
 
 **Refresh Token**
@@ -325,11 +388,59 @@ curl -X POST "{{$ApiURL}}/auth:refresh" \
   -d '{"refresh_token":"$REFRESH_TOKEN"}' | jq .
 ```
 
+**Response (200 OK):**
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMDFKWFI3...",
+  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMDFKWFI3...",
+  "token_type": "Bearer",
+  "expires_in": 900
+}
+```
+
+**Response Headers:**
+```
+HTTP/1.1 200 OK
+Content-Type: application/json
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 97
+X-RateLimit-Reset: 1706875200
+```
+
+**Error Response (401 Unauthorized):**
+```json
+{
+  "error": "Invalid or expired refresh token",
+  "code": 401
+}
+```
+
 **Get Current User**
 
 ```bash
 curl -X GET "{{$ApiURL}}/auth:me" \
   -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
+```
+
+**Response (200 OK):**
+```json
+{
+  "id": "01JXRZ7HDKTSV4RRFFQ69G5FAA",
+  "username": "admin",
+  "email": "admin@example.com",
+  "role": "admin",
+  "created_at": "2026-01-15T10:30:00Z",
+  "updated_at": "2026-02-03T14:20:00Z"
+}
+```
+
+**Response Headers:**
+```
+HTTP/1.1 200 OK
+Content-Type: application/json
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 96
+X-RateLimit-Reset: 1706875200
 ```
 
 **Update Current User**
@@ -343,6 +454,21 @@ curl -X POST "{{$ApiURL}}/auth:me" \
   -d '{"email":"newemail@example.com"}' | jq .
 ```
 
+**Response (200 OK):**
+```json
+{
+  "message": "User updated successfully",
+  "user": {
+    "id": "01JXRZ7HDKTSV4RRFFQ69G5FAA",
+    "username": "admin",
+    "email": "newemail@example.com",
+    "role": "admin",
+    "created_at": "2026-01-15T10:30:00Z",
+    "updated_at": "2026-02-03T14:25:00Z"
+  }
+}
+```
+
 e.g: Change Password
 
 ```bash
@@ -350,6 +476,21 @@ curl -X POST "{{$ApiURL}}/auth:me" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"old_password":"moonadmin12#","password":"NewSecurePass456"}' | jq .
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "Password updated successfully"
+}
+```
+
+**Error Response (401 Unauthorized):**
+```json
+{
+  "error": "Old password is incorrect",
+  "code": 401
+}
 ```
 
 ---
@@ -371,11 +512,73 @@ curl -X GET "{{$ApiURL}}/users:list" \
   -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
 ```
 
+**Response (200 OK):**
+```json
+{
+  "users": [
+    {
+      "id": "01JXRZ7HDKTSV4RRFFQ69G5FAA",
+      "username": "admin",
+      "email": "admin@example.com",
+      "role": "admin",
+      "created_at": "2026-01-15T10:30:00Z",
+      "updated_at": "2026-01-15T10:30:00Z"
+    },
+    {
+      "id": "01JXRZ9ABCDEFGH123456789",
+      "username": "johndoe",
+      "email": "john@example.com",
+      "role": "user",
+      "created_at": "2026-02-01T09:15:00Z",
+      "updated_at": "2026-02-01T09:15:00Z"
+    }
+  ],
+  "total": 2
+}
+```
+
+**Response Headers:**
+```
+HTTP/1.1 200 OK
+Content-Type: application/json
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 95
+X-RateLimit-Reset: 1706875200
+```
+
+**Error Response (403 Forbidden):**
+```json
+{
+  "error": "Forbidden: admin role required",
+  "code": 403
+}
+```
+
 **Get Specific User by ID**
 
 ```bash
 curl -X GET "{{$ApiURL}}/users:get?id=<USER_ID>" \
   -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
+```
+
+**Response (200 OK):**
+```json
+{
+  "id": "01JXRZ9ABCDEFGH123456789",
+  "username": "johndoe",
+  "email": "john@example.com",
+  "role": "user",
+  "created_at": "2026-02-01T09:15:00Z",
+  "updated_at": "2026-02-01T09:15:00Z"
+}
+```
+
+**Error Response (404 Not Found):**
+```json
+{
+  "error": "User not found",
+  "code": 404
+}
 ```
 
 **Create New User**
@@ -392,8 +595,7 @@ curl -X POST "{{$ApiURL}}/users:create" \
   }' | jq .
 ```
 
-Response includes the new user with `user.id`:
-
+**Response (201 Created):**
 ```json
 {
   "message": "User created successfully",
@@ -402,8 +604,34 @@ Response includes the new user with `user.id`:
     "username": "newuser",
     "email": "newuser@example.com",
     "role": "user",
-    "created_at": "2026-02-03T10:30:00Z"
+    "created_at": "2026-02-03T10:30:00Z",
+    "updated_at": "2026-02-03T10:30:00Z"
   }
+}
+```
+
+**Response Headers:**
+```
+HTTP/1.1 201 Created
+Content-Type: application/json
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 94
+X-RateLimit-Reset: 1706875200
+```
+
+**Error Response (409 Conflict):**
+```json
+{
+  "error": "Username already exists",
+  "code": 409
+}
+```
+
+**Error Response (422 Unprocessable Entity):**
+```json
+{
+  "error": "Password must be at least 8 characters and contain uppercase, lowercase, number, and special character",
+  "code": 422
 }
 ```
 
@@ -417,6 +645,21 @@ curl -X POST "{{$ApiURL}}/users:update?id=<USER_ID>" \
     "email": "updateduser@example.com",
     "role": "admin"
   }' | jq .
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "User updated successfully",
+  "user": {
+    "id": "01KGF1ABCDEFGH123456789",
+    "username": "newuser",
+    "email": "updateduser@example.com",
+    "role": "admin",
+    "created_at": "2026-02-03T10:30:00Z",
+    "updated_at": "2026-02-03T14:45:00Z"
+  }
+}
 ```
 
 **Reset User Password**
@@ -433,6 +676,13 @@ curl -X POST "{{$ApiURL}}/users:update?id=<USER_ID>" \
   }' | jq .
 ```
 
+**Response (200 OK):**
+```json
+{
+  "message": "Password reset successfully"
+}
+```
+
 **Revoke All User Sessions**
 
 Admins can invalidate all refresh tokens for a user using the `revoke_sessions` action:
@@ -444,11 +694,25 @@ curl -X POST "{{$ApiURL}}/users:update?id=<USER_ID>" \
   -d '{"action": "revoke_sessions"}' | jq .
 ```
 
+**Response (200 OK):**
+```json
+{
+  "message": "All user sessions revoked successfully"
+}
+```
+
 **Delete User Account**
 
 ```bash
 curl -X POST "{{$ApiURL}}/users:destroy?id=<USER_ID>" \
   -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "User deleted successfully"
+}
 ```
 
 ---
@@ -470,11 +734,71 @@ curl -X GET "{{$ApiURL}}/apikeys:list" \
   -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
 ```
 
+**Response (200 OK):**
+```json
+{
+  "apikeys": [
+    {
+      "id": "01KGF0NGEHYKJR8PV5KHQBDHKB",
+      "name": "Integration Service",
+      "description": "Key for integration",
+      "role": "user",
+      "can_write": false,
+      "key_prefix": "moon_live_ArPaQD...",
+      "created_at": "2026-02-02T11:09:07Z",
+      "last_used": "2026-02-03T10:15:00Z"
+    },
+    {
+      "id": "01KGF2XYZABCDEFGHIJKLMNOPQ",
+      "name": "Test Service",
+      "description": "Key for testing",
+      "role": "user",
+      "can_write": true,
+      "key_prefix": "moon_live_Xyz123...",
+      "created_at": "2026-02-03T08:30:00Z",
+      "last_used": null
+    }
+  ],
+  "total": 2
+}
+```
+
+**Response Headers:**
+```
+HTTP/1.1 200 OK
+Content-Type: application/json
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 93
+X-RateLimit-Reset: 1706875200
+```
+
 **Get API Key**
 
 ```bash
 curl -X GET "{{$ApiURL}}/apikeys:get?id=$API_KEY_ID" \
   -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
+```
+
+**Response (200 OK):**
+```json
+{
+  "id": "01KGF0NGEHYKJR8PV5KHQBDHKB",
+  "name": "Integration Service",
+  "description": "Key for integration",
+  "role": "user",
+  "can_write": false,
+  "key_prefix": "moon_live_ArPaQD...",
+  "created_at": "2026-02-02T11:09:07Z",
+  "last_used": "2026-02-03T10:15:00Z"
+}
+```
+
+**Error Response (404 Not Found):**
+```json
+{
+  "error": "API key not found",
+  "code": 404
+}
 ```
 
 **Create API Key**
@@ -491,9 +815,8 @@ curl -X POST "{{$ApiURL}}/apikeys:create" \
   }' | jq .
 ```
 
-Example Response 
-
-```bash 
+**Response (201 Created):**
+```json
 {
   "message": "API key created successfully",
   "warning": "Store this key securely. It will not be shown again.",
@@ -507,6 +830,15 @@ Example Response
   },
   "key": "moon_live_ArPaQDdyh4gp9EKF42Xrq7AOAAJZmKiCtTCv1m2rj931QxmPkiXuSV8Un0qllMiN"
 }
+```
+
+**Response Headers:**
+```
+HTTP/1.1 201 Created
+Content-Type: application/json
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 92
+X-RateLimit-Reset: 1706875200
 ```
 
 - In above reposne fields:
@@ -530,6 +862,22 @@ curl -X POST "{{$ApiURL}}/apikeys:update?id=$API_KEY_ID" \
   }' | jq .
 ```
 
+**Response (200 OK):**
+```json
+{
+  "message": "API key updated successfully",
+  "apikey": {
+    "id": "01KGF0NGEHYKJR8PV5KHQBDHKB",
+    "name": "Updated Service Name",
+    "description": "Updated description",
+    "role": "user",
+    "can_write": true,
+    "created_at": "2026-02-02T11:09:07Z",
+    "last_used": "2026-02-03T10:15:00Z"
+  }
+}
+```
+
 ***Note:*** This operation updates metadata only. The API key itself remains unchanged and valid. To regenerate the key, use the explicit rotation action below.
 
 **Rotate API Key**
@@ -543,8 +891,7 @@ curl -X POST "{{$ApiURL}}/apikeys:update?id=$API_KEY_ID" \
   -d '{"action":"rotate"}' | jq .
 ```
 
-Response includes the new key and a warning:
-
+**Response (200 OK):**
 ```json
 {
   "message": "API key rotated successfully",
@@ -552,10 +899,12 @@ Response includes the new key and a warning:
   "apikey": {
     "id": "01KGF0NGEHYKJR8PV5KHQBDHKB",
     "name": "Integration Service",
+    "description": "Key for integration",
     "role": "user",
-    "can_write": false
+    "can_write": false,
+    "created_at": "2026-02-02T11:09:07Z"
   },
-  "key": "moon_live_NewKeyValueHere..."
+  "key": "moon_live_NewKeyValueHere12345678901234567890123456789012345678901234"
 }
 ```
 
@@ -564,6 +913,13 @@ Response includes the new key and a warning:
 ```bash
 curl -X POST "{{$ApiURL}}/apikeys:destroy?id=$API_KEY_ID" \
   -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "API key deleted successfully"
+}
 ```
 
 **Example usage with API key**
@@ -609,6 +965,47 @@ curl -s {{$ApiURL}}/collections:list \
   -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
 ```
 
+**Response (200 OK):**
+```json
+{
+  "collections": [
+    {
+      "name": "products",
+      "columns": [
+        {"name": "id", "type": "string", "nullable": false},
+        {"name": "title", "type": "string", "nullable": false},
+        {"name": "price", "type": "string", "nullable": false},
+        {"name": "details", "type": "string", "nullable": true},
+        {"name": "quantity", "type": "integer", "nullable": false},
+        {"name": "brand", "type": "string", "nullable": false},
+        {"name": "created_at", "type": "datetime", "nullable": false},
+        {"name": "updated_at", "type": "datetime", "nullable": false}
+      ]
+    },
+    {
+      "name": "customers",
+      "columns": [
+        {"name": "id", "type": "string", "nullable": false},
+        {"name": "name", "type": "string", "nullable": false},
+        {"name": "email", "type": "string", "nullable": false},
+        {"name": "created_at", "type": "datetime", "nullable": false},
+        {"name": "updated_at", "type": "datetime", "nullable": false}
+      ]
+    }
+  ],
+  "total": 2
+}
+```
+
+**Response Headers:**
+```
+HTTP/1.1 200 OK
+Content-Type: application/json
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 91
+X-RateLimit-Reset: 1706875200
+```
+
 **Create a Collection**
 
 ```bash
@@ -625,11 +1022,77 @@ curl -X POST "{{$ApiURL}}/collections:create" \
   }' | jq .
 ```
 
+**Response (201 Created):**
+```json
+{
+  "message": "Collection created successfully",
+  "collection": {
+    "name": "products",
+    "columns": [
+      {"name": "id", "type": "string", "nullable": false},
+      {"name": "title", "type": "string", "nullable": false},
+      {"name": "price", "type": "integer", "nullable": false},
+      {"name": "description", "type": "string", "nullable": true},
+      {"name": "created_at", "type": "datetime", "nullable": false},
+      {"name": "updated_at", "type": "datetime", "nullable": false}
+    ]
+  }
+}
+```
+
+**Response Headers:**
+```
+HTTP/1.1 201 Created
+Content-Type: application/json
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 90
+X-RateLimit-Reset: 1706875200
+```
+
+**Error Response (409 Conflict):**
+```json
+{
+  "error": "Collection already exists: products",
+  "code": 409
+}
+```
+
+**Error Response (400 Bad Request):**
+```json
+{
+  "error": "Invalid column type: invalid_type",
+  "code": 400
+}
+```
+
 **Get Collection Schema**
 
 ```bash
 curl -s {{$ApiURL}}/collections:get?name=products \
   -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
+```
+
+**Response (200 OK):**
+```json
+{
+  "name": "products",
+  "columns": [
+    {"name": "id", "type": "string", "nullable": false},
+    {"name": "title", "type": "string", "nullable": false},
+    {"name": "price", "type": "integer", "nullable": false},
+    {"name": "description", "type": "string", "nullable": true},
+    {"name": "created_at", "type": "datetime", "nullable": false},
+    {"name": "updated_at", "type": "datetime", "nullable": false}
+  ]
+}
+```
+
+**Error Response (404 Not Found):**
+```json
+{
+  "error": "Collection not found: products",
+  "code": 404
+}
 ```
 
 **Update a Collection Schema**
@@ -656,6 +1119,26 @@ curl -s -X POST "{{$ApiURL}}/collections:update" \
 	}' | jq .
 ```
 
+**Response (200 OK):**
+```json
+{
+  "message": "Collection updated successfully",
+  "collection": {
+    "name": "products",
+    "columns": [
+      {"name": "id", "type": "string", "nullable": false},
+      {"name": "title", "type": "string", "nullable": false},
+      {"name": "price", "type": "integer", "nullable": false},
+      {"name": "description", "type": "string", "nullable": true},
+      {"name": "stock", "type": "integer", "nullable": false},
+      {"name": "category", "type": "string", "nullable": false},
+      {"name": "created_at", "type": "datetime", "nullable": false},
+      {"name": "updated_at", "type": "datetime", "nullable": false}
+    ]
+  }
+}
+```
+
 Rename existing columns:
 
 ```bash
@@ -668,6 +1151,26 @@ curl -s -X POST "{{$ApiURL}}/collections:update" \
 			{"old_name": "description", "new_name": "details"}
 		]
 	}' | jq .
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "Collection updated successfully",
+  "collection": {
+    "name": "products",
+    "columns": [
+      {"name": "id", "type": "string", "nullable": false},
+      {"name": "title", "type": "string", "nullable": false},
+      {"name": "price", "type": "integer", "nullable": false},
+      {"name": "details", "type": "string", "nullable": true},
+      {"name": "stock", "type": "integer", "nullable": false},
+      {"name": "category", "type": "string", "nullable": false},
+      {"name": "created_at", "type": "datetime", "nullable": false},
+      {"name": "updated_at", "type": "datetime", "nullable": false}
+    ]
+  }
+}
 ```
 
 Modify existing columns' data types or attributes:
@@ -684,6 +1187,26 @@ curl -s -X POST "{{$ApiURL}}/collections:update" \
 	}' | jq .
 ```
 
+**Response (200 OK):**
+```json
+{
+  "message": "Collection updated successfully",
+  "collection": {
+    "name": "products",
+    "columns": [
+      {"name": "id", "type": "string", "nullable": false},
+      {"name": "title", "type": "string", "nullable": false},
+      {"name": "price", "type": "integer", "nullable": false},
+      {"name": "details", "type": "string", "nullable": true},
+      {"name": "stock", "type": "integer", "nullable": false},
+      {"name": "category", "type": "string", "nullable": true},
+      {"name": "created_at", "type": "datetime", "nullable": false},
+      {"name": "updated_at", "type": "datetime", "nullable": false}
+    ]
+  }
+}
+```
+
 Remove existing columns:
 
 ```bash
@@ -694,6 +1217,25 @@ curl -s -X POST "{{$ApiURL}}/collections:update" \
 		"name": "products",
 		"remove_columns": ["category"]
 	}' | jq .
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "Collection updated successfully",
+  "collection": {
+    "name": "products",
+    "columns": [
+      {"name": "id", "type": "string", "nullable": false},
+      {"name": "title", "type": "string", "nullable": false},
+      {"name": "price", "type": "integer", "nullable": false},
+      {"name": "details", "type": "string", "nullable": true},
+      {"name": "stock", "type": "integer", "nullable": false},
+      {"name": "created_at", "type": "datetime", "nullable": false},
+      {"name": "updated_at", "type": "datetime", "nullable": false}
+    ]
+  }
+}
 ```
 
 Combine multiple operations:
@@ -716,6 +1258,26 @@ curl -s -X POST "{{$ApiURL}}/collections:update" \
 	}' | jq .
 ```
 
+**Response (200 OK):**
+```json
+{
+  "message": "Collection updated successfully",
+  "collection": {
+    "name": "products",
+    "columns": [
+      {"name": "id", "type": "string", "nullable": false},
+      {"name": "title", "type": "string", "nullable": false},
+      {"name": "price", "type": "string", "nullable": false},
+      {"name": "details", "type": "string", "nullable": true},
+      {"name": "quantity", "type": "integer", "nullable": false},
+      {"name": "brand", "type": "string", "nullable": false},
+      {"name": "created_at", "type": "datetime", "nullable": false},
+      {"name": "updated_at", "type": "datetime", "nullable": false}
+    ]
+  }
+}
+```
+
 **Delete a Collection**
 
 ```bash
@@ -723,6 +1285,21 @@ curl -X POST "{{$ApiURL}}/collections:destroy" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"name": "products"}' | jq .
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "Collection deleted successfully"
+}
+```
+
+**Error Response (404 Not Found):**
+```json
+{
+  "error": "Collection not found: products",
+  "code": 404
+}
 ```
 
 ---
@@ -747,6 +1324,56 @@ curl -s "{{$ApiURL}}/products:list" \
   -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
 ```
 
+**Response (200 OK):**
+```json
+{
+  "data": [
+    {
+      "id": "01KGD5E74RYS0WTNARQC92S1P7",
+      "title": "Wireless Mouse",
+      "price": "29.99",
+      "details": "Ergonomic wireless mouse",
+      "quantity": 10,
+      "brand": "Wow",
+      "created_at": "2026-02-03T10:45:00Z",
+      "updated_at": "2026-02-03T10:45:00Z"
+    },
+    {
+      "id": "01KGD5F89ABC0XYZDEF123456G",
+      "title": "USB Keyboard",
+      "price": "49.99",
+      "details": "Mechanical keyboard with RGB",
+      "quantity": 5,
+      "brand": "TechKeys",
+      "created_at": "2026-02-03T11:00:00Z",
+      "updated_at": "2026-02-03T11:00:00Z"
+    }
+  ],
+  "total": 2,
+  "next_cursor": null,
+  "has_more": false
+}
+```
+
+**Response Headers:**
+```
+HTTP/1.1 200 OK
+Content-Type: application/json
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 89
+X-RateLimit-Reset: 1706875200
+```
+
+**Response (200 OK) - Empty Collection:**
+```json
+{
+  "data": [],
+  "total": 0,
+  "next_cursor": null,
+  "has_more": false
+}
+```
+
 **Schema Retrieval**
 
 To retrieve the schema for a collection, use the dedicated schema endpoint:
@@ -756,21 +1383,30 @@ curl "{{$ApiURL}}/products:schema" \
   -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
 ```
 
-Response format:
-
+**Response (200 OK):**
 ```json
 {
   "collection": "products",
   "fields": [
-    { "name": "id", "type": "string", "nullable": false },
-    { "name": "title", "type": "string", "nullable": false },
-    { "name": "price", "type": "integer", "nullable": false },
-    { "name": "description", "type": "string", "nullable": true }
+    {"name": "id", "type": "string", "nullable": false},
+    {"name": "title", "type": "string", "nullable": false},
+    {"name": "price", "type": "string", "nullable": false},
+    {"name": "details", "type": "string", "nullable": true},
+    {"name": "quantity", "type": "integer", "nullable": false},
+    {"name": "brand", "type": "string", "nullable": false},
+    {"name": "created_at", "type": "datetime", "nullable": false},
+    {"name": "updated_at", "type": "datetime", "nullable": false}
   ]
 }
 ```
 
-The schema endpoint requires authentication and returns `404` if the collection does not exist.
+**Error Response (404 Not Found):**
+```json
+{
+  "error": "Collection not found: products",
+  "code": 404
+}
+```
 
 **Create a New Record**
 
@@ -789,8 +1425,7 @@ curl -s -X POST "{{$ApiURL}}/products:create" \
   }' | jq .
 ```
 
-Response includes the created record with `data.id`:
-
+**Response (201 Created):**
 ```json
 {
   "message": "Record created successfully",
@@ -807,6 +1442,31 @@ Response includes the created record with `data.id`:
 }
 ```
 
+**Response Headers:**
+```
+HTTP/1.1 201 Created
+Content-Type: application/json
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 88
+X-RateLimit-Reset: 1706875200
+```
+
+**Error Response (400 Bad Request):**
+```json
+{
+  "error": "Missing required field: title",
+  "code": 400
+}
+```
+
+**Error Response (422 Unprocessable Entity):**
+```json
+{
+  "error": "Invalid type for field 'quantity': expected integer",
+  "code": 422
+}
+```
+
 **Get a Single Record**
 
 ```bash
@@ -817,6 +1477,28 @@ curl -s "{{$ApiURL}}/products:get?id=<RECORD_ID>" \
 
 ***Note:*** Replace `<RECORD_ID>` with an actual record ID from your data (e.g., `01KGD5E74RYS0WTNARQC92S1P7`).
 
+**Response (200 OK):**
+```json
+{
+  "id": "01KGD5E74RYS0WTNARQC92S1P7",
+  "title": "Wireless Mouse",
+  "price": "29.99",
+  "details": "Ergonomic wireless mouse",
+  "quantity": 10,
+  "brand": "Wow",
+  "created_at": "2026-02-03T10:45:00Z",
+  "updated_at": "2026-02-03T10:45:00Z"
+}
+```
+
+**Error Response (404 Not Found):**
+```json
+{
+  "error": "Record not found",
+  "code": 404
+}
+```
+
 **Update an Existing Record**
 
 ```bash
@@ -826,6 +1508,31 @@ curl -s -X POST "{{$ApiURL}}/products:update" \
   -d '{"id":"<RECORD_ID>","data":{"price":"6000.00"}}' | jq .
 ```
 
+**Response (200 OK):**
+```json
+{
+  "message": "Record updated successfully",
+  "data": {
+    "id": "01KGD5E74RYS0WTNARQC92S1P7",
+    "title": "Wireless Mouse",
+    "price": "6000.00",
+    "details": "Ergonomic wireless mouse",
+    "quantity": 10,
+    "brand": "Wow",
+    "created_at": "2026-02-03T10:45:00Z",
+    "updated_at": "2026-02-03T15:30:00Z"
+  }
+}
+```
+
+**Error Response (404 Not Found):**
+```json
+{
+  "error": "Record not found",
+  "code": 404
+}
+```
+
 **Delete a Record**
 
 ```bash
@@ -833,6 +1540,21 @@ curl -s -X POST "{{$ApiURL}}/products:destroy" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"id":"<RECORD_ID>"}' | jq .
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "Record deleted successfully"
+}
+```
+
+**Error Response (404 Not Found):**
+```json
+{
+  "error": "Record not found",
+  "code": 404
+}
 ```
 
 ---
@@ -846,6 +1568,35 @@ curl -g "{{$ApiURL}}/products:list?quantity[gt]=5&brand[eq]=Wow" \
   -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
 ```
 
+**Response (200 OK):**
+```json
+{
+  "data": [
+    {
+      "id": "01KGD5E74RYS0WTNARQC92S1P7",
+      "title": "Wireless Mouse",
+      "price": "29.99",
+      "details": "Ergonomic wireless mouse",
+      "quantity": 10,
+      "brand": "Wow",
+      "created_at": "2026-02-03T10:45:00Z",
+      "updated_at": "2026-02-03T15:30:00Z"
+    }
+  ],
+  "total": 1,
+  "next_cursor": null,
+  "has_more": false
+}
+```
+
+**Error Response (400 Bad Request):**
+```json
+{
+  "error": "Invalid filter operator: invalid",
+  "code": 400
+}
+```
+
 **Operators:** `eq`, `ne`, `gt`, `lt`, `gte`, `lte`, `like`, `in`
 
 **Sorting:** `?sort={-field1,field2}` 
@@ -853,6 +1604,37 @@ curl -g "{{$ApiURL}}/products:list?quantity[gt]=5&brand[eq]=Wow" \
 ```bash
 curl "{{$ApiURL}}/products:list?sort=-quantity,title" \
   -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
+```
+
+**Response (200 OK):**
+```json
+{
+  "data": [
+    {
+      "id": "01KGD5E74RYS0WTNARQC92S1P7",
+      "title": "Wireless Mouse",
+      "price": "29.99",
+      "details": "Ergonomic wireless mouse",
+      "quantity": 10,
+      "brand": "Wow",
+      "created_at": "2026-02-03T10:45:00Z",
+      "updated_at": "2026-02-03T15:30:00Z"
+    },
+    {
+      "id": "01KGD5F89ABC0XYZDEF123456G",
+      "title": "USB Keyboard",
+      "price": "49.99",
+      "details": "Mechanical keyboard with RGB",
+      "quantity": 5,
+      "brand": "TechKeys",
+      "created_at": "2026-02-03T11:00:00Z",
+      "updated_at": "2026-02-03T11:00:00Z"
+    }
+  ],
+  "total": 2,
+  "next_cursor": null,
+  "has_more": false
+}
 ```
 
 Sort by `field` (ascending) or `-field` (descending).
@@ -864,6 +1646,37 @@ curl "{{$ApiURL}}/products:list?q=mouse" \
   -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
 ```
 
+**Response (200 OK):**
+```json
+{
+  "data": [
+    {
+      "id": "01KGD5E74RYS0WTNARQC92S1P7",
+      "title": "Wireless Mouse",
+      "price": "29.99",
+      "details": "Ergonomic wireless mouse",
+      "quantity": 10,
+      "brand": "Wow",
+      "created_at": "2026-02-03T10:45:00Z",
+      "updated_at": "2026-02-03T15:30:00Z"
+    }
+  ],
+  "total": 1,
+  "next_cursor": null,
+  "has_more": false
+}
+```
+
+**Response (200 OK) - No Results:**
+```json
+{
+  "data": [],
+  "total": 0,
+  "next_cursor": null,
+  "has_more": false
+}
+```
+
 Searches across all string/text fields in the collection.
 
 **Field Selection:** `?fields={field1,field2}`
@@ -871,6 +1684,27 @@ Searches across all string/text fields in the collection.
 ```bash
 curl "{{$ApiURL}}/products:list?fields=quantity,title" \
   -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
+```
+
+**Response (200 OK):**
+```json
+{
+  "data": [
+    {
+      "id": "01KGD5E74RYS0WTNARQC92S1P7",
+      "quantity": 10,
+      "title": "Wireless Mouse"
+    },
+    {
+      "id": "01KGD5F89ABC0XYZDEF123456G",
+      "quantity": 5,
+      "title": "USB Keyboard"
+    }
+  ],
+  "total": 2,
+  "next_cursor": null,
+  "has_more": false
+}
 ```
 
 Returns only the specified fields (plus `id` which is always included).
@@ -882,11 +1716,84 @@ curl "{{$ApiURL}}/products:list?limit=2" \
   -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
 ```
 
+**Response (200 OK):**
+```json
+{
+  "data": [
+    {
+      "id": "01KGD5E74RYS0WTNARQC92S1P7",
+      "title": "Wireless Mouse",
+      "price": "29.99",
+      "details": "Ergonomic wireless mouse",
+      "quantity": 10,
+      "brand": "Wow",
+      "created_at": "2026-02-03T10:45:00Z",
+      "updated_at": "2026-02-03T15:30:00Z"
+    },
+    {
+      "id": "01KGD5F89ABC0XYZDEF123456G",
+      "title": "USB Keyboard",
+      "price": "49.99",
+      "details": "Mechanical keyboard with RGB",
+      "quantity": 5,
+      "brand": "TechKeys",
+      "created_at": "2026-02-03T11:00:00Z",
+      "updated_at": "2026-02-03T11:00:00Z"
+    }
+  ],
+  "total": 2,
+  "next_cursor": "01KGD5F89ABC0XYZDEF123456G",
+  "has_more": true
+}
+```
+
 **Pagination:** `?after={cursor}` (Response includes `next_cursor` when more results are available.)
 
 ```bash
 curl "{{$ApiURL}}/products:list?after=01ARZ3NDEKTSV4RRFFQ69G5FBX&limit=10" \
   -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
+```
+
+**Response (200 OK) - More Pages Available:**
+```json
+{
+  "data": [
+    {
+      "id": "01KGD5G12XYZ789GHIJKLMNO34",
+      "title": "Monitor Stand",
+      "price": "34.99",
+      "details": "Adjustable monitor stand",
+      "quantity": 15,
+      "brand": "Ergo",
+      "created_at": "2026-02-03T12:00:00Z",
+      "updated_at": "2026-02-03T12:00:00Z"
+    }
+  ],
+  "total": 1,
+  "next_cursor": "01KGD5G12XYZ789GHIJKLMNO34",
+  "has_more": true
+}
+```
+
+**Response (200 OK) - Last Page:**
+```json
+{
+  "data": [
+    {
+      "id": "01KGD5H90PQRST123456VWXYZ",
+      "title": "Desk Lamp",
+      "price": "24.99",
+      "details": "LED desk lamp",
+      "quantity": 8,
+      "brand": "BrightLight",
+      "created_at": "2026-02-03T13:00:00Z",
+      "updated_at": "2026-02-03T13:00:00Z"
+    }
+  ],
+  "total": 1,
+  "next_cursor": null,
+  "has_more": false
+}
 ```
 
 **Combined Query Examples:**
@@ -930,11 +1837,45 @@ curl "{{$ApiURL}}/products:count" \
   -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
 ```
 
+**Response (200 OK):**
+```json
+{
+  "count": 15
+}
+```
+
+**Response (200 OK) - With Filters:**
+```bash
+curl -g "{{$ApiURL}}/products:count?quantity[gt]=10" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
+```
+
+```json
+{
+  "count": 5
+}
+```
+
 **Sum Numeric Field:** `:sum?field={field_name}`
 
 ```bash
 curl "{{$ApiURL}}/products:sum?field=quantity" \
   -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
+```
+
+**Response (200 OK):**
+```json
+{
+  "sum": 150
+}
+```
+
+**Error Response (400 Bad Request):**
+```json
+{
+  "error": "Field 'quantity' is required for sum operation",
+  "code": 400
+}
 ```
 
 **Average Numeric Field:** `:avg?field={field_name}`
@@ -944,6 +1885,13 @@ curl "{{$ApiURL}}/products:avg?field=quantity" \
   -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
 ```
 
+**Response (200 OK):**
+```json
+{
+  "avg": "10.5"
+}
+```
+
 **Minimum Value:** `:min?field={field_name}`
 
 ```bash
@@ -951,11 +1899,25 @@ curl "{{$ApiURL}}/products:min?field=quantity" \
   -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
 ```
 
+**Response (200 OK):**
+```json
+{
+  "min": 5
+}
+```
+
 **Maximum Value:** `:max?field={field_name}`
 
 ```bash
 curl "{{$ApiURL}}/products:max?field=quantity" \
   -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
+```
+
+**Response (200 OK):**
+```json
+{
+  "max": 50
+}
 ```
 
 ***Note:*** Aggregation functions (sum, avg, min, max) work on both `integer` and `decimal` field types. In the examples above, `price` was changed to `string` type during schema updates, so we use `quantity` for demonstrations. For decimal fields, aggregation results are returned as strings (e.g., `"1234.56"`).
@@ -984,6 +1946,7 @@ X-RateLimit-Reset: 1706875200
 
 When you exceed the rate limit (100/min/user for JWT, 1000/min/key for API Key), you'll receive:
 
+**Response (429 Too Many Requests):**
 ```json
 {
   "error": "Rate limit exceeded. Try again later.",
@@ -991,7 +1954,17 @@ When you exceed the rate limit (100/min/user for JWT, 1000/min/key for API Key),
 }
 ```
 
-Wait until the time specified in `X-RateLimit-Reset` before retrying.
+**Response Headers:**
+```
+HTTP/1.1 429 Too Many Requests
+Content-Type: application/json
+Retry-After: 60
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 0
+X-RateLimit-Reset: 1706875260
+```
+
+Wait until the time specified in `X-RateLimit-Reset` before retrying, or use the `Retry-After` header value (in seconds).
 
 ---
 
@@ -1023,6 +1996,24 @@ Moon supports Cross-Origin Resource Sharing (CORS) for browser-based clients wit
   curl -s -X OPTIONS "{{$ApiURL}}/collections:list" \
     -H "Origin: http://localhost:3000" \
     -H "Access-Control-Request-Method: GET" | jq .
+  ```
+  
+  **Response (200 OK):**
+  ```json
+  {
+    "allowed_methods": ["GET", "POST", "OPTIONS"],
+    "allowed_headers": ["Authorization", "Content-Type"],
+    "max_age": 3600
+  }
+  ```
+  
+  **Response Headers:**
+  ```
+  HTTP/1.1 200 OK
+  Access-Control-Allow-Origin: http://localhost:3000
+  Access-Control-Allow-Methods: GET, POST, OPTIONS
+  Access-Control-Allow-Headers: Authorization, Content-Type
+  Access-Control-Max-Age: 3600
   ```
 
 - **Credentials:** Supported when origin is explicitly allowed (not `*`).
