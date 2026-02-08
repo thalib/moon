@@ -20,27 +20,13 @@ const (
 	// Used in: middleware/apikey.go
 	// Purpose: Alternative authentication mechanism using API keys
 	// Note: Default header name can be overridden in config
+	// DEPRECATED: X-API-Key header is no longer supported. Use Authorization: Bearer <token>
 	HeaderAPIKey = "X-API-Key"
 
 	// HeaderContentType is the standard HTTP Content-Type header.
 	// Used in: multiple handlers and middleware
 	// Purpose: Specifies the media type of the request/response body
 	HeaderContentType = "Content-Type"
-
-	// HeaderDeprecation indicates that a feature is deprecated.
-	// Used in: middleware for legacy authentication header support
-	// Purpose: Signals clients that they're using deprecated functionality
-	HeaderDeprecation = "Deprecation"
-
-	// HeaderSunset indicates when a deprecated feature will be removed.
-	// Used in: middleware for legacy authentication header support
-	// Purpose: Provides sunset date for deprecated features (RFC 8594)
-	HeaderSunset = "Sunset"
-
-	// HeaderLink provides links to related resources.
-	// Used in: middleware for deprecation documentation links
-	// Purpose: Points to migration guides and deprecation info (RFC 8288)
-	HeaderLink = "Link"
 )
 
 // MIME types used in HTTP responses.

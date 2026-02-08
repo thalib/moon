@@ -140,8 +140,8 @@ func TestDocHandler_Markdown(t *testing.T) {
 	if !strings.Contains(body, "## Aggregation Operations") {
 		t.Error("expected aggregation operations section")
 	}
-	if !strings.Contains(body, "X-API-KEY") {
-		t.Error("expected API key header in auth section")
+	if !strings.Contains(body, "Authorization: Bearer") {
+		t.Error("expected Authorization: Bearer header in auth section")
 	}
 }
 

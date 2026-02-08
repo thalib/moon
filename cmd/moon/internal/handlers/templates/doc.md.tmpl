@@ -152,7 +152,7 @@ Or view in browser: [{{$ApiURL}}/doc/llms-full.txt]({{$ApiURL}}/doc/llms-full.tx
 Refresh documentation cache:
 ```bash
 curl -X POST "{{$ApiURL}}/doc:refresh" \
-  -H "X-API-Key: $ACCESS_TOKEN" | jq .
+  -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
 ```
 
 ---
@@ -513,7 +513,7 @@ Example Response
   - `id` => `$API_KEY_ID` (e.g: 01KGF0NGEHYKJR8PV5KHQBDHKB)
   - `key` => `$API_KEY` (e.g: moon_live_ArPaQDdyh4gp9EKF42Xrq7AOAAJZmKiCtTCv1m2rj931QxmPkiXuSV8Un0qllMiN).
 - Copy and store `key` securely now. It will not be shown again.
-- Use this key in the `{{.APIKeyHeader}}` header (e.g., `X-API-Key: $API_KEY`) for all API requests.
+- Use this key in the `Authorization: Bearer` header (e.g., `Authorization: Bearer $API_KEY`) for all API requests.
 
 **Update API Key Metadata**
 
@@ -585,7 +585,7 @@ then you can use it as shown below:
 
 ```bash
 curl -X GET "http://localhost:6006/collections:list" \
-  -H "X-API-Key: $API_KEY" | jq .
+  -H "Authorization: Bearer $API_KEY" | jq .
 ```
 
 ---

@@ -136,40 +136,11 @@ curl -H "Authorization: Bearer moon_live_abc123..." \
   https://api.moon.example.com/data/users:list
 ```
 
-### Legacy Authentication Support (Transitional)
-
-**Deprecated Header:**
-
-During the transitional period, the legacy `X-API-Key` header is still supported for API keys:
-
-```
-X-API-Key: <api_key>
-```
-
-**Deprecation Notice:**
-
-- The `X-API-Key` header is **deprecated** and will be removed in a future version
-- Use `Authorization: Bearer <api_key>` instead
-- When using the legacy header, the server returns deprecation headers:
-  - `Deprecation: true`
-  - `Sunset: <date>` (when legacy support will end)
-  - `Link: </doc>; rel="deprecation"` (link to migration guide)
-
-**Configuration:**
-
-```yaml
-apikey:
-  enabled: true
-  legacy_header_support: true  # Enable legacy X-API-Key support (default: true)
-  legacy_header_sunset: "2026-05-08T00:00:00Z"  # Sunset date for legacy header
-```
-
 ### Authentication Priority
 
 **Precedence Rules:**
 
-- `Authorization: Bearer` takes precedence over `X-API-Key` if both headers present
-- If neither header is present on protected endpoint, return `401 Unauthorized`
+- If no `Authorization: Bearer` header is present on protected endpoint, return `401 Unauthorized`
 - If invalid/expired credentials provided, return `401 Unauthorized`
 - If valid credentials but insufficient permissions, return `403 Forbidden`
 
@@ -1217,7 +1188,7 @@ All authentication endpoints return consistent JSON error format following SPEC.
 
 **Authentication Errors (401):**
 
-- `MISSING_AUTH_HEADER`: No Authorization or X-API-Key header provided
+- `MISSING_AUTH_HEADER`: No Authorization header provided
 - `INVALID_TOKEN_FORMAT`: Authorization header not in "Bearer <token>" format
 - `INVALID_TOKEN`: Token signature invalid or token malformed
 - `EXPIRED_TOKEN`: Access token or refresh token has expired
@@ -1323,7 +1294,6 @@ jwt:
 # API Key Configuration (Optional)
 apikey:
   enabled: false                           # Enable API key authentication (default: false)
-  header: "X-API-Key"                      # Header name for API keys (default: X-API-Key)
 
 # Authentication Security Settings (Optional)
 auth:

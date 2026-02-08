@@ -793,7 +793,7 @@ Moon requires authentication for all API endpoints except `/health`. Two authent
 | Method | Header | Use Case | Rate Limit |
 |--------|--------|----------|------------|
 | **JWT** | `Authorization: Bearer <token>` | Interactive users (web/mobile) | 100 req/min |
-| **API Key** | `X-API-Key: <key>` | Machine-to-machine integrations | 1000 req/min |
+| **API Key** | `Authorization: Bearer moon_live_*` | Machine-to-machine integrations | 1000 req/min |
 
 ### Roles and Permissions
 

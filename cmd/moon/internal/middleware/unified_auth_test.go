@@ -92,7 +92,7 @@ func TestUnifiedAuth_APIKeyViaAuthorizationBearer(t *testing.T) {
 	}
 }
 
-func TestUnifiedAuth_LegacyAPIKeyHeader(t *testing.T) {
+func TestUnifiedAuth_LegacyXAPIKeyHeader_Rejected(t *testing.T) {
 	// Setup API key store
 	store := NewAPIKeyStore()
 	apiKey := constants.APIKeyPrefix + "test1234567890123456789012345678901234567890123456789012345678"
@@ -111,68 +111,60 @@ func TestUnifiedAuth_LegacyAPIKeyHeader(t *testing.T) {
 		Store:   store,
 	})
 
-	// Setup unified auth middleware with legacy support enabled
+	// Setup unified auth middleware (no legacy support)
 	unified := NewUnifiedAuthMiddleware(UnifiedAuthConfig{
-		APIKeyMiddleware:       apiKeyMiddleware,
-		LegacyHeaderSupport:    true,
-		LegacyHeaderSunsetDate: "2026-05-08T00:00:00Z",
-		ProtectByDefault:       true,
-		UnprotectedPaths:       []string{"/health"},
+		APIKeyMiddleware: apiKeyMiddleware,
+		ProtectByDefault: true,
+		UnprotectedPaths: []string{"/health"},
 	})
 
 	// Create test handler
 	handler := unified.Authenticate(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("success"))
+		t.Error("Handler should not be called when X-API-Key header is used")
 	})
 
-	// Create request with legacy X-API-Key header
+	// Create request with X-API-Key header (should be rejected)
 	req := httptest.NewRequest(http.MethodGet, "/data", nil)
 	req.Header.Set(constants.HeaderAPIKey, apiKey)
 	w := httptest.NewRecorder()
 
 	handler(w, req)
 
-	if w.Code != http.StatusOK {
-		t.Errorf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
+	// Verify request was rejected
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("Expected status 401, got %d. Body: %s", w.Code, w.Body.String())
 	}
 
-	// Check for deprecation headers
-	if w.Header().Get(constants.HeaderDeprecation) != "true" {
-		t.Error("Expected Deprecation header to be 'true'")
+	var resp map[string]any
+	json.Unmarshal(w.Body.Bytes(), &resp)
+
+	if resp["error"] != "authentication_required" {
+		t.Errorf("Expected error 'authentication_required', got %v", resp["error"])
 	}
 
-	if w.Header().Get(constants.HeaderSunset) == "" {
-		t.Error("Expected Sunset header to be present")
+	// Verify NO deprecation headers (feature removed completely)
+	if w.Header().Get("Deprecation") != "" {
+		t.Error("Expected NO Deprecation header")
 	}
-
-	if w.Header().Get(constants.HeaderLink) == "" {
-		t.Error("Expected Link header to be present")
+	if w.Header().Get("Sunset") != "" {
+		t.Error("Expected NO Sunset header")
+	}
+	if w.Header().Get("Link") != "" {
+		t.Error("Expected NO Link header")
 	}
 }
 
-func TestUnifiedAuth_BothHeadersPresent_BearerTakesPrecedence(t *testing.T) {
+func TestUnifiedAuth_BothHeadersPresent_OnlyBearerUsed(t *testing.T) {
 	// Setup stores
 	store := NewAPIKeyStore()
 
-	// Create two different API keys
-	apiKey1 := constants.APIKeyPrefix + "key1_12345678901234567890123456789012345678901234567890123456"
-	apiKey2 := constants.APIKeyPrefix + "key2_12345678901234567890123456789012345678901234567890123456"
+	// Create API key
+	apiKey := constants.APIKeyPrefix + "key1_12345678901234567890123456789012345678901234567890123456"
+	hashedKey := HashAPIKey(apiKey)
 
-	hashedKey1 := HashAPIKey(apiKey1)
-	hashedKey2 := HashAPIKey(apiKey2)
-
-	store.Add(hashedKey1, &APIKeyInfo{
+	store.Add(hashedKey, &APIKeyInfo{
 		ID:   "key1",
 		Name: "Bearer Key",
-		Permissions: []Permission{
-			{Resource: "*", Actions: []string{"read"}},
-		},
-	})
-
-	store.Add(hashedKey2, &APIKeyInfo{
-		ID:   "key2",
-		Name: "Legacy Key",
 		Permissions: []Permission{
 			{Resource: "*", Actions: []string{"read"}},
 		},
@@ -184,11 +176,10 @@ func TestUnifiedAuth_BothHeadersPresent_BearerTakesPrecedence(t *testing.T) {
 		Store:   store,
 	})
 
-	// Setup unified auth middleware with legacy support
+	// Setup unified auth middleware
 	unified := NewUnifiedAuthMiddleware(UnifiedAuthConfig{
-		APIKeyMiddleware:    apiKeyMiddleware,
-		LegacyHeaderSupport: true,
-		ProtectByDefault:    true,
+		APIKeyMiddleware: apiKeyMiddleware,
+		ProtectByDefault: true,
 	})
 
 	// Create test handler that checks which key was used
@@ -201,10 +192,10 @@ func TestUnifiedAuth_BothHeadersPresent_BearerTakesPrecedence(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	// Create request with BOTH headers
+	// Create request with BOTH headers (Bearer should work, X-API-Key should be ignored)
 	req := httptest.NewRequest(http.MethodGet, "/data", nil)
-	req.Header.Set(constants.HeaderAuthorization, "Bearer "+apiKey1)
-	req.Header.Set(constants.HeaderAPIKey, apiKey2)
+	req.Header.Set(constants.HeaderAuthorization, "Bearer "+apiKey)
+	req.Header.Set(constants.HeaderAPIKey, "some_other_key")
 	w := httptest.NewRecorder()
 
 	handler(w, req)
@@ -213,14 +204,9 @@ func TestUnifiedAuth_BothHeadersPresent_BearerTakesPrecedence(t *testing.T) {
 		t.Errorf("Expected status 200, got %d", w.Code)
 	}
 
-	// Verify that Bearer token (key1) was used, not legacy X-API-Key (key2)
+	// Verify that Bearer token (key1) was used
 	if usedKeyID != "key1" {
 		t.Errorf("Expected Bearer token (key1) to be used, but got %s", usedKeyID)
-	}
-
-	// Verify NO deprecation headers (since we used Bearer)
-	if w.Header().Get(constants.HeaderDeprecation) != "" {
-		t.Error("Expected NO Deprecation header when using Bearer token")
 	}
 }
 

@@ -114,7 +114,6 @@ jwt:
 # API Key Configuration (Optional but recommended)
 apikey:
   enabled: true
-  header: "X-API-Key"
 
 # Bootstrap Admin (First-time setup only)
 # ⚠️ Remove this section after first login!
@@ -224,7 +223,7 @@ curl -X POST http://localhost:6006/apikeys:create \
 
 # Use the API key
 curl http://localhost:6006/collections:list \
-  -H "X-API-Key: moon_live_abc123...xyz789"
+  -H "Authorization: Bearer moon_live_abc123...xyz789"
 ```
 
 ### Step 7: Running the Test Suite
@@ -276,7 +275,7 @@ curl -X POST http://localhost:6006/auth:logout \
 ```bash
 # Use API key for requests
 curl http://localhost:6006/collections:list \
-  -H "X-API-Key: moon_live_abc123...xyz789"
+  -H "Authorization: Bearer moon_live_abc123...xyz789"
 ```
 
 ## Security Checklist

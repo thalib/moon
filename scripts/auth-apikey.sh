@@ -145,7 +145,7 @@ echo ""
 echo "[4] Testing API key authentication on protected endpoint..."
 if [ -n "$API_KEY_VALUE" ]; then
     APIKEY_AUTH_RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "${BASE_URL}/collections:list" \
-        -H "X-API-Key: ${API_KEY_VALUE}")
+        -H "Authorization: Bearer ${API_KEY_VALUE}")
     APIKEY_AUTH_STATUS=$(echo "$APIKEY_AUTH_RESPONSE" | tail -n1)
 
     if [ "$APIKEY_AUTH_STATUS" = "200" ]; then
@@ -158,7 +158,7 @@ fi
 echo ""
 echo "[5] Testing API key authentication with invalid key..."
 INVALID_KEY_RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "${BASE_URL}/collections:list" \
-    -H "X-API-Key: invalid-api-key-12345")
+    -H "Authorization: Bearer invalid-api-key-12345")
 INVALID_KEY_STATUS=$(echo "$INVALID_KEY_RESPONSE" | tail -n1)
 
 if [ "$INVALID_KEY_STATUS" = "401" ]; then
@@ -195,7 +195,7 @@ if [ -n "$API_KEY_VALUE" ]; then
     # This tests that can_write: true now allows data modification
     # Note: The exact behavior depends on your collection setup
     WRITE_TEST_RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "${BASE_URL}/collections:list" \
-        -H "X-API-Key: ${API_KEY_VALUE}")
+        -H "Authorization: Bearer ${API_KEY_VALUE}")
     WRITE_TEST_STATUS=$(echo "$WRITE_TEST_RESPONSE" | tail -n1)
 
     if [ "$WRITE_TEST_STATUS" = "200" ]; then
@@ -229,7 +229,7 @@ echo ""
 echo "[9] Testing old API key after rotation (should fail)..."
 if [ -n "$OLD_KEY" ]; then
     OLD_KEY_RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "${BASE_URL}/collections:list" \
-        -H "X-API-Key: ${OLD_KEY}")
+        -H "Authorization: Bearer ${OLD_KEY}")
     OLD_KEY_STATUS=$(echo "$OLD_KEY_RESPONSE" | tail -n1)
 
     if [ "$OLD_KEY_STATUS" = "401" ]; then
@@ -243,7 +243,7 @@ echo ""
 echo "[10] Testing new API key after rotation..."
 if [ -n "$API_KEY_VALUE" ]; then
     NEW_KEY_RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "${BASE_URL}/collections:list" \
-        -H "X-API-Key: ${API_KEY_VALUE}")
+        -H "Authorization: Bearer ${API_KEY_VALUE}")
     NEW_KEY_STATUS=$(echo "$NEW_KEY_RESPONSE" | tail -n1)
 
     if [ "$NEW_KEY_STATUS" = "200" ]; then
@@ -273,7 +273,7 @@ echo ""
 echo "[12] Testing deleted API key (should fail)..."
 if [ -n "$API_KEY_VALUE" ]; then
     DELETED_KEY_RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "${BASE_URL}/collections:list" \
-        -H "X-API-Key: ${API_KEY_VALUE}")
+        -H "Authorization: Bearer ${API_KEY_VALUE}")
     DELETED_KEY_STATUS=$(echo "$DELETED_KEY_RESPONSE" | tail -n1)
 
     if [ "$DELETED_KEY_STATUS" = "401" ]; then
