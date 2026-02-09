@@ -1,0 +1,102 @@
+{
+	"docURL": "http://localhost:6006",
+	"serverURL":  "https://moon.asensar.in",
+	"prefix": "",
+	"username": "admin",
+	"password": "moonadmin12#",
+	"health": "/health",
+	"tests": [
+		{
+			"name": "Collections Create",
+			"cmd": "POST",
+			"endpoint": "/collections:create",
+			"headers": {
+				"Authorization": "Bearer $ACCESS_TOKEN",
+				"Content-Type": "application/json"
+			},
+			"data": {
+				"name": "products",
+				"columns": [
+					{"name": "title", "type": "string", "nullable": false},
+					{"name": "price", "type": "decimal", "nullable": false},
+					{"name": "details", "type": "string", "nullable": true},
+					{"name": "quantity", "type": "integer", "nullable": true},
+					{"name": "brand", "type": "string", "nullable": true}
+				]
+			}
+		},
+		{
+			"name": "Get Schema",
+			"cmd": "GET",
+			"endpoint": "/products:schema",
+			"headers": {
+				"Authorization": "Bearer $ACCESS_TOKEN"
+			}
+		},
+		{
+			"name": "Create a New Record",
+			"cmd": "POST",
+			"endpoint": "/products:create",
+			"headers": {
+				"Authorization": "Bearer $ACCESS_TOKEN",
+				"Content-Type": "application/json"
+			},
+			"data": {
+				"data": {
+					"title": "Wireless Mouse",
+					"price": "29.99",
+					"details": "Ergonomic wireless mouse",
+					"quantity": 10,
+					"brand": "Wow"
+				}
+			}
+		},
+		{
+			"name": "Get a Single Record",
+			"cmd": "GET",
+			"endpoint": "/products:get?id=01KH0XMVBF2PRSSWSEV5XJ6QK8",
+			"headers": {
+				"Authorization": "Bearer $ACCESS_TOKEN"
+			}
+		},
+		{
+			"name": "Update an Existing Record",
+			"cmd": "POST",
+			"endpoint": "/products:update",
+			"headers": {
+				"Authorization": "Bearer $ACCESS_TOKEN",
+				"Content-Type": "application/json"
+			},
+			"data": {
+				"id": "01KH0XMVBF2PRSSWSEV5XJ6QK8",
+				"data": {
+					"price": "6000.00"
+				}
+			}
+		},
+		{
+			"name": "Delete a Record",
+			"cmd": "POST",
+			"endpoint": "/products:destroy",
+			"headers": {
+				"Authorization": "Bearer $ACCESS_TOKEN",
+				"Content-Type": "application/json"
+			},
+			"data": {
+				"id": "01KH0XMVBF2PRSSWSEV5XJ6QK8"
+			}
+		},
+		{
+			"name": "Collections Destroy",
+			"cmd": "POST",
+			"endpoint": "/collections:destroy",
+			"headers": {
+				"Authorization": "Bearer $ACCESS_TOKEN",
+				"Content-Type": "application/json"
+			},
+			"data": {
+				"name": "products"
+			}
+		}
+	]
+}

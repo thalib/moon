@@ -37,7 +37,7 @@ def build_curl_command(url, method, headers, data):
 def run_test(base_url, prefix, test):
 	"""
 	Executes a single API request using the given base URL, prefix, and test definition.
-	Returns the curl command, response status, and response body (as string).
+	Returns the curl command, response status, response body (as string), and response object.
 	"""
 	method = test.get("cmd", "GET").upper()
 	endpoint = test.get("endpoint", "/")
@@ -55,18 +55,20 @@ def run_test(base_url, prefix, test):
 	
 	curl_cmd = build_curl_command(url, method, headers, data)
 	
+	response_obj = None
 	try:
 		resp = requests.request(method, url, **req_kwargs)
 		status = f"{resp.status_code} {resp.reason}"
 		try:
 			body = resp.json()
+			response_obj = body
 			body_str = json.dumps(body, indent=2)
 		except Exception:
 			body_str = resp.text
 	except Exception as e:
 		status = "ERROR"
 		body_str = str(e)
-	return curl_cmd, status, body_str
+	return curl_cmd, status, body_str, response_obj
 
 
 def parse_args():
@@ -96,6 +98,85 @@ def format_markdown_result(curl_cmd, status, body, test_name=None):
 		f"```json\n{body}\n```\n"
 	]
 
+def extract_collection_name(endpoint):
+	"""
+	Extracts the collection name from an endpoint.
+	E.g., "/products:get" -> "products"
+	"""
+	if '/' in endpoint:
+		endpoint = endpoint.split('?')[0]  # Remove query params
+		parts = endpoint.split('/')
+		for part in parts:
+			if ':' in part:
+				return part.split(':')[0]
+	return None
+
+def fetch_record_id(base_url, prefix, collection_name, headers):
+	"""
+	Fetches the first record ID from a collection by calling /{collection}:list
+	"""
+	try:
+		list_endpoint = f"/{collection_name}:list"
+		url = f"{base_url}{prefix}{list_endpoint}"
+		resp = requests.get(url, headers=headers, timeout=10)
+		if resp.status_code == 200:
+			data = resp.json()
+			# Try to find records in common response structures
+			records = data.get("data", data.get("records", data.get("items", [])))
+			if records and len(records) > 0:
+				# Try common ID field names
+				first_record = records[0]
+				return first_record.get("id", first_record.get("_id", first_record.get("ulid")))
+	except Exception as e:
+		pass
+	return None
+
+def extract_record_id_from_response(response_obj):
+	"""
+	Extracts record ID from a create response.
+	Checks common patterns like data.id, record.id, id, etc.
+	"""
+	if not response_obj or not isinstance(response_obj, dict):
+		return None
+	
+	# Try direct id field
+	if "id" in response_obj:
+		return response_obj["id"]
+	
+	# Try data.id
+	if "data" in response_obj and isinstance(response_obj["data"], dict):
+		if "id" in response_obj["data"]:
+			return response_obj["data"]["id"]
+	
+	# Try record.id
+	if "record" in response_obj and isinstance(response_obj["record"], dict):
+		if "id" in response_obj["record"]:
+			return response_obj["record"]["id"]
+	
+	# Try other common patterns
+	for key in ["_id", "ulid", "uuid"]:
+		if key in response_obj:
+			return response_obj[key]
+		if "data" in response_obj and isinstance(response_obj["data"], dict) and key in response_obj["data"]:
+			return response_obj["data"][key]
+	
+	return None
+
+def replace_record_in_test(test, record_id):
+	"""
+	Replaces $ULID placeholder in a single test with the actual record ID.
+	"""
+	if not record_id:
+		return
+	
+	# Replace in endpoint
+	if "endpoint" in test and "$ULID" in test["endpoint"]:
+		test["endpoint"] = test["endpoint"].replace("$ULID", record_id)
+	
+	# Replace in data (recursive)
+	if "data" in test and test["data"]:
+		test["data"] = json.loads(json.dumps(test["data"]).replace("$ULID", record_id))
+
 def run_all_tests(tests, outdir, access_token=None, outfilename=None):
 	"""
 	Runs all API tests and writes Markdown output to the output file.
@@ -106,15 +187,37 @@ def run_all_tests(tests, outdir, access_token=None, outfilename=None):
 	serverURL = tests["serverURL"]
 	prefix = tests.get("prefix", "")
 	all_ok = True
+	captured_record_id = None
+	
 	for test in tests["tests"]:
-		curl_cmd, status, body = run_test(serverURL, prefix, test)
+		# Replace $ULID in current test if we have a captured ID
+		if captured_record_id:
+			replace_record_in_test(test, captured_record_id)
+		
+		curl_cmd, status, body, response_obj = run_test(serverURL, prefix, test)
+		
+		# Check if this test created a record and capture the ID
+		endpoint = test.get("endpoint", "")
+		if ":create" in endpoint and response_obj and status.startswith("2"):
+			record_id = extract_record_id_from_response(response_obj)
+			if record_id and not captured_record_id:
+				captured_record_id = record_id
+		
 		# Replace actual server URL with doc URL for display
 		curl_cmd_doc = curl_cmd.replace(serverURL, docURL)
 		# Replace actual access token with placeholder for documentation
 		if access_token:
 			curl_cmd_doc = curl_cmd_doc.replace(access_token, "$ACCESS_TOKEN")
-		test_name = test.get("name")
-		results_md.extend(format_markdown_result(curl_cmd_doc, status, body, test_name))
+		# Replace actual record ID with placeholder for documentation
+		if captured_record_id:
+			curl_cmd_doc = curl_cmd_doc.replace(captured_record_id, "$ULID")
+		
+		test_name = test.get("name", "").strip()
+		
+		# Only add to markdown output if test has a name
+		if test_name:
+			results_md.extend(format_markdown_result(curl_cmd_doc, status, body, test_name))
+		
 		if not status.startswith("2"):
 			all_ok = False
 	markdown = "\n".join(results_md)
