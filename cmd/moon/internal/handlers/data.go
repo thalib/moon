@@ -550,13 +550,14 @@ func (h *DataHandler) Destroy(w http.ResponseWriter, r *http.Request, collection
 	writeJSON(w, http.StatusOK, response)
 }
 
-// SchemaResponse represents the response for the schema endpoint (PRD-054)
+// SchemaResponse represents the response for the schema endpoint (PRD-054, PRD-061)
 type SchemaResponse struct {
 	Collection string               `json:"collection"`
 	Fields     []schema.FieldSchema `json:"fields"`
+	Total      int                  `json:"total"` // PRD-061: Total record count in collection
 }
 
-// Schema handles GET /{name}:schema (PRD-054)
+// Schema handles GET /{name}:schema (PRD-054, PRD-061)
 func (h *DataHandler) Schema(w http.ResponseWriter, r *http.Request, collectionName string) {
 	// Validate collection exists in registry
 	collection, exists := h.registry.Get(collectionName)
@@ -569,10 +570,21 @@ func (h *DataHandler) Schema(w http.ResponseWriter, r *http.Request, collectionN
 	schemaBuilder := schema.NewBuilder()
 	fullSchema := schemaBuilder.FromCollection(collection)
 
-	// Create response matching PRD-054 specification
+	// Get total record count for the collection (PRD-061)
+	ctx := r.Context()
+	countSQL := fmt.Sprintf("SELECT COUNT(*) FROM %s", collectionName)
+	var total int
+	row := h.db.QueryRow(ctx, countSQL)
+	if err := row.Scan(&total); err != nil {
+		// If error (e.g., table doesn't exist), default to 0
+		total = 0
+	}
+
+	// Create response matching PRD-054 and PRD-061 specification
 	response := SchemaResponse{
 		Collection: fullSchema.Collection,
 		Fields:     fullSchema.Fields,
+		Total:      total,
 	}
 
 	writeJSON(w, http.StatusOK, response)

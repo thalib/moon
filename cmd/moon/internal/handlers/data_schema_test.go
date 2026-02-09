@@ -14,7 +14,9 @@ import (
 func TestSchemaEndpoint(t *testing.T) {
 	// Initialize database
 	dbConfig := database.Config{
-		ConnectionString: ":memory:",
+		ConnectionString: "sqlite://:memory:",
+		MaxOpenConns:     1, // Use single connection to keep in-memory database shared
+		MaxIdleConns:     1,
 	}
 	driver, err := database.NewDriver(dbConfig)
 	if err != nil {
@@ -276,6 +278,84 @@ func TestSchemaEndpoint(t *testing.T) {
 		// Expected fields: id (external), title
 		if len(resp.Fields) != 2 {
 			t.Errorf("Expected 2 fields (id, title), got %d fields", len(resp.Fields))
+		}
+	})
+
+	// Test 5: Verify total field is present and accurate (PRD-061)
+	t.Run("schema_total_field_empty_collection", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/products:schema", nil)
+		w := httptest.NewRecorder()
+		handler.Schema(w, req, "products")
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("Expected status 200, got %d: %s", w.Code, w.Body.String())
+		}
+
+		var resp SchemaResponse
+		if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+			t.Fatalf("Failed to decode response: %v", err)
+		}
+
+		// Verify total field exists and is 0 for empty collection
+		if resp.Total != 0 {
+			t.Errorf("Expected total 0 for empty collection, got %d", resp.Total)
+		}
+	})
+
+	// Test 6: Verify total field with records (PRD-061)
+	t.Run("schema_total_field_with_records", func(t *testing.T) {
+		// Create a dedicated test collection and table for this test
+		testColl := &registry.Collection{
+			Name: "test_total",
+			Columns: []registry.Column{
+				{Name: "name", Type: registry.TypeString, Nullable: false},
+				{Name: "price", Type: registry.TypeInteger, Nullable: false},
+			},
+		}
+		reg.Set(testColl)
+
+		// Create table
+		_, createErr := driver.Exec(ctx, `
+			CREATE TABLE test_total (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				ulid TEXT NOT NULL UNIQUE,
+				name TEXT NOT NULL,
+				price INTEGER NOT NULL,
+				created_at TEXT NOT NULL,
+				updated_at TEXT NOT NULL
+			)
+		`)
+		if createErr != nil {
+			t.Fatalf("Failed to create test_total table: %v", createErr)
+		}
+
+		// Insert test records
+		_, insertErr := driver.Exec(ctx, `
+			INSERT INTO test_total (ulid, name, price, created_at, updated_at)
+			VALUES 
+				('01HQZX1234567890ABCDEFGHIJ', 'Product 1', 100, '2024-01-01T00:00:00Z', '2024-01-01T00:00:00Z'),
+				('01HQZX2345678901BCDEFGHIJK', 'Product 2', 200, '2024-01-02T00:00:00Z', '2024-01-02T00:00:00Z')
+		`)
+		if insertErr != nil {
+			t.Fatalf("Failed to insert test records: %v", insertErr)
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/test_total:schema", nil)
+		w := httptest.NewRecorder()
+		handler.Schema(w, req, "test_total")
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("Expected status 200, got %d: %s", w.Code, w.Body.String())
+		}
+
+		var resp SchemaResponse
+		if decodeErr := json.NewDecoder(w.Body).Decode(&resp); decodeErr != nil {
+			t.Fatalf("Failed to decode response: %v", decodeErr)
+		}
+
+		// Verify total field reflects actual record count
+		if resp.Total != 2 {
+			t.Errorf("Expected total 2 after inserting 2 records, got %d", resp.Total)
 		}
 	})
 }

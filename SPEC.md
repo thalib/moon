@@ -543,9 +543,12 @@ To retrieve the schema (field names, types, and constraints) for a specific coll
     { "name": "title", "type": "string", "nullable": false },
     { "name": "price", "type": "integer", "nullable": false },
     { "name": "description", "type": "string", "nullable": true }
-  ]
+  ],
+  "total": 42
 }
 ```
+
+The `total` field contains the total number of records currently in the collection. It is always included in the schema response.
 
 **Authentication:** Required (Bearer token or API key)
 

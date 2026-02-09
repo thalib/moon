@@ -42,5 +42,6 @@
 
 ---
 
+- [ ] Ensure all unit tests and integration tests in `tests/*` are passing successfully.
 - [ ] Run all tests and ensure 100% pass rate.
 - [ ] If any test failure is unrelated to your feature, investigate and fix it before marking the task as complete.

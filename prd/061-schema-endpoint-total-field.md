@@ -41,6 +41,7 @@
 
 ---
 
+- [ ] Ensure all unit tests and integration tests in `tests/*` are passing successfully.
 - [ ] Ensure all documentation, scripts, and samples (`SPEC.md`, `INSTALL.md`, `README.md`, `install.sh`, and all files in `samples/*`) are updated and remain consistent with the implemented code changes.
 - [ ] Update API doc template at `cmd/moon/internal/handlers/templates/doc.md.tmpl` to reflect these changes.
 - [ ] Run all tests and ensure 100% pass rate.
