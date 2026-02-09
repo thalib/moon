@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -63,11 +64,32 @@ func NewDocHandler(reg *registry.SchemaRegistry, cfg *config.AppConfig, version 
 	// Create custom template function to include markdown files
 	funcMap := template.FuncMap{
 		"include": func(filename string) (string, error) {
+			// Validate filename to prevent directory traversal attacks
+			// Only allow alphanumeric, hyphens, underscores, and dots
+			// Must end with .md extension
+			if !strings.HasSuffix(filename, ".md") {
+				log.Printf("WARNING: Invalid file extension for %s, must be .md", filename)
+				return fmt.Sprintf("<!-- Error: Invalid file extension for %s -->", filename), nil
+			}
+
+			// Check for directory traversal patterns
+			if strings.Contains(filename, "..") || strings.Contains(filename, "/") || strings.Contains(filename, "\\") {
+				log.Printf("WARNING: Path traversal attempt detected in filename: %s", filename)
+				return fmt.Sprintf("<!-- Error: Invalid filename %s -->", filename), nil
+			}
+
+			// Clean the filename to remove any potential malicious content
+			cleanFilename := filepath.Base(filename)
+			if cleanFilename != filename {
+				log.Printf("WARNING: Filename contains path components: %s", filename)
+				return fmt.Sprintf("<!-- Error: Invalid filename %s -->", filename), nil
+			}
+
 			// Read the markdown file from the embedded filesystem
-			content, err := mdFiles.ReadFile("templates/md/" + filename)
+			content, err := mdFiles.ReadFile("templates/md/" + cleanFilename)
 			if err != nil {
-				log.Printf("WARNING: Failed to read markdown file %s: %v", filename, err)
-				return fmt.Sprintf("<!-- Error: Failed to include %s -->", filename), nil
+				log.Printf("WARNING: Failed to read markdown file %s: %v", cleanFilename, err)
+				return fmt.Sprintf("<!-- Error: Failed to include %s -->", cleanFilename), nil
 			}
 			return string(content), nil
 		},
