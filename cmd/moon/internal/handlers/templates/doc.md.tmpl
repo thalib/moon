@@ -326,14 +326,14 @@ Use the username/password defined in the config file `samples/moon.conf` under `
 {
   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMDFKWFI3...",
   "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMDFKWFI3...",
+  "expires_at": "2026-02-09T04:46:07.755529166Z",
   "token_type": "Bearer",
-  "expires_in": 900,
   "user": {
     "id": "01JXRZ7HDKTSV4RRFFQ69G5FAA",
     "username": "admin",
     "email": "admin@example.com",
     "role": "admin",
-    "created_at": "2026-01-15T10:30:00Z"
+    "can_write": true
   }
 }
 ```
@@ -367,7 +367,7 @@ curl -X POST "{{$ApiURL}}/auth:logout" \
 **Response (200 OK):**
 ```json
 {
-  "message": "Logged out successfully"
+  "message": "logged out successfully"
 }
 ```
 
@@ -393,8 +393,15 @@ curl -X POST "{{$ApiURL}}/auth:refresh" \
 {
   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMDFKWFI3...",
   "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMDFKWFI3...",
+  "expires_at": "2026-02-09T04:46:07.755529166Z",
   "token_type": "Bearer",
-  "expires_in": 900
+  "user": {
+    "id": "01JXRZ7HDKTSV4RRFFQ69G5FAA",
+    "username": "admin",
+    "email": "admin@example.com",
+    "role": "admin",
+    "can_write": true
+  }
 }
 ```
 
@@ -425,12 +432,13 @@ curl -X GET "{{$ApiURL}}/auth:me" \
 **Response (200 OK):**
 ```json
 {
-  "id": "01JXRZ7HDKTSV4RRFFQ69G5FAA",
-  "username": "admin",
-  "email": "admin@example.com",
-  "role": "admin",
-  "created_at": "2026-01-15T10:30:00Z",
-  "updated_at": "2026-02-03T14:20:00Z"
+  "user": {
+    "id": "01JXRZ7HDKTSV4RRFFQ69G5FAA",
+    "username": "admin",
+    "email": "admin@example.com",
+    "role": "admin",
+    "can_write": true
+  }
 }
 ```
 
@@ -457,12 +465,13 @@ curl -X POST "{{$ApiURL}}/auth:me" \
 **Response (200 OK):**
 ```json
 {
-  "message": "User updated successfully",
+  "message": "user updated successfully",
   "user": {
     "id": "01JXRZ7HDKTSV4RRFFQ69G5FAA",
     "username": "admin",
     "email": "newemail@example.com",
     "role": "admin",
+    "can_write": true,
     "created_at": "2026-01-15T10:30:00Z",
     "updated_at": "2026-02-03T14:25:00Z"
   }
@@ -481,7 +490,7 @@ curl -X POST "{{$ApiURL}}/auth:me" \
 **Response (200 OK):**
 ```json
 {
-  "message": "Password updated successfully"
+  "message": "password updated successfully"
 }
 ```
 
@@ -598,12 +607,13 @@ curl -X POST "{{$ApiURL}}/users:create" \
 **Response (201 Created):**
 ```json
 {
-  "message": "User created successfully",
+  "message": "user created successfully",
   "user": {
     "id": "01KGF1ABCDEFGH123456789",
     "username": "newuser",
     "email": "newuser@example.com",
     "role": "user",
+    "can_write": true,
     "created_at": "2026-02-03T10:30:00Z",
     "updated_at": "2026-02-03T10:30:00Z"
   }
@@ -650,12 +660,13 @@ curl -X POST "{{$ApiURL}}/users:update?id=<USER_ID>" \
 **Response (200 OK):**
 ```json
 {
-  "message": "User updated successfully",
+  "message": "user updated successfully",
   "user": {
     "id": "01KGF1ABCDEFGH123456789",
     "username": "newuser",
     "email": "updateduser@example.com",
     "role": "admin",
+    "can_write": true,
     "created_at": "2026-02-03T10:30:00Z",
     "updated_at": "2026-02-03T14:45:00Z"
   }
@@ -711,7 +722,7 @@ curl -X POST "{{$ApiURL}}/users:destroy?id=<USER_ID>" \
 **Response (200 OK):**
 ```json
 {
-  "message": "User deleted successfully"
+  "message": "user deleted successfully"
 }
 ```
 
@@ -1025,18 +1036,18 @@ curl -X POST "{{$ApiURL}}/collections:create" \
 **Response (201 Created):**
 ```json
 {
-  "message": "Collection created successfully",
   "collection": {
     "name": "products",
     "columns": [
-      {"name": "id", "type": "string", "nullable": false},
-      {"name": "title", "type": "string", "nullable": false},
-      {"name": "price", "type": "integer", "nullable": false},
-      {"name": "description", "type": "string", "nullable": true},
-      {"name": "created_at", "type": "datetime", "nullable": false},
-      {"name": "updated_at", "type": "datetime", "nullable": false}
+      {"name": "id", "type": "string", "nullable": false, "unique": false},
+      {"name": "title", "type": "string", "nullable": false, "unique": false},
+      {"name": "price", "type": "integer", "nullable": false, "unique": false},
+      {"name": "description", "type": "string", "nullable": true, "unique": false},
+      {"name": "created_at", "type": "datetime", "nullable": false, "unique": false},
+      {"name": "updated_at", "type": "datetime", "nullable": false, "unique": false}
     ]
-  }
+  },
+  "message": "Collection 'products' created successfully"
 }
 ```
 
@@ -1290,7 +1301,7 @@ curl -X POST "{{$ApiURL}}/collections:destroy" \
 **Response (200 OK):**
 ```json
 {
-  "message": "Collection deleted successfully"
+  "message": "Collection 'products' destroyed successfully"
 }
 ```
 
@@ -1429,7 +1440,6 @@ curl -s -X POST "{{$ApiURL}}/products:create" \
 **Response (201 Created):**
 ```json
 {
-  "message": "Record created successfully",
   "data": {
     "id": "01KGD5E74RYS0WTNARQC92S1P7",
     "title": "Wireless Mouse",
@@ -1439,7 +1449,8 @@ curl -s -X POST "{{$ApiURL}}/products:create" \
     "brand": "Wow",
     "created_at": "2026-02-03T10:45:00Z",
     "updated_at": "2026-02-03T10:45:00Z"
-  }
+  },
+  "message": "Record created successfully with id 01KGD5E74RYS0WTNARQC92S1P7"
 }
 ```
 
@@ -1512,17 +1523,12 @@ curl -s -X POST "{{$ApiURL}}/products:update" \
 **Response (200 OK):**
 ```json
 {
-  "message": "Record updated successfully",
   "data": {
     "id": "01KGD5E74RYS0WTNARQC92S1P7",
     "title": "Wireless Mouse",
-    "price": "6000.00",
-    "details": "Ergonomic wireless mouse",
-    "quantity": 10,
-    "brand": "Wow",
-    "created_at": "2026-02-03T10:45:00Z",
-    "updated_at": "2026-02-03T15:30:00Z"
-  }
+    "price": "6000.00"
+  },
+  "message": "Record 01KGD5E74RYS0WTNARQC92S1P7 updated successfully"
 }
 ```
 
@@ -1546,7 +1552,7 @@ curl -s -X POST "{{$ApiURL}}/products:destroy" \
 **Response (200 OK):**
 ```json
 {
-  "message": "Record deleted successfully"
+  "message": "Record 01KGD5E74RYS0WTNARQC92S1P7 deleted successfully"
 }
 ```
 
