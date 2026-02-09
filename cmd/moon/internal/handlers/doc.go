@@ -65,8 +65,7 @@ func NewDocHandler(reg *registry.SchemaRegistry, cfg *config.AppConfig, version 
 	funcMap := template.FuncMap{
 		"include": func(filename string) (string, error) {
 			// Validate filename to prevent directory traversal attacks
-			// Only allow alphanumeric, hyphens, underscores, and dots
-			// Must end with .md extension
+			// Must end with .md extension and contain no path separators
 			if !strings.HasSuffix(filename, ".md") {
 				log.Printf("WARNING: Invalid file extension for %s, must be .md", filename)
 				return fmt.Sprintf("<!-- Error: Invalid file extension for %s -->", filename), nil
