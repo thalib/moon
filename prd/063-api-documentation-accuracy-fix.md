@@ -32,6 +32,7 @@
 - All request examples and curl commands in `doc.md.tmpl` produce the documented responses when executed.
 - No contradictions exist between documented and actual API behavior.
 - The updated `doc.md.tmpl` can be used as a reliable reference for API consumers.
+- [ ] Ensure all unit tests and integration tests in `tests/*` are passing successfully.
 
 ---
 
