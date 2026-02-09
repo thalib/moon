@@ -536,3 +536,155 @@ func TestDataHandler_BooleanResponseUniformity(t *testing.T) {
 		t.Logf("Warning: Response may not contain JSON boolean literals. Body: %s", bodyStr)
 	}
 }
+
+// TestDataHandler_List_TotalField tests that list endpoint includes total field (PRD-062)
+func TestDataHandler_List_TotalField(t *testing.T) {
+	driver, _, handler := setupDataIntegrationTest(t)
+	defer driver.Close()
+
+	ctx := context.Background()
+
+	// Insert test data - 5 products
+	testProducts := []struct {
+		ulid     string
+		name     string
+		price    int
+		category string
+	}{
+		{"01ARYZ6S41TSV4RRFFQ69G5FA1", "Product 1", 100, "electronics"},
+		{"01ARYZ6S41TSV4RRFFQ69G5FA2", "Product 2", 200, "electronics"},
+		{"01ARYZ6S41TSV4RRFFQ69G5FA3", "Product 3", 150, "books"},
+		{"01ARYZ6S41TSV4RRFFQ69G5FA4", "Product 4", 300, "electronics"},
+		{"01ARYZ6S41TSV4RRFFQ69G5FA5", "Product 5", 250, "books"},
+	}
+
+	for _, p := range testProducts {
+		_, err := driver.Exec(ctx, "INSERT INTO products (ulid, name, price, category) VALUES (?, ?, ?, ?)",
+			p.ulid, p.name, p.price, p.category)
+		if err != nil {
+			t.Fatalf("Failed to insert: %v", err)
+		}
+	}
+
+	// Test 1: List all - total should be 5
+	t.Run("total_without_filters", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/products:list", nil)
+		w := httptest.NewRecorder()
+		handler.List(w, req, "products")
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("Expected status 200, got %d: %s", w.Code, w.Body.String())
+		}
+
+		var resp DataListResponse
+		if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+			t.Fatalf("Failed to decode response: %v", err)
+		}
+
+		if resp.Total != 5 {
+			t.Errorf("Expected total 5, got %d", resp.Total)
+		}
+
+		if len(resp.Data) != 5 {
+			t.Errorf("Expected 5 data items, got %d", len(resp.Data))
+		}
+	})
+
+	// Test 2: List with filter - total should reflect filtered count
+	t.Run("total_with_filter", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/products:list?category[eq]=electronics", nil)
+		w := httptest.NewRecorder()
+		handler.List(w, req, "products")
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("Expected status 200, got %d: %s", w.Code, w.Body.String())
+		}
+
+		var resp DataListResponse
+		if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+			t.Fatalf("Failed to decode response: %v", err)
+		}
+
+		// 3 electronics products
+		if resp.Total != 3 {
+			t.Errorf("Expected total 3 for electronics, got %d", resp.Total)
+		}
+
+		if len(resp.Data) != 3 {
+			t.Errorf("Expected 3 data items, got %d", len(resp.Data))
+		}
+	})
+
+	// Test 3: List with limit - total should still reflect full count
+	t.Run("total_with_limit", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/products:list?limit=2", nil)
+		w := httptest.NewRecorder()
+		handler.List(w, req, "products")
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("Expected status 200, got %d: %s", w.Code, w.Body.String())
+		}
+
+		var resp DataListResponse
+		if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+			t.Fatalf("Failed to decode response: %v", err)
+		}
+
+		// Total should be 5 (full count), even though we only fetched 2
+		if resp.Total != 5 {
+			t.Errorf("Expected total 5 (full count), got %d", resp.Total)
+		}
+
+		if len(resp.Data) != 2 {
+			t.Errorf("Expected 2 data items due to limit, got %d", len(resp.Data))
+		}
+	})
+
+	// Test 4: Empty collection
+	t.Run("total_empty_collection", func(t *testing.T) {
+		// Create empty collection
+		emptyCollection := &registry.Collection{
+			Name: "empty_test",
+			Columns: []registry.Column{
+				{Name: "name", Type: registry.TypeString, Nullable: false},
+			},
+		}
+		reg := registry.NewSchemaRegistry()
+		reg.Set(emptyCollection)
+
+		_, err := driver.Exec(ctx, `CREATE TABLE empty_test (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			ulid TEXT NOT NULL UNIQUE,
+			name TEXT NOT NULL,
+			created_at TEXT,
+			updated_at TEXT
+		)`)
+		if err != nil {
+			t.Fatalf("Failed to create empty table: %v", err)
+		}
+
+		emptyHandler := NewDataHandler(driver, reg)
+
+		req := httptest.NewRequest(http.MethodGet, "/empty_test:list", nil)
+		w := httptest.NewRecorder()
+		emptyHandler.List(w, req, "empty_test")
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("Expected status 200, got %d: %s", w.Code, w.Body.String())
+		}
+
+		var resp DataListResponse
+		if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+			t.Fatalf("Failed to decode response: %v", err)
+		}
+
+		if resp.Total != 0 {
+			t.Errorf("Expected total 0 for empty collection, got %d", resp.Total)
+		}
+
+		if len(resp.Data) != 0 {
+			t.Errorf("Expected 0 data items, got %d", len(resp.Data))
+		}
+	})
+}
+

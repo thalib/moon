@@ -38,9 +38,10 @@ type DataListRequest struct {
 	Filter map[string]string `json:"filter,omitempty"`
 }
 
-// DataListResponse represents response for list operation
+// DataListResponse represents response for list operation (PRD-062)
 type DataListResponse struct {
 	Data       []map[string]any `json:"data"`
+	Total      int              `json:"total"`       // PRD-062: Total record count matching the query
 	NextCursor *string          `json:"next_cursor"` // Next ULID cursor, null if no more data
 	Limit      int              `json:"limit"`       // Always include pagination limit
 }
@@ -136,15 +137,6 @@ func (h *DataHandler) List(w http.ResponseWriter, r *http.Request, collectionNam
 		return
 	}
 
-	// Add cursor condition if provided
-	if after != "" {
-		conditions = append(conditions, query.Condition{
-			Column:   "ulid",
-			Operator: query.OpGreaterThan,
-			Value:    after,
-		})
-	}
-
 	// Parse search query
 	searchQuery := r.URL.Query().Get("q")
 	var searchSQL string
@@ -162,6 +154,37 @@ func (h *DataHandler) List(w http.ResponseWriter, r *http.Request, collectionNam
 
 	// Create query builder
 	builder := query.NewBuilder(h.db.Dialect())
+
+	// Calculate total count with current filters (PRD-062)
+	// Must be done BEFORE adding cursor condition
+	ctx := r.Context()
+	var total int
+	if searchSQL != "" {
+		// Count query with search and filters (no cursor)
+		countSQL, countArgs := buildCountQuery(collectionName, conditions, searchSQL, searchArgs, h.db.Dialect())
+		row := h.db.QueryRow(ctx, countSQL, countArgs...)
+		if err := row.Scan(&total); err != nil {
+			// If count fails, default to 0
+			total = 0
+		}
+	} else {
+		// Count query without search (no cursor)
+		countSQL, countArgs := builder.Count(collectionName, conditions)
+		row := h.db.QueryRow(ctx, countSQL, countArgs...)
+		if err := row.Scan(&total); err != nil {
+			// If count fails, default to 0
+			total = 0
+		}
+	}
+
+	// Add cursor condition if provided (AFTER counting)
+	if after != "" {
+		conditions = append(conditions, query.Condition{
+			Column:   "ulid",
+			Operator: query.OpGreaterThan,
+			Value:    after,
+		})
+	}
 
 	// Parse sort parameters
 	sorts, err := parseSort(r)
@@ -203,7 +226,6 @@ func (h *DataHandler) List(w http.ResponseWriter, r *http.Request, collectionNam
 	}
 
 	// Execute query
-	ctx := r.Context()
 	rows, err := h.db.Query(ctx, sql, args...)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to query data: %v", err))
@@ -231,9 +253,10 @@ func (h *DataHandler) List(w http.ResponseWriter, r *http.Request, collectionNam
 		}
 	}
 
-	// Build response
+	// Build response (PRD-062: include total)
 	response := DataListResponse{
 		Data:       data,
+		Total:      total,
 		NextCursor: nextCursor,
 		Limit:      limit,
 	}
@@ -919,6 +942,85 @@ func buildSearchConditions(searchTerm string, collection *registry.Collection, d
 
 	searchSQL := "(" + strings.Join(conditions, " OR ") + ")"
 	return searchSQL, args
+}
+
+// buildCountQuery builds COUNT query with search (OR) and filters (AND) (PRD-062)
+func buildCountQuery(tableName string, filters []query.Condition, searchSQL string, searchArgs []any, dialect database.DialectType) (string, []any) {
+	var sb strings.Builder
+	args := []any{}
+
+	// SELECT COUNT(*) clause
+	sb.WriteString("SELECT COUNT(*) FROM ")
+
+	// Escape table name
+	switch dialect {
+	case database.DialectPostgres:
+		sb.WriteString(fmt.Sprintf(`"%s"`, tableName))
+	case database.DialectMySQL:
+		sb.WriteString(fmt.Sprintf("`%s`", tableName))
+	default:
+		sb.WriteString(tableName)
+	}
+
+	// WHERE clause
+	sb.WriteString(" WHERE ")
+
+	// Add search conditions first
+	sb.WriteString(searchSQL)
+	args = append(args, searchArgs...)
+
+	// Add filter conditions with AND
+	placeholderNum := len(searchArgs) + 1
+	for _, cond := range filters {
+		sb.WriteString(" AND ")
+
+		// Escape column name
+		escapedCol := cond.Column
+		switch dialect {
+		case database.DialectPostgres:
+			escapedCol = fmt.Sprintf(`"%s"`, cond.Column)
+		case database.DialectMySQL:
+			escapedCol = fmt.Sprintf("`%s`", cond.Column)
+		}
+
+		sb.WriteString(escapedCol)
+		sb.WriteString(" ")
+		sb.WriteString(cond.Operator)
+		sb.WriteString(" ")
+
+		// Handle special operators
+		if cond.Operator == query.OpIn {
+			values, ok := cond.Value.([]any)
+			if !ok {
+				values = []any{cond.Value}
+			}
+			sb.WriteString("(")
+			for j, v := range values {
+				if j > 0 {
+					sb.WriteString(", ")
+				}
+				if dialect == database.DialectPostgres {
+					sb.WriteString(fmt.Sprintf("$%d", placeholderNum))
+				} else {
+					sb.WriteString("?")
+				}
+				args = append(args, v)
+				placeholderNum++
+			}
+			sb.WriteString(")")
+		} else {
+			// Regular operators
+			if dialect == database.DialectPostgres {
+				sb.WriteString(fmt.Sprintf("$%d", placeholderNum))
+			} else {
+				sb.WriteString("?")
+			}
+			args = append(args, cond.Value)
+			placeholderNum++
+		}
+	}
+
+	return sb.String(), args
 }
 
 // buildSearchQueryWithFields builds complete SELECT query with field selection, search (OR) and filters (AND)
