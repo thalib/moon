@@ -1,0 +1,78 @@
+{
+	"docURL": "http://localhost:6006",
+	"serverURL":  "https://moon.asensar.in",
+	"prefix": "",
+	"username": "admin",
+	"password": "moonadmin12#",
+	"health": "/health",
+	"tests": [
+		{
+			"name": "Login",
+			"cmd": "POST",
+			"endpoint": "/auth:login",
+			"headers": {
+				"Content-Type": "application/json"
+			},
+			"data": {
+				"username": "admin",
+				"password": "moonadmin12#"
+			}
+		},
+		{
+			"name": "Logout",
+			"cmd": "POST",
+			"endpoint": "/auth:logout",
+			"headers": {
+				"Authorization": "Bearer $ACCESS_TOKEN",
+				"Content-Type": "application/json"
+			},
+			"data": {
+				"refresh_token": "$REFRESH_TOKEN"
+			}
+		},
+		{
+			"name": "Refresh Token",
+			"cmd": "POST",
+			"endpoint": "/auth:refresh",
+			"headers": {
+				"Content-Type": "application/json"
+			},
+			"data": {
+				"refresh_token": "$REFRESH_TOKEN"
+			}
+		},
+		{
+			"name": "Get Current User",
+			"cmd": "GET",
+			"endpoint": "/auth:me",
+			"headers": {
+				"Authorization": "Bearer $ACCESS_TOKEN"
+			}
+		},
+		{
+			"name": "Update Current User (Change email)",
+			"cmd": "POST",
+			"endpoint": "/auth:me",
+			"headers": {
+				"Authorization": "Bearer $ACCESS_TOKEN",
+				"Content-Type": "application/json"
+			},
+			"data": {
+				"email": "newemail@example.com"
+			}
+		},
+		{
+			"name": "Update Current User (Change Password)",
+			"cmd": "POST",
+			"endpoint": "/auth:me",
+			"headers": {
+				"Authorization": "Bearer $ACCESS_TOKEN",
+				"Content-Type": "application/json"
+			},
+			"data": {
+				"old_password": "moonadmin12#",
+				"password": "NewSecurePass456"
+			}
+		}
+	]
+}
