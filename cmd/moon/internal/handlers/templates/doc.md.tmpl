@@ -212,49 +212,7 @@ All errors follow a consistent JSON structure:
 ```json
 {
   "error": "Error message describing what went wrong",
-  "code": 400
-}
-```
-
-**Common Error Examples:**
-
-401 Unauthorized (invalid or missing token):
-```json
-{
-  "error": "Unauthorized",
-  "code": 401
-}
-```
-
-403 Forbidden (insufficient permissions):
-```json
-{
-  "error": "Forbidden: admin role required",
-  "code": 403
-}
-```
-
-404 Not Found (collection or record not found):
-```json
-{
-  "error": "Collection not found: products",
-  "code": 404
-}
-```
-
-400 Bad Request (invalid input):
-```json
-{
-  "error": "Invalid filter operator: invalid",
-  "code": 400
-}
-```
-
-429 Too Many Requests (rate limit exceeded):
-```json
-{
-  "error": "Rate limit exceeded. Try again later.",
-  "code": 429
+  "code": {HTTP status error code}
 }
 ```
 
