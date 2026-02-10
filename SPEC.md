@@ -497,7 +497,7 @@ The `:create`, `:update`, and `:destroy` endpoints support both **single-object*
 **Overview:**
 
 - **Automatic Detection:** The server detects batch mode by inspecting the request body. If the body is a JSON array, batch processing is triggered. If it's a single JSON object, single-object mode is used.
-- **Best-Effort Mode (Default):** By default, batch operations are best-effort. Each record is processed independently. The server returns `HTTP 207 Multi-Status` with individual success/error details for each record. **Batch operations are best-effort by default (atomic=false), unless ?atomic=true is passed.**
+- **Best-Effort Mode (Default):** Batch operations are best-effort by default (atomic=false), unless ?atomic=true is passed. Each record is processed independently, and the server returns `HTTP 207 Multi-Status` with individual success/error details for each record.
 - **Atomic Mode:** Set `?atomic=true` to enable atomic/transactional processing. All operations succeed or all fail. If any record fails validation or processing, the entire batch is rejected with a `400 Bad Request` response.
 - **Size Limits:** Batches are subject to configurable limits to prevent resource exhaustion:
   - **Max Batch Size:** Default 50 records per request (configurable via `batch.max_size`)
@@ -697,6 +697,8 @@ Response (HTTP 413 Payload Too Large):
   "details": "received 51 records, maximum is 50"
 }
 ```
+
+**Note:** The actual batch size limit is configurable via `batch.max_size` in the configuration file. The default is 50 records.
 
 **Backward Compatibility:**
 
