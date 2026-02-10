@@ -14,13 +14,21 @@ curl -s -X POST "http://localhost:6006/apikeys:create" \
     ' | jq .
 ```
 
-**Response (409 Conflict):**
+**Response (201 Created):**
 
 ```json
 {
-  "code": 409,
-  "error": "API key name already exists",
-  "error_code": "APIKEY_NAME_EXISTS"
+  "message": "API key created successfully",
+  "warning": "Store this key securely. It will not be shown again.",
+  "apikey": {
+    "id": "01KH3995D3CT3XCJ41D1R7N4GE",
+    "name": "Integration Service",
+    "description": "Key for integration",
+    "role": "user",
+    "can_write": false,
+    "created_at": "2026-02-10T08:04:28Z"
+  },
+  "key": "moon_live_J54o8EWIHYO34XcjAfKbwZc3tOFcDM2Qyi034fO3q1LdQP61e58bElM3KZM0hrQ6"
 }
 ```
 
@@ -37,20 +45,20 @@ curl -s -X GET "http://localhost:6006/apikeys:list" \
 {
   "apikeys": [
     {
-      "id": "01KH2TF1H135KPW0E4K0GK74PJ",
+      "id": "01KH3995D3CT3XCJ41D1R7N4GE",
       "name": "Integration Service",
       "description": "Key for integration",
       "role": "user",
       "can_write": false,
-      "created_at": "2026-02-10T03:45:32Z"
+      "created_at": "2026-02-10T08:04:28Z"
     },
     {
-      "id": "01KH2TQDK3FETD959WMH4BVT8A",
+      "id": "01KH3995WN726N9TA3Y2Q7G2B6",
       "name": "Another Service",
       "description": "Another key for testing",
       "role": "user",
       "can_write": false,
-      "created_at": "2026-02-10T03:50:07Z"
+      "created_at": "2026-02-10T08:04:29Z"
     }
   ],
   "next_cursor": null,
@@ -70,12 +78,12 @@ curl -s -X GET "http://localhost:6006/apikeys:get?id=$ULID" \
 ```json
 {
   "apikey": {
-    "id": "01KH2TF1H135KPW0E4K0GK74PJ",
+    "id": "01KH3995D3CT3XCJ41D1R7N4GE",
     "name": "Integration Service",
     "description": "Key for integration",
     "role": "user",
     "can_write": false,
-    "created_at": "2026-02-10T03:45:32Z"
+    "created_at": "2026-02-10T08:04:28Z"
   }
 }
 ```
@@ -103,12 +111,12 @@ curl -s -X POST "http://localhost:6006/apikeys:update?id=$ULID" \
 {
   "message": "API key updated successfully",
   "apikey": {
-    "id": "01KH2TF1H135KPW0E4K0GK74PJ",
+    "id": "01KH3995D3CT3XCJ41D1R7N4GE",
     "name": "Updated Service Name",
     "description": "Updated description",
     "role": "user",
     "can_write": true,
-    "created_at": "2026-02-10T03:45:32Z"
+    "created_at": "2026-02-10T08:04:28Z"
   }
 }
 ```
@@ -135,14 +143,14 @@ curl -s -X POST "http://localhost:6006/apikeys:update?id=$ULID" \
   "message": "API key rotated successfully",
   "warning": "Store this key securely. It will not be shown again.",
   "apikey": {
-    "id": "01KH2TF1H135KPW0E4K0GK74PJ",
+    "id": "01KH3995D3CT3XCJ41D1R7N4GE",
     "name": "Updated Service Name",
     "description": "Updated description",
     "role": "user",
     "can_write": true,
-    "created_at": "2026-02-10T03:45:32Z"
+    "created_at": "2026-02-10T08:04:28Z"
   },
-  "key": "moon_live_vyupo3NArXJSsPm42E1gWcpW6Ncqxbkhdio6v47uVIjnrkdk5de3Qqaxr0c4mQKn"
+  "key": "moon_live_OrWBxb74gSAF2ceng20wxsOYKkgVvk6tagQTcJAbZFkcdcYbRr7pOpHX4e4TltGf"
 }
 ```
 

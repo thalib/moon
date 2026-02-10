@@ -15,42 +15,12 @@ curl -s -X POST "http://localhost:6006/auth:login" \
 
 ```json
 {
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMDFLSDJUUTU4SjZLNkFSQjFESDhQMVZBMjgiLCJ1c2VybmFtZSI6Im5ld3VzZXIiLCJyb2xlIjoidXNlciIsImNhbl93cml0ZSI6dHJ1ZSwic3ViIjoiMDFLSDJUUTU4SjZLNkFSQjFESDhQMVZBMjgiLCJleHAiOjE3NzA2OTg5OTksIm5iZiI6MTc3MDY5NTM2OSwiaWF0IjoxNzcwNjk1Mzk5fQ.Nfr7OuNI4d4TW4inDPyOhs1fSRH1KqS0WxMrzdvVYdg",
-  "refresh_token": "mex8-2is7JORAwcyCrANZ_CjjkKek3fD-A5JHTya1VY=",
-  "expires_at": "2026-02-10T04:49:59.33911662Z",
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMDFLSDM4RTRYNTlTMTM5OUMwQUtaMjdROUsiLCJ1c2VybmFtZSI6Im5ld3VzZXIiLCJyb2xlIjoidXNlciIsImNhbl93cml0ZSI6dHJ1ZSwic3ViIjoiMDFLSDM4RTRYNTlTMTM5OUMwQUtaMjdROUsiLCJleHAiOjE3NzA3MTMzODQsIm5iZiI6MTc3MDcwOTc1NCwiaWF0IjoxNzcwNzA5Nzg0fQ.8eXAnaZg-TSXtloL4u8rRi_zrjRb26DDAetPkuZnZ58",
+  "refresh_token": "9y-gvagGTyf0DmBQSTgigor8_oTp_F8shtpv7A48gWg=",
+  "expires_at": "2026-02-10T08:49:44.915026874Z",
   "token_type": "Bearer",
   "user": {
-    "id": "01KH2TQ58J6K6ARB1DH8P1VA28",
-    "username": "newuser",
-    "email": "newuser@example.com",
-    "role": "user",
-    "can_write": true
-  }
-}
-```
-
-### Refresh Token
-
-```bash
-curl -s -X POST "http://localhost:6006/auth:refresh" \
-    -H "Content-Type: application/json" \
-    -d '
-      {
-        "refresh_token": "$REFRESH_TOKEN"
-      }
-    ' | jq .
-```
-
-**Response (200 OK):**
-
-```json
-{
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMDFLSDJUUTU4SjZLNkFSQjFESDhQMVZBMjgiLCJ1c2VybmFtZSI6Im5ld3VzZXIiLCJyb2xlIjoidXNlciIsImNhbl93cml0ZSI6dHJ1ZSwic3ViIjoiMDFLSDJUUTU4SjZLNkFSQjFESDhQMVZBMjgiLCJleHAiOjE3NzA2OTg5OTksIm5iZiI6MTc3MDY5NTM2OSwiaWF0IjoxNzcwNjk1Mzk5fQ.Nfr7OuNI4d4TW4inDPyOhs1fSRH1KqS0WxMrzdvVYdg",
-  "refresh_token": "doS2OjomQEDQ0yC1BLUBVFwScL02RQhrcldoj3PBJFw=",
-  "expires_at": "2026-02-10T04:49:59.761509426Z",
-  "token_type": "Bearer",
-  "user": {
-    "id": "01KH2TQ58J6K6ARB1DH8P1VA28",
+    "id": "01KH38E4X59S1399C0AKZ27Q9K",
     "username": "newuser",
     "email": "newuser@example.com",
     "role": "user",
@@ -71,10 +41,10 @@ curl -s -X GET "http://localhost:6006/auth:me" \
 ```json
 {
   "user": {
-    "id": "01KGXRKR6J9NF6NAB1A1HY4PZQ",
-    "username": "admin",
-    "email": "newemail@example.com",
-    "role": "admin",
+    "id": "01KH38E4X59S1399C0AKZ27Q9K",
+    "username": "newuser",
+    "email": "newuser@example.com",
+    "role": "user",
     "can_write": true
   }
 }
@@ -99,10 +69,10 @@ curl -s -X POST "http://localhost:6006/auth:me" \
 {
   "message": "user updated successfully",
   "user": {
-    "id": "01KGXRKR6J9NF6NAB1A1HY4PZQ",
-    "username": "admin",
+    "id": "01KH38E4X59S1399C0AKZ27Q9K",
+    "username": "newuser",
     "email": "newemail@example.com",
-    "role": "admin",
+    "role": "user",
     "can_write": true
   }
 }
@@ -122,12 +92,48 @@ curl -s -X POST "http://localhost:6006/auth:me" \
     ' | jq .
 ```
 
-**Response (401 Unauthorized):**
+**Response (200 OK):**
 
 ```json
 {
-  "code": 401,
-  "error": "invalid old password"
+  "message": "password updated successfully, please login again",
+  "user": {
+    "id": "01KH38E4X59S1399C0AKZ27Q9K",
+    "username": "newuser",
+    "email": "newemail@example.com",
+    "role": "user",
+    "can_write": true
+  }
+}
+```
+
+### Refresh Token
+
+```bash
+curl -s -X POST "http://localhost:6006/auth:refresh" \
+    -H "Content-Type: application/json" \
+    -d '
+      {
+        "refresh_token": "$REFRESH_TOKEN"
+      }
+    ' | jq .
+```
+
+**Response (200 OK):**
+
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMDFLSDM4RTRYNTlTMTM5OUMwQUtaMjdROUsiLCJ1c2VybmFtZSI6Im5ld3VzZXIiLCJyb2xlIjoidXNlciIsImNhbl93cml0ZSI6dHJ1ZSwic3ViIjoiMDFLSDM4RTRYNTlTMTM5OUMwQUtaMjdROUsiLCJleHAiOjE3NzA3MTMzODcsIm5iZiI6MTc3MDcwOTc1NywiaWF0IjoxNzcwNzA5Nzg3fQ.1Kseh4GbdWMXdMo2C9AkwgqVCWHmA59z_C0vhouRYg8",
+  "refresh_token": "5468_9rObtkXOzHKFH4UqdvGaAKychif_YzZbc0ZQMc=",
+  "expires_at": "2026-02-10T08:49:47.563571789Z",
+  "token_type": "Bearer",
+  "user": {
+    "id": "01KH38E4X59S1399C0AKZ27Q9K",
+    "username": "newuser",
+    "email": "newemail@example.com",
+    "role": "user",
+    "can_write": true
+  }
 }
 ```
 

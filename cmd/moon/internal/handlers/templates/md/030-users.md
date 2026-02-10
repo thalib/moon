@@ -6,21 +6,28 @@ curl -s -X POST "http://localhost:6006/users:create" \
     -H "Content-Type: application/json" \
     -d '
       {
-        "username": "newuser",
-        "email": "newuser@example.com",
+        "username": "moonuser",
+        "email": "moonuser@example.com",
         "password": "UserPass123#",
         "role": "user"
       }
     ' | jq .
 ```
 
-**Response (409 Conflict):**
+**Response (201 Created):**
 
 ```json
 {
-  "code": 409,
-  "error": "username already exists",
-  "error_code": "USERNAME_EXISTS"
+  "message": "user created successfully",
+  "user": {
+    "id": "01KH38EAYK418S90EAY4KWHDE4",
+    "username": "moonuser",
+    "email": "moonuser@example.com",
+    "role": "user",
+    "can_write": true,
+    "created_at": "2026-02-10T07:49:49Z",
+    "updated_at": "2026-02-10T07:49:49Z"
+  }
 }
 ```
 
@@ -37,24 +44,33 @@ curl -s -X GET "http://localhost:6006/users:list" \
 {
   "users": [
     {
-      "id": "01KGXRKR6J9NF6NAB1A1HY4PZQ",
+      "id": "01KH37V1PTKQ725F6QFG2BDHC6",
       "username": "admin",
-      "email": "newemail@example.com",
+      "email": "admin@example.com",
       "role": "admin",
       "can_write": true,
-      "created_at": "2026-02-08T04:36:57Z",
-      "updated_at": "2026-02-10T03:50:02Z",
-      "last_login_at": "2026-02-10T03:50:02Z"
+      "created_at": "2026-02-10T07:39:17Z",
+      "updated_at": "2026-02-10T07:49:48Z",
+      "last_login_at": "2026-02-10T07:49:48Z"
     },
     {
-      "id": "01KH2TQ58J6K6ARB1DH8P1VA28",
+      "id": "01KH38E4X59S1399C0AKZ27Q9K",
       "username": "newuser",
-      "email": "newuser@example.com",
+      "email": "newemail@example.com",
       "role": "user",
       "can_write": true,
-      "created_at": "2026-02-10T03:49:58Z",
-      "updated_at": "2026-02-10T03:49:59Z",
-      "last_login_at": "2026-02-10T03:49:59Z"
+      "created_at": "2026-02-10T07:49:43Z",
+      "updated_at": "2026-02-10T07:49:47Z",
+      "last_login_at": "2026-02-10T07:49:47Z"
+    },
+    {
+      "id": "01KH38EAYK418S90EAY4KWHDE4",
+      "username": "moonuser",
+      "email": "moonuser@example.com",
+      "role": "user",
+      "can_write": true,
+      "created_at": "2026-02-10T07:49:49Z",
+      "updated_at": "2026-02-10T07:49:49Z"
     }
   ],
   "next_cursor": null,
@@ -74,14 +90,14 @@ curl -s -X GET "http://localhost:6006/users:get?id=$ULID" \
 ```json
 {
   "user": {
-    "id": "01KH2TQ58J6K6ARB1DH8P1VA28",
+    "id": "01KH38E4X59S1399C0AKZ27Q9K",
     "username": "newuser",
-    "email": "newuser@example.com",
+    "email": "newemail@example.com",
     "role": "user",
     "can_write": true,
-    "created_at": "2026-02-10T03:49:58Z",
-    "updated_at": "2026-02-10T03:49:59Z",
-    "last_login_at": "2026-02-10T03:49:59Z"
+    "created_at": "2026-02-10T07:49:43Z",
+    "updated_at": "2026-02-10T07:49:47Z",
+    "last_login_at": "2026-02-10T07:49:47Z"
   }
 }
 ```
@@ -106,14 +122,14 @@ curl -s -X POST "http://localhost:6006/users:update?id=$ULID" \
 {
   "message": "user updated successfully",
   "user": {
-    "id": "01KH2TQ58J6K6ARB1DH8P1VA28",
+    "id": "01KH38E4X59S1399C0AKZ27Q9K",
     "username": "newuser",
     "email": "updateduser@example.com",
     "role": "admin",
     "can_write": true,
-    "created_at": "2026-02-10T03:49:58Z",
-    "updated_at": "2026-02-10T03:50:04Z",
-    "last_login_at": "2026-02-10T03:49:59Z"
+    "created_at": "2026-02-10T07:49:43Z",
+    "updated_at": "2026-02-10T07:49:50Z",
+    "last_login_at": "2026-02-10T07:49:47Z"
   }
 }
 ```
@@ -138,14 +154,14 @@ curl -s -X POST "http://localhost:6006/users:update?id=$ULID" \
 {
   "message": "password reset successfully",
   "user": {
-    "id": "01KH2TQ58J6K6ARB1DH8P1VA28",
+    "id": "01KH38E4X59S1399C0AKZ27Q9K",
     "username": "newuser",
     "email": "updateduser@example.com",
     "role": "admin",
     "can_write": true,
-    "created_at": "2026-02-10T03:49:58Z",
-    "updated_at": "2026-02-10T03:50:04Z",
-    "last_login_at": "2026-02-10T03:49:59Z"
+    "created_at": "2026-02-10T07:49:43Z",
+    "updated_at": "2026-02-10T07:49:51Z",
+    "last_login_at": "2026-02-10T07:49:47Z"
   }
 }
 ```
@@ -169,14 +185,14 @@ curl -s -X POST "http://localhost:6006/users:update?id=$ULID" \
 {
   "message": "all sessions revoked successfully",
   "user": {
-    "id": "01KH2TQ58J6K6ARB1DH8P1VA28",
+    "id": "01KH38E4X59S1399C0AKZ27Q9K",
     "username": "newuser",
     "email": "updateduser@example.com",
     "role": "admin",
     "can_write": true,
-    "created_at": "2026-02-10T03:49:58Z",
-    "updated_at": "2026-02-10T03:50:04Z",
-    "last_login_at": "2026-02-10T03:49:59Z"
+    "created_at": "2026-02-10T07:49:43Z",
+    "updated_at": "2026-02-10T07:49:51Z",
+    "last_login_at": "2026-02-10T07:49:47Z"
   }
 }
 ```
