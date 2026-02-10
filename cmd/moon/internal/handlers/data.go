@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"bytes"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -392,7 +394,7 @@ func (h *DataHandler) Get(w http.ResponseWriter, r *http.Request, collectionName
 	writeJSON(w, http.StatusOK, response)
 }
 
-// Create handles POST /{name}:create
+// Create handles POST /{name}:create - supports both single and batch modes (PRD-064)
 func (h *DataHandler) Create(w http.ResponseWriter, r *http.Request, collectionName string) {
 	// Validate collection exists in registry
 	collection, exists := h.registry.Get(collectionName)
@@ -401,15 +403,47 @@ func (h *DataHandler) Create(w http.ResponseWriter, r *http.Request, collectionN
 		return
 	}
 
-	// Parse request body
-	var req CreateDataRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	// Check payload size (PRD-064)
+	if err := h.validatePayloadSize(r); err != nil {
+		writeError(w, http.StatusRequestEntityTooLarge, err.Error())
+		return
+	}
+
+	// Parse request body with raw JSON to detect mode
+	var batchReq BatchCreateDataRequest
+	if err := json.NewDecoder(r.Body).Decode(&batchReq); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
+	// Detect batch vs single mode
+	isBatch, err := detectBatchMode(batchReq.Data)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if !isBatch {
+		// Single-object mode (backward compatible)
+		h.createSingle(w, r, collectionName, collection, batchReq.Data)
+		return
+	}
+
+	// Batch mode
+	atomic := parseAtomicFlag(r)
+	h.createBatch(w, r, collectionName, collection, batchReq.Data, atomic)
+}
+
+// createSingle handles single-object create (backward compatible)
+func (h *DataHandler) createSingle(w http.ResponseWriter, r *http.Request, collectionName string, collection *registry.Collection, rawData json.RawMessage) {
+	var data map[string]any
+	if err := json.Unmarshal(rawData, &data); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid data format")
+		return
+	}
+
 	// Validate fields against schema
-	if err := validateFields(req.Data, collection); err != nil {
+	if err := validateFields(data, collection); err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -431,7 +465,7 @@ func (h *DataHandler) Create(w http.ResponseWriter, r *http.Request, collectionN
 	i++
 
 	for _, col := range collection.Columns {
-		if val, ok := req.Data[col.Name]; ok {
+		if val, ok := data[col.Name]; ok {
 			columns = append(columns, col.Name)
 			if h.db.Dialect() == database.DialectPostgres {
 				placeholders = append(placeholders, fmt.Sprintf("$%d", i))
@@ -455,6 +489,11 @@ func (h *DataHandler) Create(w http.ResponseWriter, r *http.Request, collectionN
 	ctx := r.Context()
 	_, err := h.db.Exec(ctx, query, values...)
 	if err != nil {
+		// Check for unique constraint violations
+		if strings.Contains(err.Error(), "UNIQUE") || strings.Contains(err.Error(), "unique") {
+			writeError(w, http.StatusConflict, fmt.Sprintf("unique constraint violation: %v", err))
+			return
+		}
 		writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to insert data: %v", err))
 		return
 	}
@@ -462,7 +501,7 @@ func (h *DataHandler) Create(w http.ResponseWriter, r *http.Request, collectionN
 	// Add ULID to response data (API field name is "id" but value is ULID)
 	responseData := make(map[string]any)
 	responseData["id"] = ulid
-	for k, v := range req.Data {
+	for k, v := range data {
 		responseData[k] = v
 	}
 
@@ -473,6 +512,243 @@ func (h *DataHandler) Create(w http.ResponseWriter, r *http.Request, collectionN
 
 	writeJSON(w, http.StatusCreated, response)
 }
+
+// createBatch handles batch create operations (PRD-064)
+func (h *DataHandler) createBatch(w http.ResponseWriter, r *http.Request, collectionName string, collection *registry.Collection, rawData json.RawMessage, atomic bool) {
+	var items []map[string]any
+	if err := json.Unmarshal(rawData, &items); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid batch data format")
+		return
+	}
+
+	// Validate batch size
+	if err := h.validateBatchSize(len(items)); err != nil {
+		writeError(w, http.StatusRequestEntityTooLarge, err.Error())
+		return
+	}
+
+	if len(items) == 0 {
+		writeError(w, http.StatusBadRequest, "batch must contain at least one item")
+		return
+	}
+
+	ctx := r.Context()
+
+	if atomic {
+		// Atomic mode: all-or-nothing with transaction
+		h.createBatchAtomic(w, ctx, collectionName, collection, items)
+	} else {
+		// Best-effort mode: partial success
+		h.createBatchBestEffort(w, ctx, collectionName, collection, items)
+	}
+}
+
+// createBatchAtomic handles atomic batch create with transaction (PRD-064)
+func (h *DataHandler) createBatchAtomic(w http.ResponseWriter, ctx context.Context, collectionName string, collection *registry.Collection, items []map[string]any) {
+	// Validate all items first
+	for idx, item := range items {
+		if err := validateFields(item, collection); err != nil {
+			writeError(w, http.StatusBadRequest, fmt.Sprintf("validation error at index %d: %v", idx, err))
+			return
+		}
+	}
+
+	// Begin transaction
+	tx, err := h.db.BeginTx(ctx)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to begin transaction: %v", err))
+		return
+	}
+	defer tx.Rollback()
+
+	var createdRecords []map[string]any
+
+	// Insert each item
+	for _, item := range items {
+		ulid := generateULID()
+
+		// Build INSERT query
+		columns := []string{"ulid"}
+		placeholders := []string{}
+		values := []any{ulid}
+		i := 1
+
+		if h.db.Dialect() == database.DialectPostgres {
+			placeholders = append(placeholders, fmt.Sprintf("$%d", i))
+		} else {
+			placeholders = append(placeholders, "?")
+		}
+		i++
+
+		for _, col := range collection.Columns {
+			if val, ok := item[col.Name]; ok {
+				columns = append(columns, col.Name)
+				if h.db.Dialect() == database.DialectPostgres {
+					placeholders = append(placeholders, fmt.Sprintf("$%d", i))
+				} else {
+					placeholders = append(placeholders, "?")
+				}
+				values = append(values, val)
+				i++
+			} else if !col.Nullable && col.DefaultValue == nil && col.Name != "ulid" {
+				writeError(w, http.StatusBadRequest, fmt.Sprintf("required field '%s' is missing", col.Name))
+				return
+			}
+		}
+
+		query := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)",
+			collectionName,
+			strings.Join(columns, ", "),
+			strings.Join(placeholders, ", "))
+
+		// Execute insert within transaction
+		_, err := tx.ExecContext(ctx, query, values...)
+		if err != nil {
+			// Check for unique constraint violations
+			if strings.Contains(err.Error(), "UNIQUE") || strings.Contains(err.Error(), "unique") {
+				writeError(w, http.StatusConflict, fmt.Sprintf("unique constraint violation: %v", err))
+				return
+			}
+			writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to insert data: %v", err))
+			return
+		}
+
+		// Build response record
+		responseData := make(map[string]any)
+		responseData["id"] = ulid
+		for k, v := range item {
+			responseData[k] = v
+		}
+		createdRecords = append(createdRecords, responseData)
+	}
+
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to commit transaction: %v", err))
+		return
+	}
+
+	response := BatchCreateResponse{
+		Data:    createdRecords,
+		Message: fmt.Sprintf("%d records created successfully", len(createdRecords)),
+	}
+
+	writeJSON(w, http.StatusCreated, response)
+}
+
+// createBatchBestEffort handles best-effort batch create (PRD-064)
+func (h *DataHandler) createBatchBestEffort(w http.ResponseWriter, ctx context.Context, collectionName string, collection *registry.Collection, items []map[string]any) {
+	var results []BatchItemResult
+	succeeded := 0
+	failed := 0
+
+	// Process each item independently
+	for idx, item := range items {
+		// Validate item
+		if err := validateFields(item, collection); err != nil {
+			results = append(results, BatchItemResult{
+				Index:        idx,
+				Status:       BatchItemFailed,
+				ErrorCode:    "validation_error",
+				ErrorMessage: err.Error(),
+			})
+			failed++
+			continue
+		}
+
+		ulid := generateULID()
+
+		// Build INSERT query
+		columns := []string{"ulid"}
+		placeholders := []string{}
+		values := []any{ulid}
+		i := 1
+
+		if h.db.Dialect() == database.DialectPostgres {
+			placeholders = append(placeholders, fmt.Sprintf("$%d", i))
+		} else {
+			placeholders = append(placeholders, "?")
+		}
+		i++
+
+		requiredFieldMissing := false
+		for _, col := range collection.Columns {
+			if val, ok := item[col.Name]; ok {
+				columns = append(columns, col.Name)
+				if h.db.Dialect() == database.DialectPostgres {
+					placeholders = append(placeholders, fmt.Sprintf("$%d", i))
+				} else {
+					placeholders = append(placeholders, "?")
+				}
+				values = append(values, val)
+				i++
+			} else if !col.Nullable && col.DefaultValue == nil && col.Name != "ulid" {
+				results = append(results, BatchItemResult{
+					Index:        idx,
+					Status:       BatchItemFailed,
+					ErrorCode:    "validation_error",
+					ErrorMessage: fmt.Sprintf("required field '%s' is missing", col.Name),
+				})
+				failed++
+				requiredFieldMissing = true
+				break
+			}
+		}
+		if requiredFieldMissing {
+			continue
+		}
+
+		query := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)",
+			collectionName,
+			strings.Join(columns, ", "),
+			strings.Join(placeholders, ", "))
+
+		// Execute insert
+		_, err := h.db.Exec(ctx, query, values...)
+		if err != nil {
+			// Check for unique constraint violations
+			errorCode := "database_error"
+			if strings.Contains(err.Error(), "UNIQUE") || strings.Contains(err.Error(), "unique") {
+				errorCode = "duplicate"
+			}
+			results = append(results, BatchItemResult{
+				Index:        idx,
+				Status:       BatchItemFailed,
+				ErrorCode:    errorCode,
+				ErrorMessage: err.Error(),
+			})
+			failed++
+			continue
+		}
+
+		// Build response record
+		responseData := make(map[string]any)
+		responseData["id"] = ulid
+		for k, v := range item {
+			responseData[k] = v
+		}
+
+		results = append(results, BatchItemResult{
+			Index:  idx,
+			ID:     ulid,
+			Status: BatchItemCreated,
+			Data:   responseData,
+		})
+		succeeded++
+	}
+
+	response := BatchResponse{
+		Results: results,
+		Summary: BatchSummary{
+			Total:     len(items),
+			Succeeded: succeeded,
+			Failed:    failed,
+		},
+	}
+
+	writeJSON(w, http.StatusMultiStatus, response)
+}
+
 
 // Update handles POST /{name}:update
 func (h *DataHandler) Update(w http.ResponseWriter, r *http.Request, collectionName string) {
@@ -1371,3 +1647,52 @@ func generateULID() string {
 func validateULID(id string) error {
 	return moonulid.Validate(id)
 }
+
+// detectBatchMode detects whether the request is for single or batch operation (PRD-064)
+// Returns true if data is an array, false if it's a single object
+func detectBatchMode(rawData json.RawMessage) (bool, error) {
+	// Trim whitespace
+	trimmed := bytes.TrimSpace(rawData)
+	if len(trimmed) == 0 {
+		return false, fmt.Errorf("empty data field")
+	}
+
+	// Check first character to determine if it's an array
+	if trimmed[0] == '[' {
+		return true, nil
+	}
+	if trimmed[0] == '{' {
+		return false, nil
+	}
+
+	return false, fmt.Errorf("invalid data format: expected object or array")
+}
+
+// parseAtomicFlag parses the atomic query parameter (PRD-064)
+// Returns true (atomic mode) by default if not specified
+func parseAtomicFlag(r *http.Request) bool {
+	atomicStr := r.URL.Query().Get("atomic")
+	if atomicStr == "" {
+		return true // Default to atomic mode
+	}
+	return atomicStr == "true" || atomicStr == "1"
+}
+
+// validateBatchSize checks if batch size is within configured limits (PRD-064)
+func (h *DataHandler) validateBatchSize(size int) error {
+	maxSize := h.config.Batch.MaxSize
+	if size > maxSize {
+		return fmt.Errorf("batch size %d exceeds limit of %d", size, maxSize)
+	}
+	return nil
+}
+
+// validatePayloadSize checks if payload size is within configured limits (PRD-064)
+func (h *DataHandler) validatePayloadSize(r *http.Request) error {
+	maxSize := int64(h.config.Batch.MaxPayloadBytes)
+	if r.ContentLength > maxSize {
+		return fmt.Errorf("payload size %d exceeds limit of %d bytes", r.ContentLength, maxSize)
+	}
+	return nil
+}
+
