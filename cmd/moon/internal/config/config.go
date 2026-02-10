@@ -88,6 +88,10 @@ var Defaults = struct {
 		MaxFiltersPerRequest    int
 		MaxSortFieldsPerRequest int
 	}
+	Batch struct {
+		MaxSize         int
+		MaxPayloadBytes int
+	}
 	ConfigPath string
 }{
 	Server: struct {
@@ -278,6 +282,13 @@ var Defaults = struct {
 		MaxFiltersPerRequest:    20,
 		MaxSortFieldsPerRequest: 5,
 	},
+	Batch: struct {
+		MaxSize         int
+		MaxPayloadBytes int
+	}{
+		MaxSize:         500,
+		MaxPayloadBytes: 2097152, // 2 MB
+	},
 	ConfigPath: "/etc/moon.conf",
 }
 
@@ -294,6 +305,7 @@ type AppConfig struct {
 	CORS       CORSConfig       `mapstructure:"cors"`
 	Pagination PaginationConfig `mapstructure:"pagination"`
 	Limits     LimitsConfig     `mapstructure:"limits"`
+	Batch      BatchConfig      `mapstructure:"batch"`
 }
 
 // ServerConfig holds server-related configuration.
@@ -397,6 +409,12 @@ type LimitsConfig struct {
 	MaxColumnsPerCollection int `mapstructure:"max_columns_per_collection"`  // maximum columns per collection
 	MaxFiltersPerRequest    int `mapstructure:"max_filters_per_request"`     // maximum filter parameters per request
 	MaxSortFieldsPerRequest int `mapstructure:"max_sort_fields_per_request"` // maximum sort fields per request
+}
+
+// BatchConfig holds batch operation configuration (PRD-064)
+type BatchConfig struct {
+	MaxSize         int `mapstructure:"max_size"`          // maximum number of items per batch request
+	MaxPayloadBytes int `mapstructure:"max_payload_bytes"` // maximum payload size in bytes
 }
 
 var globalConfig *AppConfig

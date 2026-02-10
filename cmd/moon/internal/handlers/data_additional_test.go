@@ -159,7 +159,7 @@ func TestBuildSearchQueryWithFields_Extended(t *testing.T) {
 func TestDataHandler_Update_CollectionNotFound(t *testing.T) {
 	reg := registry.NewSchemaRegistry()
 	driver := &mockDataDriver{dialect: database.DialectSQLite}
-	handler := NewDataHandler(driver, reg)
+	handler := NewDataHandler(driver, reg, testConfig())
 
 	reqBody := UpdateDataRequest{
 		ID:   "01ARYZ6S41TSV4RRFFQ69G5FAV",
@@ -181,7 +181,7 @@ func TestDataHandler_Update_CollectionNotFound(t *testing.T) {
 func TestDataHandler_Destroy_CollectionNotFound(t *testing.T) {
 	reg := registry.NewSchemaRegistry()
 	driver := &mockDataDriver{dialect: database.DialectSQLite}
-	handler := NewDataHandler(driver, reg)
+	handler := NewDataHandler(driver, reg, testConfig())
 
 	reqBody := DestroyDataRequest{
 		ID: "01ARYZ6S41TSV4RRFFQ69G5FAV",
@@ -202,7 +202,7 @@ func TestDataHandler_Destroy_CollectionNotFound(t *testing.T) {
 func TestDataHandler_Get_CollectionNotFound(t *testing.T) {
 	reg := registry.NewSchemaRegistry()
 	driver := &mockDataDriver{dialect: database.DialectSQLite}
-	handler := NewDataHandler(driver, reg)
+	handler := NewDataHandler(driver, reg, testConfig())
 
 	req := httptest.NewRequest(http.MethodGet, "/products:get?id=01ARYZ6S41TSV4RRFFQ69G5FAV", nil)
 	w := httptest.NewRecorder()
@@ -218,7 +218,7 @@ func TestDataHandler_Get_CollectionNotFound(t *testing.T) {
 func TestDataHandler_List_CollectionNotFound(t *testing.T) {
 	reg := registry.NewSchemaRegistry()
 	driver := &mockDataDriver{dialect: database.DialectSQLite}
-	handler := NewDataHandler(driver, reg)
+	handler := NewDataHandler(driver, reg, testConfig())
 
 	req := httptest.NewRequest(http.MethodGet, "/products:list", nil)
 	w := httptest.NewRecorder()
@@ -242,7 +242,7 @@ func TestDataHandler_Get_MissingID(t *testing.T) {
 	reg.Set(collection)
 
 	driver := &mockDataDriver{dialect: database.DialectSQLite}
-	handler := NewDataHandler(driver, reg)
+	handler := NewDataHandler(driver, reg, testConfig())
 
 	req := httptest.NewRequest(http.MethodGet, "/products:get", nil)
 	w := httptest.NewRecorder()
@@ -266,7 +266,7 @@ func TestDataHandler_Update_MissingID(t *testing.T) {
 	reg.Set(collection)
 
 	driver := &mockDataDriver{dialect: database.DialectSQLite}
-	handler := NewDataHandler(driver, reg)
+	handler := NewDataHandler(driver, reg, testConfig())
 
 	reqBody := UpdateDataRequest{
 		ID:   "", // Missing ID
@@ -296,7 +296,7 @@ func TestDataHandler_Destroy_MissingID(t *testing.T) {
 	reg.Set(collection)
 
 	driver := &mockDataDriver{dialect: database.DialectSQLite}
-	handler := NewDataHandler(driver, reg)
+	handler := NewDataHandler(driver, reg, testConfig())
 
 	reqBody := DestroyDataRequest{
 		ID: "", // Missing ID
@@ -325,7 +325,7 @@ func TestDataHandler_Create_InvalidJSON(t *testing.T) {
 	reg.Set(collection)
 
 	driver := &mockDataDriver{dialect: database.DialectSQLite}
-	handler := NewDataHandler(driver, reg)
+	handler := NewDataHandler(driver, reg, testConfig())
 
 	req := httptest.NewRequest(http.MethodPost, "/products:create", bytes.NewReader([]byte("invalid json")))
 	w := httptest.NewRecorder()
@@ -349,7 +349,7 @@ func TestDataHandler_Update_InvalidJSON(t *testing.T) {
 	reg.Set(collection)
 
 	driver := &mockDataDriver{dialect: database.DialectSQLite}
-	handler := NewDataHandler(driver, reg)
+	handler := NewDataHandler(driver, reg, testConfig())
 
 	req := httptest.NewRequest(http.MethodPost, "/products:update", bytes.NewReader([]byte("invalid json")))
 	w := httptest.NewRecorder()
@@ -373,7 +373,7 @@ func TestDataHandler_Destroy_InvalidJSON(t *testing.T) {
 	reg.Set(collection)
 
 	driver := &mockDataDriver{dialect: database.DialectSQLite}
-	handler := NewDataHandler(driver, reg)
+	handler := NewDataHandler(driver, reg, testConfig())
 
 	req := httptest.NewRequest(http.MethodPost, "/products:destroy", bytes.NewReader([]byte("invalid json")))
 	w := httptest.NewRecorder()
@@ -412,7 +412,7 @@ func TestDataHandler_Create_DatabaseError(t *testing.T) {
 	driver := &mockDBErrorDriver{
 		mockDataDriver: mockDataDriver{dialect: database.DialectSQLite},
 	}
-	handler := NewDataHandler(driver, reg)
+	handler := NewDataHandler(driver, reg, testConfig())
 
 	reqBody := CreateDataRequest{
 		Data: map[string]any{"name": "Test Product"},

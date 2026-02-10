@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/thalib/moon/cmd/moon/internal/config"
 	"github.com/thalib/moon/cmd/moon/internal/constants"
 	"github.com/thalib/moon/cmd/moon/internal/database"
 	"github.com/thalib/moon/cmd/moon/internal/query"
@@ -21,13 +22,15 @@ import (
 type DataHandler struct {
 	db       database.Driver
 	registry *registry.SchemaRegistry
+	config   *config.AppConfig
 }
 
 // NewDataHandler creates a new data handler
-func NewDataHandler(db database.Driver, reg *registry.SchemaRegistry) *DataHandler {
+func NewDataHandler(db database.Driver, reg *registry.SchemaRegistry, cfg *config.AppConfig) *DataHandler {
 	return &DataHandler{
 		db:       db,
 		registry: reg,
+		config:   cfg,
 	}
 }
 
@@ -81,6 +84,72 @@ type DestroyDataRequest struct {
 
 // DestroyDataResponse represents response for destroy operation
 type DestroyDataResponse struct {
+	Message string `json:"message"`
+}
+
+// BatchCreateDataRequest represents request for batch create operation (PRD-064)
+type BatchCreateDataRequest struct {
+	Data json.RawMessage `json:"data"`
+}
+
+// BatchUpdateDataRequest represents request for batch update operation (PRD-064)
+type BatchUpdateDataRequest struct {
+	Data json.RawMessage `json:"data"`
+}
+
+// BatchDestroyDataRequest represents request for batch destroy operation (PRD-064)
+type BatchDestroyDataRequest struct {
+	Data json.RawMessage `json:"data"`
+}
+
+// BatchItemStatus represents the status of an individual item in a batch operation (PRD-064)
+type BatchItemStatus string
+
+const (
+	BatchItemCreated  BatchItemStatus = "created"
+	BatchItemUpdated  BatchItemStatus = "updated"
+	BatchItemDeleted  BatchItemStatus = "deleted"
+	BatchItemFailed   BatchItemStatus = "failed"
+	BatchItemNotFound BatchItemStatus = "not_found"
+)
+
+// BatchItemResult represents the result of processing a single item in a batch (PRD-064)
+type BatchItemResult struct {
+	Index        int             `json:"index"`
+	ID           string          `json:"id,omitempty"`
+	Status       BatchItemStatus `json:"status"`
+	Data         map[string]any  `json:"data,omitempty"`
+	ErrorCode    string          `json:"error_code,omitempty"`
+	ErrorMessage string          `json:"error_message,omitempty"`
+}
+
+// BatchSummary represents summary statistics for a batch operation (PRD-064)
+type BatchSummary struct {
+	Total     int `json:"total"`
+	Succeeded int `json:"succeeded"`
+	Failed    int `json:"failed"`
+}
+
+// BatchResponse represents response for batch operations in partial success mode (PRD-064)
+type BatchResponse struct {
+	Results []BatchItemResult `json:"results"`
+	Summary BatchSummary      `json:"summary"`
+}
+
+// BatchCreateResponse represents response for successful batch create operation (PRD-064)
+type BatchCreateResponse struct {
+	Data    []map[string]any `json:"data"`
+	Message string           `json:"message"`
+}
+
+// BatchUpdateResponse represents response for successful batch update operation (PRD-064)
+type BatchUpdateResponse struct {
+	Data    []map[string]any `json:"data"`
+	Message string           `json:"message"`
+}
+
+// BatchDestroyResponse represents response for successful batch destroy operation (PRD-064)
+type BatchDestroyResponse struct {
 	Message string `json:"message"`
 }
 

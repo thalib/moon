@@ -422,3 +422,4 @@
 - [ ] Update API doc template at `cmd/moon/internal/handlers/templates/doc.md.tmpl` to reflect these changes.
 - [ ] Run all tests and ensure 100% pass rate.
 - [ ] If any test failure is unrelated to your feature, investigate and fix it before marking the task as complete.
+- [ ] Ensure all unit tests and integration tests in `tests/*` are passing successfully.
