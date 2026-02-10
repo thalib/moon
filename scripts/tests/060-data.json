@@ -1,110 +1,170 @@
 {
-	"docURL": "http://localhost:6006",
-	"serverURL":  "https://moon.asensar.in",
-	"prefix": "",
-	"username": "admin",
-	"password": "moonadmin12#",
-	"health": "/health",
-	"tests": [
-		{
-			"name": "",
-			"cmd": "POST",
-			"endpoint": "/collections:create",
-			"headers": {
-				"Authorization": "Bearer $ACCESS_TOKEN",
-				"Content-Type": "application/json"
-			},
-			"data": {
-				"name": "products",
-				"columns": [
-					{"name": "title", "type": "string", "nullable": false},
-					{"name": "price", "type": "decimal", "nullable": false},
-					{"name": "details", "type": "string", "nullable": true},
-					{"name": "quantity", "type": "integer", "nullable": true},
-					{"name": "brand", "type": "string", "nullable": true}
-				]
-			}
-		},
-		{
-			"name": "Get Schema",
-			"cmd": "GET",
-			"endpoint": "/products:schema",
-			"headers": {
-				"Authorization": "Bearer $ACCESS_TOKEN"
-			}
-		},
-		{
-			"name": "Create a New Record",
-			"cmd": "POST",
-			"endpoint": "/products:create",
-			"headers": {
-				"Authorization": "Bearer $ACCESS_TOKEN",
-				"Content-Type": "application/json"
-			},
-			"data": {
-				"data": {
-					"title": "Wireless Mouse",
-					"price": "29.99",
-					"details": "Ergonomic wireless mouse",
-					"quantity": 10,
-					"brand": "Wow"
-				}
-			}
-		},
-		{
-			"name": "Get All Records",
-			"cmd": "GET",
-			"endpoint": "/products:list",
-			"headers": {
-				"Authorization": "Bearer $ACCESS_TOKEN"
-			}
-		},
-		{
-			"name": "Get a Single Record",
-			"cmd": "GET",
-			"endpoint": "/products:get?id=$ULID",
-			"headers": {
-				"Authorization": "Bearer $ACCESS_TOKEN"
-			}
-		},
-		{
-			"name": "Update an Existing Record",
-			"cmd": "POST",
-			"endpoint": "/products:update",
-			"headers": {
-				"Authorization": "Bearer $ACCESS_TOKEN",
-				"Content-Type": "application/json"
-			},
-			"data": {
-				"id": "$ULID",
-				"data": {
-					"price": "6000.00"
-				}
-			}
-		},
-		{
-			"name": "Delete a Record",
-			"cmd": "POST",
-			"endpoint": "/products:destroy",
-			"headers": {
-				"Authorization": "Bearer $ACCESS_TOKEN",
-				"Content-Type": "application/json"
-			},
-			"data": {
-				"id": "$ULID"
-			}
-		},
-		{
-			"name": "",
-			"cmd": "POST",
-			"endpoint": "/collections:destroy",
-			"headers": {
-				"Authorization": "Bearer $ACCESS_TOKEN",
-				"Content-Type": "application/json"
-			},
-			"data": {
-				"name": "products"
-			}
-		}
-	]
+  "docURL": "http://localhost:6006",
+  "serverURL": "https://moon.asensar.in",
+  "prefix": "",
+  "username": "admin",
+  "password": "moonadmin12#",
+  "health": "/health",
+  "tests": [
+    {
+      "name": "",
+      "cmd": "POST",
+      "endpoint": "/collections:create",
+      "headers": {
+        "Authorization": "Bearer $ACCESS_TOKEN",
+        "Content-Type": "application/json"
+      },
+      "data": {
+        "name": "products",
+        "columns": [
+          { "name": "title", "type": "string", "nullable": false },
+          { "name": "price", "type": "decimal", "nullable": false },
+          { "name": "details", "type": "string", "nullable": true },
+          { "name": "quantity", "type": "integer", "nullable": true },
+          { "name": "brand", "type": "string", "nullable": true }
+        ]
+      }
+    },
+    {
+      "name": "Get Schema",
+      "cmd": "GET",
+      "endpoint": "/products:schema",
+      "headers": {
+        "Authorization": "Bearer $ACCESS_TOKEN"
+      }
+    },
+    {
+      "name": "Create New Record",
+      "cmd": "POST",
+      "endpoint": "/products:create",
+      "headers": {
+        "Authorization": "Bearer $ACCESS_TOKEN",
+        "Content-Type": "application/json"
+      },
+      "data": {
+        "data": {
+          "title": "Wireless Mouse",
+          "price": "29.99",
+          "details": "Ergonomic wireless mouse",
+          "quantity": 10,
+          "brand": "Wow"
+        }
+      }
+    },
+    {
+      "name": "Create New Records (Batch)",
+      "cmd": "POST",
+      "endpoint": "/products:create",
+      "headers": {
+        "Authorization": "Bearer $ACCESS_TOKEN",
+        "Content-Type": "application/json"
+      },
+      "data": {
+        "data": [
+          {
+            "title": "Keyboard",
+            "price": "49.99",
+            "details": "Mechanical keyboard",
+            "quantity": 5,
+            "brand": "KeyPro"
+          },
+          {
+            "title": "Monitor",
+            "price": "199.99",
+            "details": "24-inch FHD monitor",
+            "quantity": 2,
+            "brand": "ViewMax"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Get All Records",
+      "cmd": "GET",
+      "endpoint": "/products:list",
+      "headers": {
+        "Authorization": "Bearer $ACCESS_TOKEN"
+      }
+    },
+    {
+      "name": "Get a Single Record",
+      "cmd": "GET",
+      "endpoint": "/products:get?id=$ULID",
+      "headers": {
+        "Authorization": "Bearer $ACCESS_TOKEN"
+      }
+    },
+    {
+      "name": "Update Existing Record",
+      "cmd": "POST",
+      "endpoint": "/products:update",
+      "headers": {
+        "Authorization": "Bearer $ACCESS_TOKEN",
+        "Content-Type": "application/json"
+      },
+      "data": {
+        "id": "$ULID",
+        "data": {
+          "price": "6000.00"
+        }
+      }
+    },
+    {
+      "name": "Delete Record",
+      "cmd": "POST",
+      "endpoint": "/products:destroy",
+      "headers": {
+        "Authorization": "Bearer $ACCESS_TOKEN",
+        "Content-Type": "application/json"
+      },
+      "data": {
+        "id": "$ULID"
+      }
+    },
+    {
+      "name": "Batch Update Records",
+      "cmd": "POST",
+      "endpoint": "/products:update",
+      "headers": {
+        "Authorization": "Bearer $ACCESS_TOKEN",
+        "Content-Type": "application/json"
+      },
+      "data": [
+        {
+          "id": "$ULID1",
+          "price": "100.00",
+          "title": "Updated Product 1"
+        },
+        {
+          "id": "$ULID2",
+          "price": "200.00",
+          "title": "Updated Product 2"
+        }
+      ]
+    },
+    {
+      "name": "Batch Destroy Records",
+      "cmd": "POST",
+      "endpoint": "/products:destroy",
+      "headers": {
+        "Authorization": "Bearer $ACCESS_TOKEN",
+        "Content-Type": "application/json"
+      },
+      "data": {
+        "data": ["$ULID1", "$ULID2"]
+      }
+    },
+    {
+      "name": "",
+      "cmd": "POST",
+      "endpoint": "/collections:destroy",
+      "headers": {
+        "Authorization": "Bearer $ACCESS_TOKEN",
+        "Content-Type": "application/json"
+      },
+      "data": {
+        "name": "products"
+      }
+    }
+  ]
 }
