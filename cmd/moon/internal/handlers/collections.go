@@ -162,7 +162,9 @@ func (h *CollectionsHandler) getRecordCount(ctx context.Context, collectionName 
 		return -1
 	}
 
-	query := fmt.Sprintf("SELECT COUNT(*) FROM %s", collectionName)
+	// Quote identifier based on dialect for defense-in-depth
+	quotedName := h.quoteIdentifier(collectionName)
+	query := fmt.Sprintf("SELECT COUNT(*) FROM %s", quotedName)
 	var count int
 	err := h.db.QueryRow(ctx, query).Scan(&count)
 	if err != nil {
@@ -171,6 +173,24 @@ func (h *CollectionsHandler) getRecordCount(ctx context.Context, collectionName 
 		return -1
 	}
 	return count
+}
+
+// quoteIdentifier quotes an identifier (table/column name) based on database dialect
+func (h *CollectionsHandler) quoteIdentifier(name string) string {
+	switch h.db.Dialect() {
+	case database.DialectPostgres:
+		// PostgreSQL uses double quotes
+		return fmt.Sprintf(`"%s"`, name)
+	case database.DialectMySQL:
+		// MySQL uses backticks
+		return fmt.Sprintf("`%s`", name)
+	case database.DialectSQLite:
+		// SQLite supports double quotes and backticks, prefer double quotes
+		return fmt.Sprintf(`"%s"`, name)
+	default:
+		// Fallback: double quotes (SQL standard)
+		return fmt.Sprintf(`"%s"`, name)
+	}
 }
 
 // Get handles GET /collections:get

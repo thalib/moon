@@ -470,7 +470,7 @@ The `GET /collections:list` endpoint returns detailed information about each col
 **Fields:**
 - `collections` (array): Array of collection objects, each containing:
   - `name` (string): The collection name
-  - `records` (integer): Total number of records in the collection. Returns `-1` if count cannot be retrieved.
+  - `records` (integer): Total number of records in the collection. Returns `-1` if count cannot be retrieved (e.g., database error). A value of 0 indicates an empty collection, while -1 specifically indicates an error condition.
 - `count` (integer): Total number of collections returned
 
 **Note:** This is a breaking change from the previous format which returned collection names as a simple string array. Clients must be updated to consume the new object-based format.
