@@ -87,14 +87,17 @@ def setup_outdir(outdir):
 	"""
 	os.makedirs(outdir, exist_ok=True)
 
-def format_markdown_result(curl_cmd, status, body, test_name=None):
+def format_markdown_result(curl_cmd, status, body, test_name=None, details=None, notes=None):
 	"""
 	Formats a single API test result as a Markdown snippet for output, with heading if test_name is given.
+	Optionally includes details (before curl command) and notes (after response).
 	"""
-	heading = f"**{test_name}**\n\n" if test_name else ""
+	heading = f"### {test_name}\n\n" if test_name else ""
+	details_section = f"{details}\n\n" if details else ""
+	notes_section = f"{notes}\n\n" if notes else ""
 	return [
-		heading + f"```bash\n{curl_cmd}\n```",
-		f"\n***Response ({status}):***\n",
+		heading + details_section + notes_section + f"```bash\n{curl_cmd}\n```",
+		f"\n**Response ({status}):**\n",
 		f"```json\n{body}\n```\n"
 	]
 
@@ -283,10 +286,12 @@ def run_all_tests(tests, outdir, access_token=None, outfilename=None):
 			curl_cmd_doc = curl_cmd_doc.replace(captured_record_id, placeholder_type)
 		
 		test_name = test.get("name", "").strip()
+		test_details = test.get("details", None)
+		test_notes = test.get("notes", None)
 		
 		# Only add to markdown output if test has a name
 		if test_name:
-			results_md.extend(format_markdown_result(curl_cmd_doc, status, body, test_name))
+			results_md.extend(format_markdown_result(curl_cmd_doc, status, body, test_name, test_details, test_notes))
 		
 		if not status.startswith("2"):
 			all_ok = False

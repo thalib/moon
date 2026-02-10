@@ -82,6 +82,8 @@
 		{
 			"name": "Filtering",
 			"cmd": "GET",
+			"details": "`?column[operator]=value`",
+			"notes": "**Operators:** eq, ne, gt, lt, gte, lte, like, in",
 			"endpoint": "/products:list?quantity[gt]=5&brand[eq]=Wow",
 			"headers": {
 				"Authorization": "Bearer $ACCESS_TOKEN"
