@@ -445,59 +445,11 @@ These endpoints manage the database tables and metadata.
 
 | Endpoint                    | Method | Purpose                                                |
 | --------------------------- | ------ | ------------------------------------------------------ |
-| `GET /collections:list`     | `GET`  | List all managed collections from the cache. Supports `?detailed=true` to include full schemas. |
+| `GET /collections:list`     | `GET`  | List all managed collections from the cache.           |
 | `GET /collections:get`      | `GET`  | Retrieve the schema (fields/types) for one collection. |
 | `POST /collections:create`  | `POST` | Create a new table in the database.                    |
 | `POST /collections:update`  | `POST` | Modify table columns (add/remove/rename).              |
 | `POST /collections:destroy` | `POST` | Drop the table and purge it from the cache.            |
-
-#### Collections List Detailed Response (PRD-065)
-
-The `/collections:list` endpoint supports an optional `?detailed=true` query parameter to retrieve full collection schemas instead of just collection names.
-
-**Query Parameters:**
-
-- `detailed` (boolean, optional): When set to `true`, returns full collection objects with complete schema information. Default is `false`.
-
-**Response Formats:**
-
-**Simple Mode (default, backward compatible):**
-
-```json
-{
-  "collections": ["products", "customers"],
-  "count": 2
-}
-```
-
-**Detailed Mode (`?detailed=true`):**
-
-```json
-{
-  "collections": [
-    {
-      "name": "products",
-      "columns": [
-        {"name": "name", "type": "string", "nullable": false},
-        {"name": "price", "type": "decimal", "nullable": false}
-      ]
-    },
-    {
-      "name": "customers",
-      "columns": [
-        {"name": "name", "type": "string", "nullable": false},
-        {"name": "email", "type": "string", "nullable": false}
-      ]
-    }
-  ],
-  "count": 2
-}
-```
-
-**Use Cases:**
-
-- **Simple Mode:** Quickly retrieve collection names for navigation or autocomplete.
-- **Detailed Mode:** Fetch all collection schemas in a single request, useful for admin interfaces, schema explorers, or code generation tools.
 
 ### B. Data Access (`/{collectionName}`)
 

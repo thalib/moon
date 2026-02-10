@@ -51,11 +51,10 @@ type ListRequest struct {
 	// Optional filters can be added here
 }
 
-// ListResponse represents the response for listing collections.
-// Collections can be either []string (simple mode) or []*registry.Collection (detailed mode).
+// ListResponse represents the response for listing collections
 type ListResponse struct {
-	Collections any `json:"collections"`
-	Count       int `json:"count"`
+	Collections []string `json:"collections"`
+	Count       int      `json:"count"`
 }
 
 // GetRequest represents the request for getting a collection schema
@@ -124,39 +123,17 @@ type DestroyResponse struct {
 func (h *CollectionsHandler) List(w http.ResponseWriter, r *http.Request) {
 	allCollections := h.registry.List()
 
-	// Check if detailed mode is requested
-	detailed := r.URL.Query().Get("detailed")
-	isDetailed := detailed == "true"
-
 	// Filter out system tables
-	var response ListResponse
-	if isDetailed {
-		// Detailed mode: return full collection objects with schemas
-		collections := make([]*registry.Collection, 0, len(allCollections))
-		for _, name := range allCollections {
-			if !constants.IsSystemTable(name) {
-				collection, exists := h.registry.Get(name)
-				if exists {
-					collections = append(collections, collection)
-				}
-			}
+	collections := make([]string, 0, len(allCollections))
+	for _, col := range allCollections {
+		if !constants.IsSystemTable(col) {
+			collections = append(collections, col)
 		}
-		response = ListResponse{
-			Collections: collections,
-			Count:       len(collections),
-		}
-	} else {
-		// Simple mode: return collection names only (default, backward compatible)
-		collections := make([]string, 0, len(allCollections))
-		for _, col := range allCollections {
-			if !constants.IsSystemTable(col) {
-				collections = append(collections, col)
-			}
-		}
-		response = ListResponse{
-			Collections: collections,
-			Count:       len(collections),
-		}
+	}
+
+	response := ListResponse{
+		Collections: collections,
+		Count:       len(collections),
 	}
 
 	writeJSON(w, http.StatusOK, response)
