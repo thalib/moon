@@ -427,13 +427,6 @@ moon -d --config /etc/moon.conf
 - Process continues after terminal closes
 - Supports graceful shutdown via SIGTERM/SIGINT
 
-### Test Scripts
-
-Test scripts are located in the `scripts/` directory and provide examples of API operations:
-
-- All test scripts support the `PREFIX` environment variable for testing with custom URL prefixes
-- Example: `PREFIX=/api/v1 ./scripts/collection.sh` or `PREFIX="" ./scripts/health.sh`
-
 ## 2. API Endpoint Specification
 
 The system uses a strict pattern to ensure that AI agents and developers can interact with any collection without new code deployment.

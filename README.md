@@ -72,19 +72,6 @@ Moon provides comprehensive, auto-generated API documentation:
 - **HTML Documentation**: Visit `http://localhost:6006/doc/` in your browser for a complete, interactive API reference
 - **Markdown Documentation**: Access `http://localhost:6006/doc/llms-full.txt` for terminal-friendly or AI-agent documentation
 - Configuration: See `samples/moon.conf` for comprehensive, spec-compliant configuration
-- Testing: See `scripts/test-runner.sh`
-
-### Authentication Test Suite
-
-Run the authentication test scripts to verify your setup:
-
-```bash
-./scripts/auth-all.sh      # Run all auth tests
-./scripts/auth-jwt.sh      # JWT authentication tests
-./scripts/auth-apikey.sh   # API key tests
-./scripts/auth-rbac.sh     # Role-based access control tests
-./scripts/auth-ratelimit.sh # Rate limiting tests
-```
 
 ### Additional Resources
 
@@ -92,7 +79,7 @@ Run the authentication test scripts to verify your setup:
 - [SPEC.md](SPEC.md): Architecture and technical specifications
 - [SPEC_AUTH.md](SPEC_AUTH.md): Detailed authentication specification
 - [samples/](samples/): Sample configuration files
-- [scripts/](scripts/): Test and demo scripts
+- [scripts/](scripts/): Python API Test Suite
 - [LICENSE](LICENSE): MIT License
 - [GitHub Issues](https://github.com/thalib/moon/issues)
 - [GitHub Discussions](https://github.com/thalib/moon/discussions)
