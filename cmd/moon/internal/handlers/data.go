@@ -2438,7 +2438,7 @@ func validateULID(id string) error {
 }
 
 // detectBatchMode detects whether the request is for single or batch operation (PRD-064)
-// Returns true if data is an array, false if it's a single object
+// Returns true if data is an array, false if it's a single object or string
 func detectBatchMode(rawData json.RawMessage) (bool, error) {
 	// Trim whitespace
 	trimmed := bytes.TrimSpace(rawData)
@@ -2450,15 +2450,17 @@ func detectBatchMode(rawData json.RawMessage) (bool, error) {
 	if trimmed[0] == '[' {
 		return true, nil
 	}
-	if trimmed[0] == '{' {
+	// Single object or string (for destroy with single ID)
+	if trimmed[0] == '{' || trimmed[0] == '"' {
 		return false, nil
 	}
 
-	return false, fmt.Errorf("invalid data format: expected object or array")
+	return false, fmt.Errorf("invalid data format: expected object, string, or array")
 }
 
 // parseAtomicFlag parses the atomic query parameter (PRD-064)
 // Returns true (atomic mode) by default if not specified
+// Set atomic=false or atomic=0 to enable best-effort mode (partial success)
 func parseAtomicFlag(r *http.Request) bool {
 	atomicStr := r.URL.Query().Get("atomic")
 	if atomicStr == "" {
