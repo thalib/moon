@@ -2,25 +2,10 @@
 	"docURL": "http://localhost:6006",
 	"serverURL":  "https://moon.asensar.in",
 	"prefix": "",
-	"username": "admin",
-	"password": "moonadmin12#",
+	"username": "newuser",
+	"password": "UserPass123#",
 	"health": "/health",
 	"tests": [
-		{
-			"name": "",
-			"cmd": "POST",
-			"endpoint": "/users:create",
-			"headers": {
-				"Authorization": "Bearer $ACCESS_TOKEN",
-				"Content-Type": "application/json"
-			},
-			"data": {
-				"username": "newuser",
-				"email": "newuser@example.com",
-				"password": "UserPass123#",
-				"role": "user"
-			}
-		},
 		{
 			"name": "Login",
 			"cmd": "POST",
@@ -31,17 +16,6 @@
 			"data": {
 				"username": "newuser",
 				"password": "UserPass123#"
-			}
-		},
-		{
-			"name": "Refresh Token",
-			"cmd": "POST",
-			"endpoint": "/auth:refresh",
-			"headers": {
-				"Content-Type": "application/json"
-			},
-			"data": {
-				"refresh_token": "$REFRESH_TOKEN"
 			}
 		},
 		{
@@ -75,6 +49,29 @@
 			"data": {
 				"old_password": "UserPass123#",
 				"password": "NewSecurePass456"
+			}
+		},
+		{
+			"name": "",
+			"cmd": "POST",
+			"endpoint": "/auth:login",
+			"headers": {
+				"Content-Type": "application/json"
+			},
+			"data": {
+				"username": "newuser",
+				"password": "UserPass123#"
+			}
+		},
+		{
+			"name": "Refresh Token",
+			"cmd": "POST",
+			"endpoint": "/auth:refresh",
+			"headers": {
+				"Content-Type": "application/json"
+			},
+			"data": {
+				"refresh_token": "$REFRESH_TOKEN"
 			}
 		},
 		{
