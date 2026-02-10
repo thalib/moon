@@ -20,7 +20,7 @@ import (
 func testConfig() *config.AppConfig {
 	return &config.AppConfig{
 		Batch: config.BatchConfig{
-			MaxSize:         500,
+			MaxSize:         50,
 			MaxPayloadBytes: 2097152, // 2 MB
 		},
 	}
