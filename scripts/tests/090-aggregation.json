@@ -88,14 +88,6 @@
 			}
 		},
 		{
-			"name": "Count Records With Filters",
-			"cmd": "GET",
-			"endpoint": "/products:count?quantity[gt]=10",
-			"headers": {
-				"Authorization": "Bearer $ACCESS_TOKEN"
-			}
-		},
-		{
 			"name": "Sum Numeric Field",
 			"cmd": "GET",
 			"endpoint": "/products:sum?field=quantity",

@@ -1,4 +1,4 @@
-**Collections Create**
+### Collections Create
 
 ```bash
 curl -s -X POST "http://localhost:6006/collections:create" \
@@ -28,7 +28,7 @@ curl -s -X POST "http://localhost:6006/collections:create" \
     ' | jq .
 ```
 
-***Response (201 Created):***
+**Response (201 Created):**
 
 ```json
 {
@@ -59,14 +59,14 @@ curl -s -X POST "http://localhost:6006/collections:create" \
 }
 ```
 
-**Collections List**
+### Collections List
 
 ```bash
 curl -s -X GET "http://localhost:6006/collections:list" \
     -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
 ```
 
-***Response (200 OK):***
+**Response (200 OK):**
 
 ```json
 {
@@ -77,14 +77,14 @@ curl -s -X GET "http://localhost:6006/collections:list" \
 }
 ```
 
-**Collections Get**
+### Collections Get
 
 ```bash
 curl -s -X GET "http://localhost:6006/collections:get?name=products" \
     -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
 ```
 
-***Response (200 OK):***
+**Response (200 OK):**
 
 ```json
 {
@@ -114,7 +114,7 @@ curl -s -X GET "http://localhost:6006/collections:get?name=products" \
 }
 ```
 
-**Collections Update - Add Columns**
+### Collections Update - Add Columns
 
 ```bash
 curl -s -X POST "http://localhost:6006/collections:update" \
@@ -139,7 +139,7 @@ curl -s -X POST "http://localhost:6006/collections:update" \
     ' | jq .
 ```
 
-***Response (200 OK):***
+**Response (200 OK):**
 
 ```json
 {
@@ -182,7 +182,7 @@ curl -s -X POST "http://localhost:6006/collections:update" \
 }
 ```
 
-**Collections Update - Rename Columns**
+### Collections Update - Rename Columns
 
 ```bash
 curl -s -X POST "http://localhost:6006/collections:update" \
@@ -201,7 +201,7 @@ curl -s -X POST "http://localhost:6006/collections:update" \
     ' | jq .
 ```
 
-***Response (200 OK):***
+**Response (200 OK):**
 
 ```json
 {
@@ -244,7 +244,7 @@ curl -s -X POST "http://localhost:6006/collections:update" \
 }
 ```
 
-**Collections Update - Modify Columns**
+### Collections Update - Modify Columns
 
 ```bash
 curl -s -X POST "http://localhost:6006/collections:update" \
@@ -264,7 +264,7 @@ curl -s -X POST "http://localhost:6006/collections:update" \
     ' | jq .
 ```
 
-***Response (200 OK):***
+**Response (200 OK):**
 
 ```json
 {
@@ -307,7 +307,7 @@ curl -s -X POST "http://localhost:6006/collections:update" \
 }
 ```
 
-**Collections Update - Remove Columns**
+### Collections Update - Remove Columns
 
 ```bash
 curl -s -X POST "http://localhost:6006/collections:update" \
@@ -323,7 +323,7 @@ curl -s -X POST "http://localhost:6006/collections:update" \
     ' | jq .
 ```
 
-***Response (200 OK):***
+**Response (200 OK):**
 
 ```json
 {
@@ -360,7 +360,7 @@ curl -s -X POST "http://localhost:6006/collections:update" \
 }
 ```
 
-**Collections Update - Combine Operations**
+### Collections Update - Combine Operations
 
 ```bash
 curl -s -X POST "http://localhost:6006/collections:update" \
@@ -393,7 +393,7 @@ curl -s -X POST "http://localhost:6006/collections:update" \
     ' | jq .
 ```
 
-***Response (200 OK):***
+**Response (200 OK):**
 
 ```json
 {
@@ -436,7 +436,7 @@ curl -s -X POST "http://localhost:6006/collections:update" \
 }
 ```
 
-**Collections Destroy**
+### Collections Destroy
 
 ```bash
 curl -s -X POST "http://localhost:6006/collections:destroy" \
@@ -449,7 +449,7 @@ curl -s -X POST "http://localhost:6006/collections:destroy" \
     ' | jq .
 ```
 
-***Response (200 OK):***
+**Response (200 OK):**
 
 ```json
 {

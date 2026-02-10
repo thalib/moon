@@ -56,6 +56,7 @@
 			"name": "Update API Key Metadata",
 			"cmd": "POST",
 			"endpoint": "/apikeys:update?id=$ULID",
+			"details": "***Note:*** Update metadata fields (name, description, can_write) without changing the API key itself. The key remains valid. To generate a new key, use the rotation action.",
 			"headers": {
 				"Authorization": "Bearer $ACCESS_TOKEN",
 				"Content-Type": "application/json"
@@ -70,6 +71,7 @@
 			"name": "Rotate API Key",
 			"cmd": "POST",
 			"endpoint": "/apikeys:update?id=$ULID",
+			"details": "Use `rotate` to securely generate a new API key and invalidate the old one in a single step, minimizing overlap between valid keys.",
 			"headers": {
 				"Authorization": "Bearer $ACCESS_TOKEN",
 				"Content-Type": "application/json"

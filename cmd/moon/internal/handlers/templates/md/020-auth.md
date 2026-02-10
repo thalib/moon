@@ -1,4 +1,4 @@
-**Login**
+### Login
 
 ```bash
 curl -s -X POST "http://localhost:6006/auth:login" \
@@ -11,16 +11,16 @@ curl -s -X POST "http://localhost:6006/auth:login" \
     ' | jq .
 ```
 
-***Response (200 OK):***
+**Response (200 OK):**
 
 ```json
 {
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMDFLSDFLOUc0S1BHMTBCRVYwUE5UTVlOV0oiLCJ1c2VybmFtZSI6Im5ld3VzZXIiLCJyb2xlIjoidXNlciIsImNhbl93cml0ZSI6dHJ1ZSwic3ViIjoiMDFLSDFLOUc0S1BHMTBCRVYwUE5UTVlOV0oiLCJleHAiOjE3NzA2NTc2NTcsIm5iZiI6MTc3MDY1NDAyNywiaWF0IjoxNzcwNjU0MDU3fQ.tnjRv9SunQgUmv1naz2Bon_Ic1WZCVKcPemVN4vqVRY",
-  "refresh_token": "ii2Sr4zZP6yEZmNSQ3ZUTNkHx--Y5ZDQ5ht49Hfpk0A=",
-  "expires_at": "2026-02-09T17:20:57.698028118Z",
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMDFLSDJUUTU4SjZLNkFSQjFESDhQMVZBMjgiLCJ1c2VybmFtZSI6Im5ld3VzZXIiLCJyb2xlIjoidXNlciIsImNhbl93cml0ZSI6dHJ1ZSwic3ViIjoiMDFLSDJUUTU4SjZLNkFSQjFESDhQMVZBMjgiLCJleHAiOjE3NzA2OTg5OTksIm5iZiI6MTc3MDY5NTM2OSwiaWF0IjoxNzcwNjk1Mzk5fQ.Nfr7OuNI4d4TW4inDPyOhs1fSRH1KqS0WxMrzdvVYdg",
+  "refresh_token": "mex8-2is7JORAwcyCrANZ_CjjkKek3fD-A5JHTya1VY=",
+  "expires_at": "2026-02-10T04:49:59.33911662Z",
   "token_type": "Bearer",
   "user": {
-    "id": "01KH1K9G4KPG10BEV0PNTMYNWJ",
+    "id": "01KH2TQ58J6K6ARB1DH8P1VA28",
     "username": "newuser",
     "email": "newuser@example.com",
     "role": "user",
@@ -29,7 +29,7 @@ curl -s -X POST "http://localhost:6006/auth:login" \
 }
 ```
 
-**Refresh Token**
+### Refresh Token
 
 ```bash
 curl -s -X POST "http://localhost:6006/auth:refresh" \
@@ -41,16 +41,16 @@ curl -s -X POST "http://localhost:6006/auth:refresh" \
     ' | jq .
 ```
 
-***Response (200 OK):***
+**Response (200 OK):**
 
 ```json
 {
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMDFLSDFLOUc0S1BHMTBCRVYwUE5UTVlOV0oiLCJ1c2VybmFtZSI6Im5ld3VzZXIiLCJyb2xlIjoidXNlciIsImNhbl93cml0ZSI6dHJ1ZSwic3ViIjoiMDFLSDFLOUc0S1BHMTBCRVYwUE5UTVlOV0oiLCJleHAiOjE3NzA2NTc2NTgsIm5iZiI6MTc3MDY1NDAyOCwiaWF0IjoxNzcwNjU0MDU4fQ.TVQz0mJgDQl1W5DB8Rir75caBj1PLn54_kEi_aLtduI",
-  "refresh_token": "1gXYUcT5FH3uzVpLmyGHAlOBtM_ROW33N3CvQPATgU8=",
-  "expires_at": "2026-02-09T17:20:58.33201166Z",
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMDFLSDJUUTU4SjZLNkFSQjFESDhQMVZBMjgiLCJ1c2VybmFtZSI6Im5ld3VzZXIiLCJyb2xlIjoidXNlciIsImNhbl93cml0ZSI6dHJ1ZSwic3ViIjoiMDFLSDJUUTU4SjZLNkFSQjFESDhQMVZBMjgiLCJleHAiOjE3NzA2OTg5OTksIm5iZiI6MTc3MDY5NTM2OSwiaWF0IjoxNzcwNjk1Mzk5fQ.Nfr7OuNI4d4TW4inDPyOhs1fSRH1KqS0WxMrzdvVYdg",
+  "refresh_token": "doS2OjomQEDQ0yC1BLUBVFwScL02RQhrcldoj3PBJFw=",
+  "expires_at": "2026-02-10T04:49:59.761509426Z",
   "token_type": "Bearer",
   "user": {
-    "id": "01KH1K9G4KPG10BEV0PNTMYNWJ",
+    "id": "01KH2TQ58J6K6ARB1DH8P1VA28",
     "username": "newuser",
     "email": "newuser@example.com",
     "role": "user",
@@ -59,14 +59,14 @@ curl -s -X POST "http://localhost:6006/auth:refresh" \
 }
 ```
 
-**Get Current User**
+### Get Current User
 
 ```bash
 curl -s -X GET "http://localhost:6006/auth:me" \
     -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
 ```
 
-***Response (200 OK):***
+**Response (200 OK):**
 
 ```json
 {
@@ -80,7 +80,7 @@ curl -s -X GET "http://localhost:6006/auth:me" \
 }
 ```
 
-**Update Current User (Change email)**
+### Update Current User (Change email)
 
 ```bash
 curl -s -X POST "http://localhost:6006/auth:me" \
@@ -93,7 +93,7 @@ curl -s -X POST "http://localhost:6006/auth:me" \
     ' | jq .
 ```
 
-***Response (200 OK):***
+**Response (200 OK):**
 
 ```json
 {
@@ -108,7 +108,7 @@ curl -s -X POST "http://localhost:6006/auth:me" \
 }
 ```
 
-**Update Current User (Change Password)**
+### Update Current User (Change Password)
 
 ```bash
 curl -s -X POST "http://localhost:6006/auth:me" \
@@ -122,7 +122,7 @@ curl -s -X POST "http://localhost:6006/auth:me" \
     ' | jq .
 ```
 
-***Response (401 Unauthorized):***
+**Response (401 Unauthorized):**
 
 ```json
 {
@@ -131,7 +131,7 @@ curl -s -X POST "http://localhost:6006/auth:me" \
 }
 ```
 
-**Logout**
+### Logout
 
 ```bash
 curl -s -X POST "http://localhost:6006/auth:logout" \
@@ -144,7 +144,7 @@ curl -s -X POST "http://localhost:6006/auth:logout" \
     ' | jq .
 ```
 
-***Response (200 OK):***
+**Response (200 OK):**
 
 ```json
 {

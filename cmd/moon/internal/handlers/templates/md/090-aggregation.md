@@ -1,11 +1,11 @@
-**Count Records**
+### Count Records
 
 ```bash
 curl -s -X GET "http://localhost:6006/products:count" \
     -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
 ```
 
-***Response (200 OK):***
+**Response (200 OK):**
 
 ```json
 {
@@ -13,29 +13,14 @@ curl -s -X GET "http://localhost:6006/products:count" \
 }
 ```
 
-**Count Records With Filters**
-
-```bash
-curl -s -X GET "http://localhost:6006/products:count?quantity[gt]=10" \
-    -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
-```
-
-***Response (200 OK):***
-
-```json
-{
-  "value": 2
-}
-```
-
-**Sum Numeric Field**
+### Sum Numeric Field
 
 ```bash
 curl -s -X GET "http://localhost:6006/products:sum?field=quantity" \
     -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
 ```
 
-***Response (200 OK):***
+**Response (200 OK):**
 
 ```json
 {
@@ -43,14 +28,14 @@ curl -s -X GET "http://localhost:6006/products:sum?field=quantity" \
 }
 ```
 
-**Average Numeric Field**
+### Average Numeric Field
 
 ```bash
 curl -s -X GET "http://localhost:6006/products:avg?field=quantity" \
     -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
 ```
 
-***Response (200 OK):***
+**Response (200 OK):**
 
 ```json
 {
@@ -58,14 +43,14 @@ curl -s -X GET "http://localhost:6006/products:avg?field=quantity" \
 }
 ```
 
-**Minimum Value**
+### Minimum Value
 
 ```bash
 curl -s -X GET "http://localhost:6006/products:min?field=quantity" \
     -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
 ```
 
-***Response (200 OK):***
+**Response (200 OK):**
 
 ```json
 {
@@ -73,14 +58,14 @@ curl -s -X GET "http://localhost:6006/products:min?field=quantity" \
 }
 ```
 
-**Maximum Value**
+### Maximum Value
 
 ```bash
 curl -s -X GET "http://localhost:6006/products:max?field=quantity" \
     -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
 ```
 
-***Response (200 OK):***
+**Response (200 OK):**
 
 ```json
 {

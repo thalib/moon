@@ -1,4 +1,4 @@
-**Create New User**
+### Create New User
 
 ```bash
 curl -s -X POST "http://localhost:6006/users:create" \
@@ -14,7 +14,7 @@ curl -s -X POST "http://localhost:6006/users:create" \
     ' | jq .
 ```
 
-***Response (409 Conflict):***
+**Response (409 Conflict):**
 
 ```json
 {
@@ -24,14 +24,14 @@ curl -s -X POST "http://localhost:6006/users:create" \
 }
 ```
 
-**List All Users**
+### List All Users
 
 ```bash
 curl -s -X GET "http://localhost:6006/users:list" \
     -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
 ```
 
-***Response (200 OK):***
+**Response (200 OK):**
 
 ```json
 {
@@ -43,18 +43,18 @@ curl -s -X GET "http://localhost:6006/users:list" \
       "role": "admin",
       "can_write": true,
       "created_at": "2026-02-08T04:36:57Z",
-      "updated_at": "2026-02-09T16:21:02Z",
-      "last_login_at": "2026-02-09T16:21:02Z"
+      "updated_at": "2026-02-10T03:50:02Z",
+      "last_login_at": "2026-02-10T03:50:02Z"
     },
     {
-      "id": "01KH1K9G4KPG10BEV0PNTMYNWJ",
+      "id": "01KH2TQ58J6K6ARB1DH8P1VA28",
       "username": "newuser",
       "email": "newuser@example.com",
       "role": "user",
       "can_write": true,
-      "created_at": "2026-02-09T16:20:56Z",
-      "updated_at": "2026-02-09T16:20:57Z",
-      "last_login_at": "2026-02-09T16:20:57Z"
+      "created_at": "2026-02-10T03:49:58Z",
+      "updated_at": "2026-02-10T03:49:59Z",
+      "last_login_at": "2026-02-10T03:49:59Z"
     }
   ],
   "next_cursor": null,
@@ -62,31 +62,31 @@ curl -s -X GET "http://localhost:6006/users:list" \
 }
 ```
 
-**Get Specific User by ID**
+### Get Specific User by ID
 
 ```bash
 curl -s -X GET "http://localhost:6006/users:get?id=$ULID" \
     -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
 ```
 
-***Response (200 OK):***
+**Response (200 OK):**
 
 ```json
 {
   "user": {
-    "id": "01KH1K9G4KPG10BEV0PNTMYNWJ",
+    "id": "01KH2TQ58J6K6ARB1DH8P1VA28",
     "username": "newuser",
     "email": "newuser@example.com",
     "role": "user",
     "can_write": true,
-    "created_at": "2026-02-09T16:20:56Z",
-    "updated_at": "2026-02-09T16:20:57Z",
-    "last_login_at": "2026-02-09T16:20:57Z"
+    "created_at": "2026-02-10T03:49:58Z",
+    "updated_at": "2026-02-10T03:49:59Z",
+    "last_login_at": "2026-02-10T03:49:59Z"
   }
 }
 ```
 
-**Update User**
+### Update User
 
 ```bash
 curl -s -X POST "http://localhost:6006/users:update?id=$ULID" \
@@ -100,25 +100,25 @@ curl -s -X POST "http://localhost:6006/users:update?id=$ULID" \
     ' | jq .
 ```
 
-***Response (200 OK):***
+**Response (200 OK):**
 
 ```json
 {
   "message": "user updated successfully",
   "user": {
-    "id": "01KH1K9G4KPG10BEV0PNTMYNWJ",
+    "id": "01KH2TQ58J6K6ARB1DH8P1VA28",
     "username": "newuser",
     "email": "updateduser@example.com",
     "role": "admin",
     "can_write": true,
-    "created_at": "2026-02-09T16:20:56Z",
-    "updated_at": "2026-02-09T16:21:04Z",
-    "last_login_at": "2026-02-09T16:20:57Z"
+    "created_at": "2026-02-10T03:49:58Z",
+    "updated_at": "2026-02-10T03:50:04Z",
+    "last_login_at": "2026-02-10T03:49:59Z"
   }
 }
 ```
 
-**Reset User Password**
+### Reset User Password
 
 ```bash
 curl -s -X POST "http://localhost:6006/users:update?id=$ULID" \
@@ -127,22 +127,30 @@ curl -s -X POST "http://localhost:6006/users:update?id=$ULID" \
     -d '
       {
         "action": "reset_password",
-        "password": "NewSecurePassword123#"
+        "new_password": "NewSecurePassword123#"
       }
     ' | jq .
 ```
 
-***Response (400 Bad Request):***
+**Response (200 OK):**
 
 ```json
 {
-  "code": 400,
-  "error": "new_password is required for password reset",
-  "error_code": "MISSING_REQUIRED_FIELD"
+  "message": "password reset successfully",
+  "user": {
+    "id": "01KH2TQ58J6K6ARB1DH8P1VA28",
+    "username": "newuser",
+    "email": "updateduser@example.com",
+    "role": "admin",
+    "can_write": true,
+    "created_at": "2026-02-10T03:49:58Z",
+    "updated_at": "2026-02-10T03:50:04Z",
+    "last_login_at": "2026-02-10T03:49:59Z"
+  }
 }
 ```
 
-**Revoke All User Sessions**
+### Revoke All User Sessions
 
 ```bash
 curl -s -X POST "http://localhost:6006/users:update?id=$ULID" \
@@ -155,32 +163,32 @@ curl -s -X POST "http://localhost:6006/users:update?id=$ULID" \
     ' | jq .
 ```
 
-***Response (200 OK):***
+**Response (200 OK):**
 
 ```json
 {
   "message": "all sessions revoked successfully",
   "user": {
-    "id": "01KH1K9G4KPG10BEV0PNTMYNWJ",
+    "id": "01KH2TQ58J6K6ARB1DH8P1VA28",
     "username": "newuser",
     "email": "updateduser@example.com",
     "role": "admin",
     "can_write": true,
-    "created_at": "2026-02-09T16:20:56Z",
-    "updated_at": "2026-02-09T16:21:04Z",
-    "last_login_at": "2026-02-09T16:20:57Z"
+    "created_at": "2026-02-10T03:49:58Z",
+    "updated_at": "2026-02-10T03:50:04Z",
+    "last_login_at": "2026-02-10T03:49:59Z"
   }
 }
 ```
 
-**Delete User Account**
+### Delete User Account
 
 ```bash
 curl -s -X POST "http://localhost:6006/users:destroy?id=$ULID" \
     -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
 ```
 
-***Response (200 OK):***
+**Response (200 OK):**
 
 ```json
 {

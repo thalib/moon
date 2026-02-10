@@ -1,10 +1,10 @@
-**Check Health**
+### Check Health
 
 ```bash
 curl -s -X GET "http://localhost:6006/health" | jq .
 ```
 
-***Response (200 OK):***
+**Response (200 OK):**
 
 ```json
 {

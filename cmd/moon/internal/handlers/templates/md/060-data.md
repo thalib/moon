@@ -1,11 +1,11 @@
-**Get Schema**
+### Get Schema
 
 ```bash
 curl -s -X GET "http://localhost:6006/products:schema" \
     -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
 ```
 
-***Response (200 OK):***
+**Response (200 OK):**
 
 ```json
 {
@@ -46,7 +46,7 @@ curl -s -X GET "http://localhost:6006/products:schema" \
 }
 ```
 
-**Create a New Record**
+### Create a New Record
 
 ```bash
 curl -s -X POST "http://localhost:6006/products:create" \
@@ -65,30 +65,30 @@ curl -s -X POST "http://localhost:6006/products:create" \
     ' | jq .
 ```
 
-***Response (201 Created):***
+**Response (201 Created):**
 
 ```json
 {
   "data": {
     "brand": "Wow",
     "details": "Ergonomic wireless mouse",
-    "id": "01KH1KAYGDBFYCCZGJNA9914RK",
+    "id": "01KH2TQPMZS2VY5V0V25AKBGYS",
     "price": "29.99",
     "quantity": 10,
     "title": "Wireless Mouse"
   },
-  "message": "Record created successfully with id 01KH1KAYGDBFYCCZGJNA9914RK"
+  "message": "Record created successfully with id 01KH2TQPMZS2VY5V0V25AKBGYS"
 }
 ```
 
-**Get All Records**
+### Get All Records
 
 ```bash
 curl -s -X GET "http://localhost:6006/products:list" \
     -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
 ```
 
-***Response (200 OK):***
+**Response (200 OK):**
 
 ```json
 {
@@ -96,7 +96,7 @@ curl -s -X GET "http://localhost:6006/products:list" \
     {
       "brand": "Wow",
       "details": "Ergonomic wireless mouse",
-      "id": "01KH1KAYGDBFYCCZGJNA9914RK",
+      "id": "01KH2TQPMZS2VY5V0V25AKBGYS",
       "price": "29.99",
       "quantity": 10,
       "title": "Wireless Mouse"
@@ -108,21 +108,21 @@ curl -s -X GET "http://localhost:6006/products:list" \
 }
 ```
 
-**Get a Single Record**
+### Get a Single Record
 
 ```bash
 curl -s -X GET "http://localhost:6006/products:get?id=$ULID" \
     -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
 ```
 
-***Response (200 OK):***
+**Response (200 OK):**
 
 ```json
 {
   "data": {
     "brand": "Wow",
     "details": "Ergonomic wireless mouse",
-    "id": "01KH1KAYGDBFYCCZGJNA9914RK",
+    "id": "01KH2TQPMZS2VY5V0V25AKBGYS",
     "price": "29.99",
     "quantity": 10,
     "title": "Wireless Mouse"
@@ -130,7 +130,7 @@ curl -s -X GET "http://localhost:6006/products:get?id=$ULID" \
 }
 ```
 
-**Update an Existing Record**
+### Update an Existing Record
 
 ```bash
 curl -s -X POST "http://localhost:6006/products:update" \
@@ -146,19 +146,19 @@ curl -s -X POST "http://localhost:6006/products:update" \
     ' | jq .
 ```
 
-***Response (200 OK):***
+**Response (200 OK):**
 
 ```json
 {
   "data": {
-    "id": "01KH1KAYGDBFYCCZGJNA9914RK",
+    "id": "01KH2TQPMZS2VY5V0V25AKBGYS",
     "price": "6000.00"
   },
-  "message": "Record 01KH1KAYGDBFYCCZGJNA9914RK updated successfully"
+  "message": "Record 01KH2TQPMZS2VY5V0V25AKBGYS updated successfully"
 }
 ```
 
-**Delete a Record**
+### Delete a Record
 
 ```bash
 curl -s -X POST "http://localhost:6006/products:destroy" \
@@ -171,10 +171,10 @@ curl -s -X POST "http://localhost:6006/products:destroy" \
     ' | jq .
 ```
 
-***Response (200 OK):***
+**Response (200 OK):**
 
 ```json
 {
-  "message": "Record 01KH1KAYGDBFYCCZGJNA9914RK deleted successfully"
+  "message": "Record 01KH2TQPMZS2VY5V0V25AKBGYS deleted successfully"
 }
 ```
