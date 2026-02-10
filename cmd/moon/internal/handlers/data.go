@@ -2481,7 +2481,9 @@ func (h *DataHandler) validateBatchSize(size int) error {
 // validatePayloadSize checks if payload size is within configured limits (PRD-064)
 func (h *DataHandler) validatePayloadSize(r *http.Request) error {
 	maxSize := int64(h.config.Batch.MaxPayloadBytes)
-	if r.ContentLength > maxSize {
+	// ContentLength can be -1 if not provided by the client
+	// In that case, we'll let it through and rely on batch size limit
+	if r.ContentLength > 0 && r.ContentLength > maxSize {
 		return fmt.Errorf("payload size %d exceeds limit of %d bytes", r.ContentLength, maxSize)
 	}
 	return nil
