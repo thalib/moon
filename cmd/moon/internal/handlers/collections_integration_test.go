@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/thalib/moon/cmd/moon/internal/database"
 	"github.com/thalib/moon/cmd/moon/internal/registry"
+	ulidpkg "github.com/thalib/moon/cmd/moon/internal/ulid"
 )
 
 // createTestDBForCollections creates an in-memory SQLite database for collections testing
@@ -384,6 +386,98 @@ func TestCollectionsHandler_Update_RemoveColumn(t *testing.T) {
 	for _, col := range collection.Columns {
 		if col.Name == "description" {
 			t.Error("Expected 'description' column to be removed")
+		}
+	}
+}
+
+// TestCollectionsHandler_List_DetailedResponse tests List with detailed response including record counts (PRD-065)
+func TestCollectionsHandler_List_DetailedResponse(t *testing.T) {
+	driver := createTestDBForCollections(t)
+	defer driver.Close()
+
+	reg := registry.NewSchemaRegistry()
+	handler := NewCollectionsHandler(driver, reg)
+
+	// Create multiple collections
+	collectionsData := []struct {
+		name    string
+		records int // number of records to insert
+	}{
+		{"customers", 5},
+		{"products", 10},
+		{"orders", 3},
+	}
+
+	ctx := context.Background()
+	for _, cd := range collectionsData {
+		// Create collection
+		createBody := map[string]any{
+			"name": cd.name,
+			"columns": []map[string]any{
+				{"name": "data", "type": "string"},
+			},
+		}
+		body, _ := json.Marshal(createBody)
+		req := httptest.NewRequest(http.MethodPost, "/collections:create", bytes.NewReader(body))
+		w := httptest.NewRecorder()
+		handler.Create(w, req)
+
+		if w.Code != http.StatusCreated {
+			t.Fatalf("Failed to create collection %s: %s", cd.name, w.Body.String())
+		}
+
+		// Insert records
+		for i := 0; i < cd.records; i++ {
+			insertSQL := fmt.Sprintf("INSERT INTO %s (ulid, data) VALUES (?, ?)", cd.name)
+			if driver.Dialect() == database.DialectPostgres {
+				insertSQL = fmt.Sprintf("INSERT INTO %s (ulid, data) VALUES ($1, $2)", cd.name)
+			}
+			_, err := driver.Exec(ctx, insertSQL, ulidpkg.Generate(), fmt.Sprintf("record_%d", i))
+			if err != nil {
+				t.Fatalf("Failed to insert record into %s: %v", cd.name, err)
+			}
+		}
+	}
+
+	// Now list collections and verify counts
+	req := httptest.NewRequest(http.MethodGet, "/collections:list", nil)
+	w := httptest.NewRecorder()
+	handler.List(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected status %d, got %d. Body: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	var response ListResponse
+	if err := json.NewDecoder(w.Body).Decode(&response); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	// Verify count
+	if response.Count != 3 {
+		t.Errorf("Expected count 3, got %d", response.Count)
+	}
+
+	// Verify collections array
+	if len(response.Collections) != 3 {
+		t.Fatalf("Expected 3 collections, got %d", len(response.Collections))
+	}
+
+	// Verify each collection has correct name and record count
+	expectedCounts := map[string]int{
+		"customers": 5,
+		"products":  10,
+		"orders":    3,
+	}
+
+	for _, col := range response.Collections {
+		expectedCount, exists := expectedCounts[col.Name]
+		if !exists {
+			t.Errorf("Unexpected collection: %s", col.Name)
+			continue
+		}
+		if col.Records != expectedCount {
+			t.Errorf("Collection %s: expected %d records, got %d", col.Name, expectedCount, col.Records)
 		}
 	}
 }

@@ -70,6 +70,58 @@ func TestList_Empty(t *testing.T) {
 	}
 }
 
+// TestList_WithCollectionsAndRecords tests List with collections containing records (PRD-065)
+func TestList_WithCollectionsAndRecords(t *testing.T) {
+	handler, driver := setupTestHandler(t)
+	defer driver.Close()
+
+	// Create a collection
+	createReq := CreateRequest{
+		Name: "customers",
+		Columns: []registry.Column{
+			{Name: "name", Type: registry.TypeString, Nullable: false},
+		},
+	}
+	body, _ := json.Marshal(createReq)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/collections:create", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+	handler.Create(w, req)
+
+	// Now list collections
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/collections:list", nil)
+	w = httptest.NewRecorder()
+	handler.List(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected status code %d, got %d", http.StatusOK, w.Code)
+	}
+
+	var response ListResponse
+	if err := json.NewDecoder(w.Body).Decode(&response); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	// Verify response structure
+	if response.Count != 1 {
+		t.Errorf("Expected count 1, got %d", response.Count)
+	}
+
+	if len(response.Collections) != 1 {
+		t.Fatalf("Expected 1 collection, got %d", len(response.Collections))
+	}
+
+	// Verify collection item structure
+	collection := response.Collections[0]
+	if collection.Name != "customers" {
+		t.Errorf("Expected collection name 'customers', got '%s'", collection.Name)
+	}
+
+	// Records should be 0 as we haven't inserted any
+	if collection.Records != 0 {
+		t.Errorf("Expected 0 records, got %d", collection.Records)
+	}
+}
+
 func TestGet_NotFound(t *testing.T) {
 	handler, driver := setupTestHandler(t)
 	defer driver.Close()
