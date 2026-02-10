@@ -451,6 +451,30 @@ These endpoints manage the database tables and metadata.
 | `POST /collections:update`  | `POST` | Modify table columns (add/remove/rename).              |
 | `POST /collections:destroy` | `POST` | Drop the table and purge it from the cache.            |
 
+#### Collections List Response Format (PRD-065)
+
+The `GET /collections:list` endpoint returns detailed information about each collection, including record counts.
+
+**Response Format:**
+```json
+{
+  "collections": [
+    { "name": "customers", "records": 150 },
+    { "name": "products", "records": 42 },
+    { "name": "orders", "records": 328 }
+  ],
+  "count": 3
+}
+```
+
+**Fields:**
+- `collections` (array): Array of collection objects, each containing:
+  - `name` (string): The collection name
+  - `records` (integer): Total number of records in the collection. Returns `-1` if count cannot be retrieved.
+- `count` (integer): Total number of collections returned
+
+**Note:** This is a breaking change from the previous format which returned collection names as a simple string array. Clients must be updated to consume the new object-based format.
+
 ### B. Data Access (`/{collectionName}`)
 
 These endpoints manage the records within a specific collection.
