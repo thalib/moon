@@ -57,7 +57,7 @@ func setupDataIntegrationTest(t *testing.T) (database.Driver, *registry.SchemaRe
 	}
 	reg.Set(collection)
 
-	handler := NewDataHandler(driver, reg)
+	handler := NewDataHandler(driver, reg, testConfig())
 
 	return driver, reg, handler
 }
@@ -663,7 +663,7 @@ func TestDataHandler_List_TotalField(t *testing.T) {
 			t.Fatalf("Failed to create empty table: %v", err)
 		}
 
-		emptyHandler := NewDataHandler(driver, reg)
+		emptyHandler := NewDataHandler(driver, reg, testConfig())
 
 		req := httptest.NewRequest(http.MethodGet, "/empty_test:list", nil)
 		w := httptest.NewRecorder()

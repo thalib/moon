@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"bytes"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -9,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/thalib/moon/cmd/moon/internal/config"
 	"github.com/thalib/moon/cmd/moon/internal/constants"
 	"github.com/thalib/moon/cmd/moon/internal/database"
 	"github.com/thalib/moon/cmd/moon/internal/query"
@@ -21,13 +24,15 @@ import (
 type DataHandler struct {
 	db       database.Driver
 	registry *registry.SchemaRegistry
+	config   *config.AppConfig
 }
 
 // NewDataHandler creates a new data handler
-func NewDataHandler(db database.Driver, reg *registry.SchemaRegistry) *DataHandler {
+func NewDataHandler(db database.Driver, reg *registry.SchemaRegistry, cfg *config.AppConfig) *DataHandler {
 	return &DataHandler{
 		db:       db,
 		registry: reg,
+		config:   cfg,
 	}
 }
 
@@ -81,6 +86,72 @@ type DestroyDataRequest struct {
 
 // DestroyDataResponse represents response for destroy operation
 type DestroyDataResponse struct {
+	Message string `json:"message"`
+}
+
+// BatchCreateDataRequest represents request for batch create operation (PRD-064)
+type BatchCreateDataRequest struct {
+	Data json.RawMessage `json:"data"`
+}
+
+// BatchUpdateDataRequest represents request for batch update operation (PRD-064)
+type BatchUpdateDataRequest struct {
+	Data json.RawMessage `json:"data"`
+}
+
+// BatchDestroyDataRequest represents request for batch destroy operation (PRD-064)
+type BatchDestroyDataRequest struct {
+	Data json.RawMessage `json:"data"`
+}
+
+// BatchItemStatus represents the status of an individual item in a batch operation (PRD-064)
+type BatchItemStatus string
+
+const (
+	BatchItemCreated  BatchItemStatus = "created"
+	BatchItemUpdated  BatchItemStatus = "updated"
+	BatchItemDeleted  BatchItemStatus = "deleted"
+	BatchItemFailed   BatchItemStatus = "failed"
+	BatchItemNotFound BatchItemStatus = "not_found"
+)
+
+// BatchItemResult represents the result of processing a single item in a batch (PRD-064)
+type BatchItemResult struct {
+	Index        int             `json:"index"`
+	ID           string          `json:"id,omitempty"`
+	Status       BatchItemStatus `json:"status"`
+	Data         map[string]any  `json:"data,omitempty"`
+	ErrorCode    string          `json:"error_code,omitempty"`
+	ErrorMessage string          `json:"error_message,omitempty"`
+}
+
+// BatchSummary represents summary statistics for a batch operation (PRD-064)
+type BatchSummary struct {
+	Total     int `json:"total"`
+	Succeeded int `json:"succeeded"`
+	Failed    int `json:"failed"`
+}
+
+// BatchResponse represents response for batch operations in partial success mode (PRD-064)
+type BatchResponse struct {
+	Results []BatchItemResult `json:"results"`
+	Summary BatchSummary      `json:"summary"`
+}
+
+// BatchCreateResponse represents response for successful batch create operation (PRD-064)
+type BatchCreateResponse struct {
+	Data    []map[string]any `json:"data"`
+	Message string           `json:"message"`
+}
+
+// BatchUpdateResponse represents response for successful batch update operation (PRD-064)
+type BatchUpdateResponse struct {
+	Data    []map[string]any `json:"data"`
+	Message string           `json:"message"`
+}
+
+// BatchDestroyResponse represents response for successful batch destroy operation (PRD-064)
+type BatchDestroyResponse struct {
 	Message string `json:"message"`
 }
 
@@ -323,7 +394,7 @@ func (h *DataHandler) Get(w http.ResponseWriter, r *http.Request, collectionName
 	writeJSON(w, http.StatusOK, response)
 }
 
-// Create handles POST /{name}:create
+// Create handles POST /{name}:create - supports both single and batch modes (PRD-064)
 func (h *DataHandler) Create(w http.ResponseWriter, r *http.Request, collectionName string) {
 	// Validate collection exists in registry
 	collection, exists := h.registry.Get(collectionName)
@@ -332,15 +403,47 @@ func (h *DataHandler) Create(w http.ResponseWriter, r *http.Request, collectionN
 		return
 	}
 
-	// Parse request body
-	var req CreateDataRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	// Check payload size (PRD-064)
+	if err := h.validatePayloadSize(r); err != nil {
+		writeError(w, http.StatusRequestEntityTooLarge, err.Error())
+		return
+	}
+
+	// Parse request body with raw JSON to detect mode
+	var batchReq BatchCreateDataRequest
+	if err := json.NewDecoder(r.Body).Decode(&batchReq); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
+	// Detect batch vs single mode
+	isBatch, err := detectBatchMode(batchReq.Data)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if !isBatch {
+		// Single-object mode (backward compatible)
+		h.createSingle(w, r, collectionName, collection, batchReq.Data)
+		return
+	}
+
+	// Batch mode
+	atomic := parseAtomicFlag(r)
+	h.createBatch(w, r, collectionName, collection, batchReq.Data, atomic)
+}
+
+// createSingle handles single-object create (backward compatible)
+func (h *DataHandler) createSingle(w http.ResponseWriter, r *http.Request, collectionName string, collection *registry.Collection, rawData json.RawMessage) {
+	var data map[string]any
+	if err := json.Unmarshal(rawData, &data); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid data format")
+		return
+	}
+
 	// Validate fields against schema
-	if err := validateFields(req.Data, collection); err != nil {
+	if err := validateFields(data, collection); err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -362,7 +465,7 @@ func (h *DataHandler) Create(w http.ResponseWriter, r *http.Request, collectionN
 	i++
 
 	for _, col := range collection.Columns {
-		if val, ok := req.Data[col.Name]; ok {
+		if val, ok := data[col.Name]; ok {
 			columns = append(columns, col.Name)
 			if h.db.Dialect() == database.DialectPostgres {
 				placeholders = append(placeholders, fmt.Sprintf("$%d", i))
@@ -386,6 +489,11 @@ func (h *DataHandler) Create(w http.ResponseWriter, r *http.Request, collectionN
 	ctx := r.Context()
 	_, err := h.db.Exec(ctx, query, values...)
 	if err != nil {
+		// Check for unique constraint violations
+		if strings.Contains(err.Error(), "UNIQUE") || strings.Contains(err.Error(), "unique") {
+			writeError(w, http.StatusConflict, fmt.Sprintf("unique constraint violation: %v", err))
+			return
+		}
 		writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to insert data: %v", err))
 		return
 	}
@@ -393,7 +501,7 @@ func (h *DataHandler) Create(w http.ResponseWriter, r *http.Request, collectionN
 	// Add ULID to response data (API field name is "id" but value is ULID)
 	responseData := make(map[string]any)
 	responseData["id"] = ulid
-	for k, v := range req.Data {
+	for k, v := range data {
 		responseData[k] = v
 	}
 
@@ -405,6 +513,242 @@ func (h *DataHandler) Create(w http.ResponseWriter, r *http.Request, collectionN
 	writeJSON(w, http.StatusCreated, response)
 }
 
+// createBatch handles batch create operations (PRD-064)
+func (h *DataHandler) createBatch(w http.ResponseWriter, r *http.Request, collectionName string, collection *registry.Collection, rawData json.RawMessage, atomic bool) {
+	var items []map[string]any
+	if err := json.Unmarshal(rawData, &items); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid batch data format")
+		return
+	}
+
+	// Validate batch size
+	if err := h.validateBatchSize(len(items)); err != nil {
+		writeError(w, http.StatusRequestEntityTooLarge, err.Error())
+		return
+	}
+
+	if len(items) == 0 {
+		writeError(w, http.StatusBadRequest, "batch must contain at least one item")
+		return
+	}
+
+	ctx := r.Context()
+
+	if atomic {
+		// Atomic mode: all-or-nothing with transaction
+		h.createBatchAtomic(w, ctx, collectionName, collection, items)
+	} else {
+		// Best-effort mode: partial success
+		h.createBatchBestEffort(w, ctx, collectionName, collection, items)
+	}
+}
+
+// createBatchAtomic handles atomic batch create with transaction (PRD-064)
+func (h *DataHandler) createBatchAtomic(w http.ResponseWriter, ctx context.Context, collectionName string, collection *registry.Collection, items []map[string]any) {
+	// Validate all items first
+	for idx, item := range items {
+		if err := validateFields(item, collection); err != nil {
+			writeError(w, http.StatusBadRequest, fmt.Sprintf("validation error at index %d: %v", idx, err))
+			return
+		}
+	}
+
+	// Begin transaction
+	tx, err := h.db.BeginTx(ctx)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to begin transaction: %v", err))
+		return
+	}
+	defer tx.Rollback()
+
+	var createdRecords []map[string]any
+
+	// Insert each item
+	for _, item := range items {
+		ulid := generateULID()
+
+		// Build INSERT query
+		columns := []string{"ulid"}
+		placeholders := []string{}
+		values := []any{ulid}
+		i := 1
+
+		if h.db.Dialect() == database.DialectPostgres {
+			placeholders = append(placeholders, fmt.Sprintf("$%d", i))
+		} else {
+			placeholders = append(placeholders, "?")
+		}
+		i++
+
+		for _, col := range collection.Columns {
+			if val, ok := item[col.Name]; ok {
+				columns = append(columns, col.Name)
+				if h.db.Dialect() == database.DialectPostgres {
+					placeholders = append(placeholders, fmt.Sprintf("$%d", i))
+				} else {
+					placeholders = append(placeholders, "?")
+				}
+				values = append(values, val)
+				i++
+			} else if !col.Nullable && col.DefaultValue == nil && col.Name != "ulid" {
+				writeError(w, http.StatusBadRequest, fmt.Sprintf("required field '%s' is missing", col.Name))
+				return
+			}
+		}
+
+		query := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)",
+			collectionName,
+			strings.Join(columns, ", "),
+			strings.Join(placeholders, ", "))
+
+		// Execute insert within transaction
+		_, err := tx.ExecContext(ctx, query, values...)
+		if err != nil {
+			// Check for unique constraint violations
+			if strings.Contains(err.Error(), "UNIQUE") || strings.Contains(err.Error(), "unique") {
+				writeError(w, http.StatusConflict, fmt.Sprintf("unique constraint violation: %v", err))
+				return
+			}
+			writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to insert data: %v", err))
+			return
+		}
+
+		// Build response record
+		responseData := make(map[string]any)
+		responseData["id"] = ulid
+		for k, v := range item {
+			responseData[k] = v
+		}
+		createdRecords = append(createdRecords, responseData)
+	}
+
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to commit transaction: %v", err))
+		return
+	}
+
+	response := BatchCreateResponse{
+		Data:    createdRecords,
+		Message: fmt.Sprintf("%d records created successfully", len(createdRecords)),
+	}
+
+	writeJSON(w, http.StatusCreated, response)
+}
+
+// createBatchBestEffort handles best-effort batch create (PRD-064)
+func (h *DataHandler) createBatchBestEffort(w http.ResponseWriter, ctx context.Context, collectionName string, collection *registry.Collection, items []map[string]any) {
+	var results []BatchItemResult
+	succeeded := 0
+	failed := 0
+
+	// Process each item independently
+	for idx, item := range items {
+		// Validate item
+		if err := validateFields(item, collection); err != nil {
+			results = append(results, BatchItemResult{
+				Index:        idx,
+				Status:       BatchItemFailed,
+				ErrorCode:    "validation_error",
+				ErrorMessage: err.Error(),
+			})
+			failed++
+			continue
+		}
+
+		ulid := generateULID()
+
+		// Build INSERT query
+		columns := []string{"ulid"}
+		placeholders := []string{}
+		values := []any{ulid}
+		i := 1
+
+		if h.db.Dialect() == database.DialectPostgres {
+			placeholders = append(placeholders, fmt.Sprintf("$%d", i))
+		} else {
+			placeholders = append(placeholders, "?")
+		}
+		i++
+
+		requiredFieldMissing := false
+		for _, col := range collection.Columns {
+			if val, ok := item[col.Name]; ok {
+				columns = append(columns, col.Name)
+				if h.db.Dialect() == database.DialectPostgres {
+					placeholders = append(placeholders, fmt.Sprintf("$%d", i))
+				} else {
+					placeholders = append(placeholders, "?")
+				}
+				values = append(values, val)
+				i++
+			} else if !col.Nullable && col.DefaultValue == nil && col.Name != "ulid" {
+				results = append(results, BatchItemResult{
+					Index:        idx,
+					Status:       BatchItemFailed,
+					ErrorCode:    "validation_error",
+					ErrorMessage: fmt.Sprintf("required field '%s' is missing", col.Name),
+				})
+				failed++
+				requiredFieldMissing = true
+				break
+			}
+		}
+		if requiredFieldMissing {
+			continue
+		}
+
+		query := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)",
+			collectionName,
+			strings.Join(columns, ", "),
+			strings.Join(placeholders, ", "))
+
+		// Execute insert
+		_, err := h.db.Exec(ctx, query, values...)
+		if err != nil {
+			// Check for unique constraint violations
+			errorCode := "database_error"
+			if strings.Contains(err.Error(), "UNIQUE") || strings.Contains(err.Error(), "unique") {
+				errorCode = "duplicate"
+			}
+			results = append(results, BatchItemResult{
+				Index:        idx,
+				Status:       BatchItemFailed,
+				ErrorCode:    errorCode,
+				ErrorMessage: err.Error(),
+			})
+			failed++
+			continue
+		}
+
+		// Build response record
+		responseData := make(map[string]any)
+		responseData["id"] = ulid
+		for k, v := range item {
+			responseData[k] = v
+		}
+
+		results = append(results, BatchItemResult{
+			Index:  idx,
+			ID:     ulid,
+			Status: BatchItemCreated,
+			Data:   responseData,
+		})
+		succeeded++
+	}
+
+	response := BatchResponse{
+		Results: results,
+		Summary: BatchSummary{
+			Total:     len(items),
+			Succeeded: succeeded,
+			Failed:    failed,
+		},
+	}
+
+	writeJSON(w, http.StatusMultiStatus, response)
+}
+
 // Update handles POST /{name}:update
 func (h *DataHandler) Update(w http.ResponseWriter, r *http.Request, collectionName string) {
 	// Validate collection exists in registry
@@ -414,13 +758,67 @@ func (h *DataHandler) Update(w http.ResponseWriter, r *http.Request, collectionN
 		return
 	}
 
-	// Parse request body
-	var req UpdateDataRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	// Check payload size (PRD-064)
+	if err := h.validatePayloadSize(r); err != nil {
+		writeError(w, http.StatusRequestEntityTooLarge, err.Error())
+		return
+	}
+
+	// Read body into buffer for multiple parses
+	var buf bytes.Buffer
+	if _, err := buf.ReadFrom(r.Body); err != nil {
+		writeError(w, http.StatusBadRequest, "failed to read request body")
+		return
+	}
+	bodyBytes := buf.Bytes()
+
+	// Try to detect format: old format has "id" and "data" at root, new format has only "data" field
+	var rawReq map[string]json.RawMessage
+	if err := json.Unmarshal(bodyBytes, &rawReq); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
+	// Check if this is old format (has both "id" and "data" fields)
+	_, hasID := rawReq["id"]
+	dataField, hasData := rawReq["data"]
+
+	if hasID && hasData {
+		// Old format: {"id": "...", "data": {...}}
+		var req UpdateDataRequest
+		if err := json.Unmarshal(bodyBytes, &req); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid request body")
+			return
+		}
+		h.updateSingleLegacy(w, r, collectionName, collection, req)
+		return
+	}
+
+	if !hasData {
+		writeError(w, http.StatusBadRequest, "missing data field")
+		return
+	}
+
+	// New format: detect batch vs single mode
+	isBatch, err := detectBatchMode(dataField)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if !isBatch {
+		// Single-object mode (backward compatible)
+		h.updateSingle(w, r, collectionName, collection, dataField)
+		return
+	}
+
+	// Batch mode
+	atomic := parseAtomicFlag(r)
+	h.updateBatch(w, r, collectionName, collection, dataField, atomic)
+}
+
+// updateSingleLegacy handles single-object update in legacy format (backward compatible)
+func (h *DataHandler) updateSingleLegacy(w http.ResponseWriter, r *http.Request, collectionName string, collection *registry.Collection, req UpdateDataRequest) {
 	if req.ID == "" {
 		writeError(w, http.StatusBadRequest, "id is required")
 		return
@@ -479,6 +877,11 @@ func (h *DataHandler) Update(w http.ResponseWriter, r *http.Request, collectionN
 	ctx := r.Context()
 	result, err := h.db.Exec(ctx, query, values...)
 	if err != nil {
+		// Check for unique constraint violations
+		if strings.Contains(err.Error(), "UNIQUE") || strings.Contains(err.Error(), "unique") {
+			writeError(w, http.StatusConflict, fmt.Sprintf("unique constraint violation: %v", err))
+			return
+		}
 		writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to update data: %v", err))
 		return
 	}
@@ -510,6 +913,448 @@ func (h *DataHandler) Update(w http.ResponseWriter, r *http.Request, collectionN
 	writeJSON(w, http.StatusOK, response)
 }
 
+// updateSingle handles single-object update in new format (backward compatible)
+func (h *DataHandler) updateSingle(w http.ResponseWriter, r *http.Request, collectionName string, collection *registry.Collection, rawData json.RawMessage) {
+	var item map[string]any
+	if err := json.Unmarshal(rawData, &item); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid data format")
+		return
+	}
+
+	// Check for id field
+	idVal, hasID := item["id"]
+	if !hasID {
+		writeError(w, http.StatusBadRequest, "id is required")
+		return
+	}
+	id, ok := idVal.(string)
+	if !ok {
+		writeError(w, http.StatusBadRequest, "id must be a string")
+		return
+	}
+
+	// Validate ULID format
+	if err := validateULID(id); err != nil {
+		writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid id: %v", err))
+		return
+	}
+
+	// Validate fields against schema
+	if err := validateFields(item, collection); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	// Build UPDATE query
+	setClauses := []string{}
+	values := []any{}
+	i := 1
+
+	for _, col := range collection.Columns {
+		if val, ok := item[col.Name]; ok {
+			if h.db.Dialect() == database.DialectPostgres {
+				setClauses = append(setClauses, fmt.Sprintf("%s = $%d", col.Name, i))
+			} else {
+				setClauses = append(setClauses, fmt.Sprintf("%s = ?", col.Name))
+			}
+			values = append(values, val)
+			i++
+		}
+	}
+
+	if len(setClauses) == 0 {
+		writeError(w, http.StatusBadRequest, "no fields to update")
+		return
+	}
+
+	// Add ULID to values
+	values = append(values, id)
+
+	var query string
+	if h.db.Dialect() == database.DialectPostgres {
+		query = fmt.Sprintf("UPDATE %s SET %s WHERE ulid = $%d",
+			collectionName,
+			strings.Join(setClauses, ", "),
+			i)
+	} else {
+		query = fmt.Sprintf("UPDATE %s SET %s WHERE ulid = ?",
+			collectionName,
+			strings.Join(setClauses, ", "))
+	}
+
+	// Execute update
+	ctx := r.Context()
+	result, err := h.db.Exec(ctx, query, values...)
+	if err != nil {
+		// Check for unique constraint violations
+		if strings.Contains(err.Error(), "UNIQUE") || strings.Contains(err.Error(), "unique") {
+			writeError(w, http.StatusConflict, fmt.Sprintf("unique constraint violation: %v", err))
+			return
+		}
+		writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to update data: %v", err))
+		return
+	}
+
+	// Check if any rows were affected
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to get rows affected: %v", err))
+		return
+	}
+
+	if rowsAffected == 0 {
+		writeError(w, http.StatusNotFound, fmt.Sprintf("record with id %s not found", id))
+		return
+	}
+
+	// Add ULID to response data (API field name is "id" but value is ULID)
+	responseData := make(map[string]any)
+	responseData["id"] = id
+	for k, v := range item {
+		if k != "id" {
+			responseData[k] = v
+		}
+	}
+
+	response := UpdateDataResponse{
+		Data:    responseData,
+		Message: fmt.Sprintf("Record %s updated successfully", id),
+	}
+
+	writeJSON(w, http.StatusOK, response)
+}
+
+// updateBatch handles batch update operations (PRD-064)
+func (h *DataHandler) updateBatch(w http.ResponseWriter, r *http.Request, collectionName string, collection *registry.Collection, rawData json.RawMessage, atomic bool) {
+	var items []map[string]any
+	if err := json.Unmarshal(rawData, &items); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid batch data format")
+		return
+	}
+
+	// Validate batch size
+	if err := h.validateBatchSize(len(items)); err != nil {
+		writeError(w, http.StatusRequestEntityTooLarge, err.Error())
+		return
+	}
+
+	if len(items) == 0 {
+		writeError(w, http.StatusBadRequest, "batch must contain at least one item")
+		return
+	}
+
+	ctx := r.Context()
+
+	if atomic {
+		// Atomic mode: all-or-nothing with transaction
+		h.updateBatchAtomic(w, ctx, collectionName, collection, items)
+	} else {
+		// Best-effort mode: partial success
+		h.updateBatchBestEffort(w, ctx, collectionName, collection, items)
+	}
+}
+
+// updateBatchAtomic handles atomic batch update with transaction (PRD-064)
+func (h *DataHandler) updateBatchAtomic(w http.ResponseWriter, ctx context.Context, collectionName string, collection *registry.Collection, items []map[string]any) {
+	// Validate all items first
+	for idx, item := range items {
+		// Check for id field
+		idVal, hasID := item["id"]
+		if !hasID {
+			writeError(w, http.StatusBadRequest, fmt.Sprintf("validation error at index %d: id is required", idx))
+			return
+		}
+		id, ok := idVal.(string)
+		if !ok {
+			writeError(w, http.StatusBadRequest, fmt.Sprintf("validation error at index %d: id must be a string", idx))
+			return
+		}
+		// Validate ULID format
+		if err := validateULID(id); err != nil {
+			writeError(w, http.StatusBadRequest, fmt.Sprintf("validation error at index %d: invalid id: %v", idx, err))
+			return
+		}
+		if err := validateFields(item, collection); err != nil {
+			writeError(w, http.StatusBadRequest, fmt.Sprintf("validation error at index %d: %v", idx, err))
+			return
+		}
+	}
+
+	// Begin transaction
+	tx, err := h.db.BeginTx(ctx)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to begin transaction: %v", err))
+		return
+	}
+	defer tx.Rollback()
+
+	var updatedRecords []map[string]any
+
+	// Update each item
+	for _, item := range items {
+		id := item["id"].(string)
+
+		// Build UPDATE query
+		setClauses := []string{}
+		values := []any{}
+		i := 1
+
+		for _, col := range collection.Columns {
+			if val, ok := item[col.Name]; ok {
+				if h.db.Dialect() == database.DialectPostgres {
+					setClauses = append(setClauses, fmt.Sprintf("%s = $%d", col.Name, i))
+				} else {
+					setClauses = append(setClauses, fmt.Sprintf("%s = ?", col.Name))
+				}
+				values = append(values, val)
+				i++
+			}
+		}
+
+		if len(setClauses) == 0 {
+			writeError(w, http.StatusBadRequest, "no fields to update")
+			return
+		}
+
+		// Add ULID to values
+		values = append(values, id)
+
+		var query string
+		if h.db.Dialect() == database.DialectPostgres {
+			query = fmt.Sprintf("UPDATE %s SET %s WHERE ulid = $%d",
+				collectionName,
+				strings.Join(setClauses, ", "),
+				i)
+		} else {
+			query = fmt.Sprintf("UPDATE %s SET %s WHERE ulid = ?",
+				collectionName,
+				strings.Join(setClauses, ", "))
+		}
+
+		// Execute update within transaction
+		result, err := tx.ExecContext(ctx, query, values...)
+		if err != nil {
+			// Check for unique constraint violations
+			if strings.Contains(err.Error(), "UNIQUE") || strings.Contains(err.Error(), "unique") {
+				writeError(w, http.StatusConflict, fmt.Sprintf("unique constraint violation: %v", err))
+				return
+			}
+			writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to update data: %v", err))
+			return
+		}
+
+		// Check if any rows were affected
+		rowsAffected, err := result.RowsAffected()
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to get rows affected: %v", err))
+			return
+		}
+
+		if rowsAffected == 0 {
+			writeError(w, http.StatusNotFound, fmt.Sprintf("record with id %s not found", id))
+			return
+		}
+
+		// Build response record
+		responseData := make(map[string]any)
+		responseData["id"] = id
+		for k, v := range item {
+			if k != "id" {
+				responseData[k] = v
+			}
+		}
+		updatedRecords = append(updatedRecords, responseData)
+	}
+
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to commit transaction: %v", err))
+		return
+	}
+
+	response := BatchUpdateResponse{
+		Data:    updatedRecords,
+		Message: fmt.Sprintf("%d records updated successfully", len(updatedRecords)),
+	}
+
+	writeJSON(w, http.StatusOK, response)
+}
+
+// updateBatchBestEffort handles best-effort batch update (PRD-064)
+func (h *DataHandler) updateBatchBestEffort(w http.ResponseWriter, ctx context.Context, collectionName string, collection *registry.Collection, items []map[string]any) {
+	var results []BatchItemResult
+	succeeded := 0
+	failed := 0
+
+	// Process each item independently
+	for idx, item := range items {
+		// Check for id field
+		idVal, hasID := item["id"]
+		if !hasID {
+			results = append(results, BatchItemResult{
+				Index:        idx,
+				Status:       BatchItemFailed,
+				ErrorCode:    "validation_error",
+				ErrorMessage: "id is required",
+			})
+			failed++
+			continue
+		}
+		id, ok := idVal.(string)
+		if !ok {
+			results = append(results, BatchItemResult{
+				Index:        idx,
+				Status:       BatchItemFailed,
+				ErrorCode:    "validation_error",
+				ErrorMessage: "id must be a string",
+			})
+			failed++
+			continue
+		}
+		// Validate ULID format
+		if err := validateULID(id); err != nil {
+			results = append(results, BatchItemResult{
+				Index:        idx,
+				Status:       BatchItemFailed,
+				ErrorCode:    "validation_error",
+				ErrorMessage: fmt.Sprintf("invalid id: %v", err),
+			})
+			failed++
+			continue
+		}
+
+		// Validate item
+		if err := validateFields(item, collection); err != nil {
+			results = append(results, BatchItemResult{
+				Index:        idx,
+				ID:           id,
+				Status:       BatchItemFailed,
+				ErrorCode:    "validation_error",
+				ErrorMessage: err.Error(),
+			})
+			failed++
+			continue
+		}
+
+		// Build UPDATE query
+		setClauses := []string{}
+		values := []any{}
+		i := 1
+
+		for _, col := range collection.Columns {
+			if val, ok := item[col.Name]; ok {
+				if h.db.Dialect() == database.DialectPostgres {
+					setClauses = append(setClauses, fmt.Sprintf("%s = $%d", col.Name, i))
+				} else {
+					setClauses = append(setClauses, fmt.Sprintf("%s = ?", col.Name))
+				}
+				values = append(values, val)
+				i++
+			}
+		}
+
+		if len(setClauses) == 0 {
+			results = append(results, BatchItemResult{
+				Index:        idx,
+				ID:           id,
+				Status:       BatchItemFailed,
+				ErrorCode:    "validation_error",
+				ErrorMessage: "no fields to update",
+			})
+			failed++
+			continue
+		}
+
+		// Add ULID to values
+		values = append(values, id)
+
+		var query string
+		if h.db.Dialect() == database.DialectPostgres {
+			query = fmt.Sprintf("UPDATE %s SET %s WHERE ulid = $%d",
+				collectionName,
+				strings.Join(setClauses, ", "),
+				i)
+		} else {
+			query = fmt.Sprintf("UPDATE %s SET %s WHERE ulid = ?",
+				collectionName,
+				strings.Join(setClauses, ", "))
+		}
+
+		// Execute update
+		result, err := h.db.Exec(ctx, query, values...)
+		if err != nil {
+			// Check for unique constraint violations
+			errorCode := "database_error"
+			if strings.Contains(err.Error(), "UNIQUE") || strings.Contains(err.Error(), "unique") {
+				errorCode = "duplicate"
+			}
+			results = append(results, BatchItemResult{
+				Index:        idx,
+				ID:           id,
+				Status:       BatchItemFailed,
+				ErrorCode:    errorCode,
+				ErrorMessage: err.Error(),
+			})
+			failed++
+			continue
+		}
+
+		// Check if any rows were affected
+		rowsAffected, err := result.RowsAffected()
+		if err != nil {
+			results = append(results, BatchItemResult{
+				Index:        idx,
+				ID:           id,
+				Status:       BatchItemFailed,
+				ErrorCode:    "database_error",
+				ErrorMessage: fmt.Sprintf("failed to get rows affected: %v", err),
+			})
+			failed++
+			continue
+		}
+
+		if rowsAffected == 0 {
+			results = append(results, BatchItemResult{
+				Index:        idx,
+				ID:           id,
+				Status:       BatchItemNotFound,
+				ErrorCode:    "not_found",
+				ErrorMessage: fmt.Sprintf("record with id %s not found", id),
+			})
+			failed++
+			continue
+		}
+
+		// Build response record
+		responseData := make(map[string]any)
+		responseData["id"] = id
+		for k, v := range item {
+			if k != "id" {
+				responseData[k] = v
+			}
+		}
+
+		results = append(results, BatchItemResult{
+			Index:  idx,
+			ID:     id,
+			Status: BatchItemUpdated,
+			Data:   responseData,
+		})
+		succeeded++
+	}
+
+	response := BatchResponse{
+		Results: results,
+		Summary: BatchSummary{
+			Total:     len(items),
+			Succeeded: succeeded,
+			Failed:    failed,
+		},
+	}
+
+	writeJSON(w, http.StatusMultiStatus, response)
+}
+
 // Destroy handles POST /{name}:destroy
 func (h *DataHandler) Destroy(w http.ResponseWriter, r *http.Request, collectionName string) {
 	// Validate collection exists in registry
@@ -519,13 +1364,72 @@ func (h *DataHandler) Destroy(w http.ResponseWriter, r *http.Request, collection
 		return
 	}
 
-	// Parse request body
-	var req DestroyDataRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	// Check payload size (PRD-064)
+	if err := h.validatePayloadSize(r); err != nil {
+		writeError(w, http.StatusRequestEntityTooLarge, err.Error())
+		return
+	}
+
+	// Read body into buffer for multiple parses
+	var buf bytes.Buffer
+	if _, err := buf.ReadFrom(r.Body); err != nil {
+		writeError(w, http.StatusBadRequest, "failed to read request body")
+		return
+	}
+	bodyBytes := buf.Bytes()
+
+	// Try to detect format: old format has "id" at root, new format has "data" field
+	var rawReq map[string]json.RawMessage
+	if err := json.Unmarshal(bodyBytes, &rawReq); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
+	// Check if this is old format (has "id" field at root)
+	_, hasID := rawReq["id"]
+	dataField, hasData := rawReq["data"]
+
+	if hasID && !hasData {
+		// Old format: {"id": "..."}
+		var req DestroyDataRequest
+		if err := json.Unmarshal(bodyBytes, &req); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid request body")
+			return
+		}
+		h.destroySingleLegacy(w, r, collectionName, req)
+		return
+	}
+
+	if !hasData {
+		writeError(w, http.StatusBadRequest, "missing data field")
+		return
+	}
+
+	// New format: detect batch vs single mode (array of IDs)
+	isBatch, err := detectBatchMode(dataField)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if !isBatch {
+		// Single-object mode (backward compatible) - just a string ID
+		var id string
+		if err := json.Unmarshal(dataField, &id); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid data format")
+			return
+		}
+		h.destroySingle(w, r, collectionName, id)
+		return
+	}
+
+	// Batch mode
+	atomic := parseAtomicFlag(r)
+	h.destroyBatch(w, r, collectionName, dataField, atomic)
+}
+
+// destroySingleLegacy handles single-object destroy in legacy format (backward compatible)
+func (h *DataHandler) destroySingleLegacy(w http.ResponseWriter, r *http.Request, collectionName string, req DestroyDataRequest) {
 	if req.ID == "" {
 		writeError(w, http.StatusBadRequest, "id is required")
 		return
@@ -571,6 +1475,236 @@ func (h *DataHandler) Destroy(w http.ResponseWriter, r *http.Request, collection
 	}
 
 	writeJSON(w, http.StatusOK, response)
+}
+
+// destroySingle handles single-object destroy in new format (backward compatible)
+func (h *DataHandler) destroySingle(w http.ResponseWriter, r *http.Request, collectionName string, id string) {
+	if id == "" {
+		writeError(w, http.StatusBadRequest, "id is required")
+		return
+	}
+
+	// Validate ULID format
+	if err := validateULID(id); err != nil {
+		writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid id: %v", err))
+		return
+	}
+
+	// Build DELETE query using ULID
+	query := fmt.Sprintf("DELETE FROM %s WHERE ulid = ?", collectionName)
+	args := []any{id}
+
+	// Adjust placeholder style based on dialect
+	if h.db.Dialect() == database.DialectPostgres {
+		query = fmt.Sprintf("DELETE FROM %s WHERE ulid = $1", collectionName)
+	}
+
+	// Execute delete
+	ctx := r.Context()
+	result, err := h.db.Exec(ctx, query, args...)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to delete data: %v", err))
+		return
+	}
+
+	// Check if any rows were affected
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to get rows affected: %v", err))
+		return
+	}
+
+	if rowsAffected == 0 {
+		writeError(w, http.StatusNotFound, fmt.Sprintf("record with id %s not found", id))
+		return
+	}
+
+	response := DestroyDataResponse{
+		Message: fmt.Sprintf("Record %s deleted successfully", id),
+	}
+
+	writeJSON(w, http.StatusOK, response)
+}
+
+// destroyBatch handles batch destroy operations (PRD-064)
+func (h *DataHandler) destroyBatch(w http.ResponseWriter, r *http.Request, collectionName string, rawData json.RawMessage, atomic bool) {
+	var ids []string
+	if err := json.Unmarshal(rawData, &ids); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid batch data format")
+		return
+	}
+
+	// Validate batch size
+	if err := h.validateBatchSize(len(ids)); err != nil {
+		writeError(w, http.StatusRequestEntityTooLarge, err.Error())
+		return
+	}
+
+	if len(ids) == 0 {
+		writeError(w, http.StatusBadRequest, "batch must contain at least one id")
+		return
+	}
+
+	ctx := r.Context()
+
+	if atomic {
+		// Atomic mode: all-or-nothing with transaction
+		h.destroyBatchAtomic(w, ctx, collectionName, ids)
+	} else {
+		// Best-effort mode: partial success
+		h.destroyBatchBestEffort(w, ctx, collectionName, ids)
+	}
+}
+
+// destroyBatchAtomic handles atomic batch destroy with transaction (PRD-064)
+func (h *DataHandler) destroyBatchAtomic(w http.ResponseWriter, ctx context.Context, collectionName string, ids []string) {
+	// Validate all IDs first
+	for idx, id := range ids {
+		if err := validateULID(id); err != nil {
+			writeError(w, http.StatusBadRequest, fmt.Sprintf("validation error at index %d: invalid id: %v", idx, err))
+			return
+		}
+	}
+
+	// Begin transaction
+	tx, err := h.db.BeginTx(ctx)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to begin transaction: %v", err))
+		return
+	}
+	defer tx.Rollback()
+
+	// Delete each item
+	for _, id := range ids {
+		query := fmt.Sprintf("DELETE FROM %s WHERE ulid = ?", collectionName)
+		args := []any{id}
+
+		// Adjust placeholder style based on dialect
+		if h.db.Dialect() == database.DialectPostgres {
+			query = fmt.Sprintf("DELETE FROM %s WHERE ulid = $1", collectionName)
+		}
+
+		// Execute delete within transaction
+		result, err := tx.ExecContext(ctx, query, args...)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to delete data: %v", err))
+			return
+		}
+
+		// Check if any rows were affected
+		rowsAffected, err := result.RowsAffected()
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to get rows affected: %v", err))
+			return
+		}
+
+		if rowsAffected == 0 {
+			writeError(w, http.StatusNotFound, fmt.Sprintf("record with id %s not found", id))
+			return
+		}
+	}
+
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to commit transaction: %v", err))
+		return
+	}
+
+	response := BatchDestroyResponse{
+		Message: fmt.Sprintf("%d records deleted successfully", len(ids)),
+	}
+
+	writeJSON(w, http.StatusOK, response)
+}
+
+// destroyBatchBestEffort handles best-effort batch destroy (PRD-064)
+func (h *DataHandler) destroyBatchBestEffort(w http.ResponseWriter, ctx context.Context, collectionName string, ids []string) {
+	var results []BatchItemResult
+	succeeded := 0
+	failed := 0
+
+	// Process each item independently
+	for idx, id := range ids {
+		// Validate ULID format
+		if err := validateULID(id); err != nil {
+			results = append(results, BatchItemResult{
+				Index:        idx,
+				ID:           id,
+				Status:       BatchItemFailed,
+				ErrorCode:    "validation_error",
+				ErrorMessage: fmt.Sprintf("invalid id: %v", err),
+			})
+			failed++
+			continue
+		}
+
+		// Build DELETE query using ULID
+		query := fmt.Sprintf("DELETE FROM %s WHERE ulid = ?", collectionName)
+		args := []any{id}
+
+		// Adjust placeholder style based on dialect
+		if h.db.Dialect() == database.DialectPostgres {
+			query = fmt.Sprintf("DELETE FROM %s WHERE ulid = $1", collectionName)
+		}
+
+		// Execute delete
+		result, err := h.db.Exec(ctx, query, args...)
+		if err != nil {
+			results = append(results, BatchItemResult{
+				Index:        idx,
+				ID:           id,
+				Status:       BatchItemFailed,
+				ErrorCode:    "database_error",
+				ErrorMessage: err.Error(),
+			})
+			failed++
+			continue
+		}
+
+		// Check if any rows were affected
+		rowsAffected, err := result.RowsAffected()
+		if err != nil {
+			results = append(results, BatchItemResult{
+				Index:        idx,
+				ID:           id,
+				Status:       BatchItemFailed,
+				ErrorCode:    "database_error",
+				ErrorMessage: fmt.Sprintf("failed to get rows affected: %v", err),
+			})
+			failed++
+			continue
+		}
+
+		if rowsAffected == 0 {
+			results = append(results, BatchItemResult{
+				Index:        idx,
+				ID:           id,
+				Status:       BatchItemNotFound,
+				ErrorCode:    "not_found",
+				ErrorMessage: fmt.Sprintf("record with id %s not found", id),
+			})
+			failed++
+			continue
+		}
+
+		results = append(results, BatchItemResult{
+			Index:  idx,
+			ID:     id,
+			Status: BatchItemDeleted,
+		})
+		succeeded++
+	}
+
+	response := BatchResponse{
+		Results: results,
+		Summary: BatchSummary{
+			Total:     len(ids),
+			Succeeded: succeeded,
+			Failed:    failed,
+		},
+	}
+
+	writeJSON(w, http.StatusMultiStatus, response)
 }
 
 // SchemaResponse represents the response for the schema endpoint (PRD-054, PRD-061)
@@ -1301,4 +2435,56 @@ func generateULID() string {
 // validateULID validates a ULID string
 func validateULID(id string) error {
 	return moonulid.Validate(id)
+}
+
+// detectBatchMode detects whether the request is for single or batch operation (PRD-064)
+// Returns true if data is an array, false if it's a single object or string
+func detectBatchMode(rawData json.RawMessage) (bool, error) {
+	// Trim whitespace
+	trimmed := bytes.TrimSpace(rawData)
+	if len(trimmed) == 0 {
+		return false, fmt.Errorf("empty data field")
+	}
+
+	// Check first character to determine if it's an array
+	if trimmed[0] == '[' {
+		return true, nil
+	}
+	// Single object or string (for destroy with single ID)
+	if trimmed[0] == '{' || trimmed[0] == '"' {
+		return false, nil
+	}
+
+	return false, fmt.Errorf("invalid data format: expected object, string, or array")
+}
+
+// parseAtomicFlag parses the atomic query parameter (PRD-064)
+// Returns true (atomic mode) by default if not specified
+// Set atomic=false or atomic=0 to enable best-effort mode (partial success)
+func parseAtomicFlag(r *http.Request) bool {
+	atomicStr := r.URL.Query().Get("atomic")
+	if atomicStr == "" {
+		return true // Default to atomic mode
+	}
+	return atomicStr == "true" || atomicStr == "1"
+}
+
+// validateBatchSize checks if batch size is within configured limits (PRD-064)
+func (h *DataHandler) validateBatchSize(size int) error {
+	maxSize := h.config.Batch.MaxSize
+	if size > maxSize {
+		return fmt.Errorf("batch size %d exceeds limit of %d", size, maxSize)
+	}
+	return nil
+}
+
+// validatePayloadSize checks if payload size is within configured limits (PRD-064)
+func (h *DataHandler) validatePayloadSize(r *http.Request) error {
+	maxSize := int64(h.config.Batch.MaxPayloadBytes)
+	// ContentLength can be -1 if not provided by the client
+	// In that case, we'll let it through and rely on batch size limit
+	if r.ContentLength > 0 && r.ContentLength > maxSize {
+		return fmt.Errorf("payload size %d exceeds limit of %d bytes", r.ContentLength, maxSize)
+	}
+	return nil
 }

@@ -61,7 +61,7 @@ func TestSchemaEndpoint(t *testing.T) {
 		t.Fatalf("Failed to create table: %v", err)
 	}
 
-	handler := NewDataHandler(driver, reg)
+	handler := NewDataHandler(driver, reg, testConfig())
 
 	// Test 1: Get schema for existing collection
 	t.Run("get_schema_existing_collection", func(t *testing.T) {

@@ -105,7 +105,7 @@ func (s *Server) setupRoutes() {
 	collectionsHandler := handlers.NewCollectionsHandler(s.db, s.registry)
 
 	// Create data handler
-	dataHandler := handlers.NewDataHandler(s.db, s.registry)
+	dataHandler := handlers.NewDataHandler(s.db, s.registry, s.config)
 
 	// Create aggregation handler
 	aggregationHandler := handlers.NewAggregationHandler(s.db, s.registry)

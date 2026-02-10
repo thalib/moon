@@ -466,6 +466,246 @@ These endpoints manage the records within a specific collection.
 | `POST /{name}:update`  | `POST` | Update an existing record.                         |
 | `POST /{name}:destroy` | `POST` | Delete a record from the table.                    |
 
+#### Batch Operations (PRD-064)
+
+The `:create`, `:update`, and `:destroy` endpoints support both **single-object** and **batch** modes, allowing you to process multiple records in a single request. This feature reduces network overhead and improves throughput for bulk operations.
+
+**Overview:**
+
+- **Automatic Detection:** The server detects batch mode by inspecting the request body. If the body is a JSON array, batch processing is triggered. If it's a single JSON object, single-object mode is used.
+- **Atomic Mode (Default):** By default, batch operations are atomic. All operations succeed or all fail. If any record fails validation or processing, the entire batch is rejected with a `400 Bad Request` response.
+- **Best-Effort Mode:** Set `?atomic=false` to enable best-effort processing. Each record is processed independently. The server returns `HTTP 207 Multi-Status` with individual success/error details for each record.
+- **Size Limits:** Batches are subject to configurable limits to prevent resource exhaustion:
+  - **Max Batch Size:** Default 500 records per request (configurable via `api.batch.max_size`)
+  - **Max Payload Size:** Default 2MB (configurable via `api.batch.max_payload_bytes`)
+- **Backward Compatibility:** Single-object requests continue to work exactly as before. Batch mode is an additive feature.
+
+**Request Format:**
+
+Single-object mode (original behavior):
+```json
+{
+  "name": "Alice",
+  "email": "alice@example.com"
+}
+```
+
+Batch mode (array of objects):
+```json
+[
+  {"name": "Alice", "email": "alice@example.com"},
+  {"name": "Bob", "email": "bob@example.com"},
+  {"name": "Charlie", "email": "charlie@example.com"}
+]
+```
+
+**Query Parameters:**
+
+- `atomic` (boolean, default: `true`)
+  - `true`: All operations succeed or all fail (returns `200 OK` or `400 Bad Request`)
+  - `false`: Best-effort processing (returns `207 Multi-Status` with per-record results)
+
+**Response Codes:**
+
+- `200 OK`: Atomic mode - all records processed successfully
+- `207 Multi-Status`: Best-effort mode - partial success (some records succeeded, some failed)
+- `400 Bad Request`: Atomic mode - at least one record failed validation or processing
+- `413 Payload Too Large`: Batch size or payload size limit exceeded
+- `422 Unprocessable Entity`: Request body is not valid JSON or empty array
+
+**Examples:**
+
+**1. Batch Create (Atomic Mode - All Succeed):**
+
+```bash
+curl -X POST https://api.example.com/users:create \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '[
+    {"name": "Alice", "email": "alice@example.com"},
+    {"name": "Bob", "email": "bob@example.com"}
+  ]'
+```
+
+Response (HTTP 201 Created):
+```json
+{
+  "data": [
+    {
+      "id": "01ARZ3NDEKTSV4RRFFQ69G5FAA",
+      "name": "Alice",
+      "email": "alice@example.com",
+      "created_at": "2024-01-15T10:30:00Z",
+      "updated_at": "2024-01-15T10:30:00Z"
+    },
+    {
+      "id": "01ARZ3NDEKTSV4RRFFQ69G5FBB",
+      "name": "Bob",
+      "email": "bob@example.com",
+      "created_at": "2024-01-15T10:30:01Z",
+      "updated_at": "2024-01-15T10:30:01Z"
+    }
+  ],
+  "message": "2 records created successfully"
+}
+```
+
+**2. Batch Create (Best-Effort Mode - Partial Success):**
+
+```bash
+curl -X POST https://api.example.com/users:create?atomic=false \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '[
+    {"name": "Alice", "email": "alice@example.com"},
+    {"name": "X", "email": "invalid"},
+    {"name": "Bob", "email": "bob@example.com"}
+  ]'
+```
+
+Response (HTTP 207 Multi-Status):
+```json
+{
+  "results": [
+    {
+      "index": 0,
+      "status": "created",
+      "id": "01ARZ3NDEKTSV4RRFFQ69G5FAA",
+      "data": {
+        "id": "01ARZ3NDEKTSV4RRFFQ69G5FAA",
+        "name": "Alice",
+        "email": "alice@example.com",
+        "created_at": "2024-01-15T10:30:00Z",
+        "updated_at": "2024-01-15T10:30:00Z"
+      }
+    },
+    {
+      "index": 1,
+      "status": "failed",
+      "error_code": "validation_error",
+      "error_message": "validation failed: name must be at least 3 characters, email format invalid"
+    },
+    {
+      "index": 2,
+      "status": "created",
+      "id": "01ARZ3NDEKTSV4RRFFQ69G5FBB",
+      "data": {
+        "id": "01ARZ3NDEKTSV4RRFFQ69G5FBB",
+        "name": "Bob",
+        "email": "bob@example.com",
+        "created_at": "2024-01-15T10:30:01Z",
+        "updated_at": "2024-01-15T10:30:01Z"
+      }
+    }
+  ],
+  "summary": {
+    "total": 3,
+    "succeeded": 2,
+    "failed": 1
+  }
+}
+```
+
+**3. Batch Update (Atomic Mode):**
+
+```bash
+curl -X POST https://api.example.com/users:update \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '[
+    {"id": "01ARZ3NDEKTSV4RRFFQ69G5FAA", "name": "Alice Updated"},
+    {"id": "01ARZ3NDEKTSV4RRFFQ69G5FBB", "name": "Bob Updated"}
+  ]'
+```
+
+Response (HTTP 200 OK):
+```json
+{
+  "data": [
+    {
+      "id": "01ARZ3NDEKTSV4RRFFQ69G5FAA",
+      "name": "Alice Updated",
+      "email": "alice@example.com",
+      "created_at": "2024-01-15T10:30:00Z",
+      "updated_at": "2024-01-15T11:45:00Z"
+    },
+    {
+      "id": "01ARZ3NDEKTSV4RRFFQ69G5FBB",
+      "name": "Bob Updated",
+      "email": "bob@example.com",
+      "created_at": "2024-01-15T10:30:01Z",
+      "updated_at": "2024-01-15T11:45:01Z"
+    }
+  ],
+  "message": "2 records updated successfully"
+}
+```
+
+**4. Batch Destroy (Atomic Mode):**
+
+```bash
+curl -X POST https://api.example.com/users:destroy \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"data": ["01ARZ3NDEKTSV4RRFFQ69G5FAA", "01ARZ3NDEKTSV4RRFFQ69G5FBB"]}'
+```
+
+Response (HTTP 200 OK):
+```json
+{
+  "message": "2 records deleted successfully"
+}
+```
+
+**5. Batch Size Exceeded Error:**
+
+```bash
+curl -X POST https://api.example.com/users:create \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '[... 501 records ...]'
+```
+
+Response (HTTP 413 Payload Too Large):
+```json
+{
+  "error": "batch size exceeds maximum allowed (500)",
+  "details": "received 501 records, maximum is 500"
+}
+```
+
+**Backward Compatibility:**
+
+- **No Breaking Changes:** Existing single-object requests continue to work exactly as before.
+- **Array Detection:** The server automatically detects batch mode by checking if the request body is a JSON array.
+- **Single-Object Response:** Single-object requests return the original response format (a single object, not an array).
+- **Opt-In Batch Mode:** Clients must explicitly send an array to trigger batch processing.
+
+**Configuration Options:**
+
+Configure batch operation limits in your configuration file:
+
+```yaml
+api:
+  batch:
+    max_size: 500              # Maximum records per batch request
+    max_payload_bytes: 2097152 # Maximum payload size (2MB)
+```
+
+Or via environment variables:
+
+```bash
+MOON_API_BATCH_MAX_SIZE=500
+MOON_API_BATCH_MAX_PAYLOAD_BYTES=2097152
+```
+
+**Performance Considerations:**
+
+- Batch operations are processed in a single database transaction (atomic mode) or as individual transactions (best-effort mode).
+- For large batches, consider using pagination to stay within size and payload limits.
+- Monitor memory usage when processing large batches with complex objects.
+- Best-effort mode (`atomic=false`) may be slower due to per-record transaction overhead.
+
 #### Identifiers
 
 - Records use a ULID as the external identifier.
