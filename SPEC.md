@@ -497,11 +497,11 @@ The `:create`, `:update`, and `:destroy` endpoints support both **single-object*
 **Overview:**
 
 - **Automatic Detection:** The server detects batch mode by inspecting the request body. If the body is a JSON array, batch processing is triggered. If it's a single JSON object, single-object mode is used.
-- **Atomic Mode (Default):** By default, batch operations are atomic. All operations succeed or all fail. If any record fails validation or processing, the entire batch is rejected with a `400 Bad Request` response.
-- **Best-Effort Mode:** Set `?atomic=false` to enable best-effort processing. Each record is processed independently. The server returns `HTTP 207 Multi-Status` with individual success/error details for each record.
+- **Best-Effort Mode (Default):** Batch operations are best-effort by default (atomic=false), unless ?atomic=true is passed. Each record is processed independently, and the server returns `HTTP 207 Multi-Status` with individual success/error details for each record.
+- **Atomic Mode:** Set `?atomic=true` to enable atomic/transactional processing. All operations succeed or all fail. If any record fails validation or processing, the entire batch is rejected with a `400 Bad Request` response.
 - **Size Limits:** Batches are subject to configurable limits to prevent resource exhaustion:
-  - **Max Batch Size:** Default 500 records per request (configurable via `api.batch.max_size`)
-  - **Max Payload Size:** Default 2MB (configurable via `api.batch.max_payload_bytes`)
+  - **Max Batch Size:** Default 50 records per request (configurable via `batch.max_size`)
+  - **Max Payload Size:** Default 2MB (configurable via `batch.max_payload_bytes`)
 - **Backward Compatibility:** Single-object requests continue to work exactly as before. Batch mode is an additive feature.
 
 **Request Format:**
@@ -525,7 +525,7 @@ Batch mode (array of objects):
 
 **Query Parameters:**
 
-- `atomic` (boolean, default: `true`)
+- `atomic` (boolean, default: `false`)
   - `true`: All operations succeed or all fail (returns `200 OK` or `400 Bad Request`)
   - `false`: Best-effort processing (returns `207 Multi-Status` with per-record results)
 
@@ -574,10 +574,10 @@ Response (HTTP 201 Created):
 }
 ```
 
-**2. Batch Create (Best-Effort Mode - Partial Success):**
+**2. Batch Create (Best-Effort Mode - Default):**
 
 ```bash
-curl -X POST https://api.example.com/users:create?atomic=false \
+curl -X POST https://api.example.com/users:create \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '[
@@ -693,10 +693,12 @@ curl -X POST https://api.example.com/users:create \
 Response (HTTP 413 Payload Too Large):
 ```json
 {
-  "error": "batch size exceeds maximum allowed (500)",
-  "details": "received 501 records, maximum is 500"
+  "error": "batch size exceeds maximum allowed (50)",
+  "details": "received 51 records, maximum is 50"
 }
 ```
+
+**Note:** The actual batch size limit is configurable via `batch.max_size` in the configuration file. The default is 50 records.
 
 **Backward Compatibility:**
 
@@ -710,17 +712,9 @@ Response (HTTP 413 Payload Too Large):
 Configure batch operation limits in your configuration file:
 
 ```yaml
-api:
-  batch:
-    max_size: 500              # Maximum records per batch request
-    max_payload_bytes: 2097152 # Maximum payload size (2MB)
-```
-
-Or via environment variables:
-
-```bash
-MOON_API_BATCH_MAX_SIZE=500
-MOON_API_BATCH_MAX_PAYLOAD_BYTES=2097152
+batch:
+  max_size: 50               # Maximum records per batch request (default: 50)
+  max_payload_bytes: 2097152 # Maximum payload size in bytes (default: 2,097,152 for 2MB)
 ```
 
 **Performance Considerations:**
@@ -728,7 +722,8 @@ MOON_API_BATCH_MAX_PAYLOAD_BYTES=2097152
 - Batch operations are processed in a single database transaction (atomic mode) or as individual transactions (best-effort mode).
 - For large batches, consider using pagination to stay within size and payload limits.
 - Monitor memory usage when processing large batches with complex objects.
-- Best-effort mode (`atomic=false`) may be slower due to per-record transaction overhead.
+- Best-effort mode (default, `atomic=false`) may be slower due to per-record transaction overhead.
+- Atomic mode (`atomic=true`) offers better performance for successful batches but fails entirely on any error.
 
 #### Identifiers
 

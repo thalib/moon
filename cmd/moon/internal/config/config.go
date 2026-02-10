@@ -286,7 +286,7 @@ var Defaults = struct {
 		MaxSize         int
 		MaxPayloadBytes int
 	}{
-		MaxSize:         500,
+		MaxSize:         50,
 		MaxPayloadBytes: 2097152, // 2 MB
 	},
 	ConfigPath: "/etc/moon.conf",
@@ -463,6 +463,8 @@ func Load(configPath string) (*AppConfig, error) {
 	v.SetDefault("limits.max_columns_per_collection", Defaults.Limits.MaxColumnsPerCollection)
 	v.SetDefault("limits.max_filters_per_request", Defaults.Limits.MaxFiltersPerRequest)
 	v.SetDefault("limits.max_sort_fields_per_request", Defaults.Limits.MaxSortFieldsPerRequest)
+	v.SetDefault("batch.max_size", Defaults.Batch.MaxSize)
+	v.SetDefault("batch.max_payload_bytes", Defaults.Batch.MaxPayloadBytes)
 
 	// Configure Viper to read from YAML config file only
 	// Explicitly disable TOML support
@@ -577,6 +579,14 @@ func validate(cfg *AppConfig) error {
 	}
 	if cfg.Limits.MaxSortFieldsPerRequest <= 0 {
 		cfg.Limits.MaxSortFieldsPerRequest = Defaults.Limits.MaxSortFieldsPerRequest
+	}
+
+	// Validate batch configuration (apply defaults if missing or zero)
+	if cfg.Batch.MaxSize <= 0 {
+		cfg.Batch.MaxSize = Defaults.Batch.MaxSize
+	}
+	if cfg.Batch.MaxPayloadBytes <= 0 {
+		cfg.Batch.MaxPayloadBytes = Defaults.Batch.MaxPayloadBytes
 	}
 
 	// Validate CORS endpoint configuration (PRD-058)

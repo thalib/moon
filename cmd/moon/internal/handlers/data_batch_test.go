@@ -327,7 +327,7 @@ func TestParseAtomicFlag(t *testing.T) {
 		{
 			name:     "no atomic parameter",
 			queryStr: "",
-			want:     true, // Default is true
+			want:     false, // Default is false (best-effort)
 		},
 		{
 			name:     "atomic=true",

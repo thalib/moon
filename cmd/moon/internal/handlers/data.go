@@ -2459,12 +2459,12 @@ func detectBatchMode(rawData json.RawMessage) (bool, error) {
 }
 
 // parseAtomicFlag parses the atomic query parameter (PRD-064)
-// Returns true (atomic mode) by default if not specified
-// Set atomic=false or atomic=0 to enable best-effort mode (partial success)
+// Returns false (best-effort mode) by default if not specified
+// Set atomic=true or atomic=1 to enable atomic mode (all-or-nothing)
 func parseAtomicFlag(r *http.Request) bool {
 	atomicStr := r.URL.Query().Get("atomic")
 	if atomicStr == "" {
-		return true // Default to atomic mode
+		return false // Default to best-effort mode
 	}
 	return atomicStr == "true" || atomicStr == "1"
 }
