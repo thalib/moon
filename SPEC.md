@@ -527,12 +527,10 @@ curl -X POST https://api.example.com/users:create \
   ]'
 ```
 
-Response (HTTP 200 OK):
+Response (HTTP 201 Created):
 ```json
 {
-  "success": true,
-  "count": 2,
-  "results": [
+  "data": [
     {
       "id": "01ARZ3NDEKTSV4RRFFQ69G5FAA",
       "name": "Alice",
@@ -547,7 +545,8 @@ Response (HTTP 200 OK):
       "created_at": "2024-01-15T10:30:01Z",
       "updated_at": "2024-01-15T10:30:01Z"
     }
-  ]
+  ],
+  "message": "2 records created successfully"
 }
 ```
 
@@ -567,13 +566,11 @@ curl -X POST https://api.example.com/users:create?atomic=false \
 Response (HTTP 207 Multi-Status):
 ```json
 {
-  "success": false,
-  "count": 2,
-  "failed": 1,
   "results": [
     {
       "index": 0,
-      "status": 200,
+      "status": "created",
+      "id": "01ARZ3NDEKTSV4RRFFQ69G5FAA",
       "data": {
         "id": "01ARZ3NDEKTSV4RRFFQ69G5FAA",
         "name": "Alice",
@@ -584,12 +581,14 @@ Response (HTTP 207 Multi-Status):
     },
     {
       "index": 1,
-      "status": 400,
-      "error": "validation failed: name must be at least 3 characters, email format invalid"
+      "status": "failed",
+      "error_code": "validation_error",
+      "error_message": "validation failed: name must be at least 3 characters, email format invalid"
     },
     {
       "index": 2,
-      "status": 200,
+      "status": "created",
+      "id": "01ARZ3NDEKTSV4RRFFQ69G5FBB",
       "data": {
         "id": "01ARZ3NDEKTSV4RRFFQ69G5FBB",
         "name": "Bob",
@@ -598,7 +597,12 @@ Response (HTTP 207 Multi-Status):
         "updated_at": "2024-01-15T10:30:01Z"
       }
     }
-  ]
+  ],
+  "summary": {
+    "total": 3,
+    "succeeded": 2,
+    "failed": 1
+  }
 }
 ```
 
@@ -617,9 +621,7 @@ curl -X POST https://api.example.com/users:update \
 Response (HTTP 200 OK):
 ```json
 {
-  "success": true,
-  "count": 2,
-  "results": [
+  "data": [
     {
       "id": "01ARZ3NDEKTSV4RRFFQ69G5FAA",
       "name": "Alice Updated",
@@ -634,7 +636,8 @@ Response (HTTP 200 OK):
       "created_at": "2024-01-15T10:30:01Z",
       "updated_at": "2024-01-15T11:45:01Z"
     }
-  ]
+  ],
+  "message": "2 records updated successfully"
 }
 ```
 
@@ -644,17 +647,12 @@ Response (HTTP 200 OK):
 curl -X POST https://api.example.com/users:destroy \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '[
-    {"id": "01ARZ3NDEKTSV4RRFFQ69G5FAA"},
-    {"id": "01ARZ3NDEKTSV4RRFFQ69G5FBB"}
-  ]'
+  -d '{"data": ["01ARZ3NDEKTSV4RRFFQ69G5FAA", "01ARZ3NDEKTSV4RRFFQ69G5FBB"]}'
 ```
 
 Response (HTTP 200 OK):
 ```json
 {
-  "success": true,
-  "count": 2,
   "message": "2 records deleted successfully"
 }
 ```
