@@ -26,6 +26,66 @@ func testConfig() *config.AppConfig {
 	}
 }
 
+// mockTx is a mock implementation of sql.Tx for testing
+type mockTx struct {
+	execFunc   func(ctx context.Context, query string, args ...any) (sql.Result, error)
+	commitFunc func() error
+}
+
+func (m *mockTx) Commit() error {
+	if m.commitFunc != nil {
+		return m.commitFunc()
+	}
+	return nil
+}
+
+func (m *mockTx) Rollback() error {
+	return nil
+}
+
+func (m *mockTx) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
+	if m.execFunc != nil {
+		return m.execFunc(ctx, query, args...)
+	}
+	return mockResult{rowsAffected: 1}, nil
+}
+
+func (m *mockTx) PrepareContext(ctx context.Context, query string) (*sql.Stmt, error) {
+	return nil, nil
+}
+
+func (m *mockTx) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
+	return nil, nil
+}
+
+func (m *mockTx) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
+	return nil
+}
+
+func (m *mockTx) Prepare(query string) (*sql.Stmt, error) {
+	return nil, nil
+}
+
+func (m *mockTx) Exec(query string, args ...any) (sql.Result, error) {
+	return m.ExecContext(context.Background(), query, args...)
+}
+
+func (m *mockTx) Query(query string, args ...any) (*sql.Rows, error) {
+	return m.QueryContext(context.Background(), query, args...)
+}
+
+func (m *mockTx) QueryRow(query string, args ...any) *sql.Row {
+	return m.QueryRowContext(context.Background(), query, args...)
+}
+
+func (m *mockTx) Stmt(stmt *sql.Stmt) *sql.Stmt {
+	return nil
+}
+
+func (m *mockTx) StmtContext(ctx context.Context, stmt *sql.Stmt) *sql.Stmt {
+	return nil
+}
+
 // mockDriver is a mock implementation of database.Driver for testing
 type mockDataDriver struct {
 	dialect      database.DialectType
@@ -33,13 +93,20 @@ type mockDataDriver struct {
 	queryFunc    func(ctx context.Context, query string, args ...any) (*sql.Rows, error)
 	queryRowFunc func(ctx context.Context, query string, args ...any) *sql.Row
 	pingFunc     func(ctx context.Context) error
+	beginTxFunc  func(ctx context.Context) (*sql.Tx, error)
 }
 
-func (m *mockDataDriver) Connect(ctx context.Context) error            { return nil }
-func (m *mockDataDriver) Close() error                                 { return nil }
-func (m *mockDataDriver) Dialect() database.DialectType                { return m.dialect }
-func (m *mockDataDriver) DB() *sql.DB                                  { return nil }
-func (m *mockDataDriver) BeginTx(ctx context.Context) (*sql.Tx, error) { return nil, nil }
+func (m *mockDataDriver) Connect(ctx context.Context) error     { return nil }
+func (m *mockDataDriver) Close() error                          { return nil }
+func (m *mockDataDriver) Dialect() database.DialectType         { return m.dialect }
+func (m *mockDataDriver) DB() *sql.DB                           { return nil }
+func (m *mockDataDriver) BeginTx(ctx context.Context) (*sql.Tx, error) {
+	if m.beginTxFunc != nil {
+		return m.beginTxFunc(ctx)
+	}
+	// Return a mock transaction by default - transactions not supported in basic mock
+	return nil, fmt.Errorf("transaction not supported in this mock")
+}
 func (m *mockDataDriver) Ping(ctx context.Context) error {
 	if m.pingFunc != nil {
 		return m.pingFunc(ctx)
