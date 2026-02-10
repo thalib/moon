@@ -13,7 +13,7 @@
   - `collections`: array of collection objects (not strings)
   - Each collection object contains:
     - `name`: string representing the collection name
-    - `fields`: array of field definitions with name, type, and nullable properties
+    - `columns`: array of column definitions with name, type, nullable, unique, and default_value properties
   - `count`: integer representing total number of collections
 - Maintain backward compatibility: existing clients without the query parameter continue to receive the simple response.
 - Update `SPEC.md` to document the `detailed` query parameter and response structure.
@@ -36,16 +36,14 @@
     "collections": [
       {
         "name": "products",
-        "fields": [
-          {"name": "id", "type": "string", "nullable": false},
+        "columns": [
           {"name": "name", "type": "string", "nullable": false},
           {"name": "price", "type": "decimal", "nullable": false}
         ]
       },
       {
         "name": "customers",
-        "fields": [
-          {"name": "id", "type": "string", "nullable": false},
+        "columns": [
           {"name": "name", "type": "string", "nullable": false},
           {"name": "email", "type": "string", "nullable": false}
         ]
