@@ -97,7 +97,7 @@ These endpoints manage database tables (collections) and their schemas.
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `{{.Prefix}}/collections:list` | GET | List all collections |
+| `{{.Prefix}}/collections:list` | GET | List all collections. Use `?detailed=true` to include full schemas. |
 | `{{.Prefix}}/collections:get` | GET | Get collection schema (requires `?name=...`) |
 | `{{.Prefix}}/collections:create` | POST | Create a new collection |
 | `{{.Prefix}}/collections:update` | POST | Update collection schema |

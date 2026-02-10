@@ -77,6 +77,48 @@ curl -s -X GET "http://localhost:6006/collections:list" \
 }
 ```
 
+### Collections List (Detailed Mode)
+
+Use `?detailed=true` to retrieve full collection schemas in a single request.
+
+```bash
+curl -s -X GET "http://localhost:6006/collections:list?detailed=true" \
+    -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
+```
+
+**Response (200 OK):**
+
+```json
+{
+  "collections": [
+    {
+      "name": "products",
+      "columns": [
+        {
+          "name": "title",
+          "type": "string",
+          "nullable": false,
+          "unique": false
+        },
+        {
+          "name": "price",
+          "type": "integer",
+          "nullable": false,
+          "unique": false
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "nullable": true,
+          "unique": false
+        }
+      ]
+    }
+  ],
+  "count": 1
+}
+```
+
 ### Collections Get
 
 ```bash
