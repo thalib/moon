@@ -15,12 +15,12 @@ curl -s -X POST "http://localhost:6006/auth:login" \
 
 ```json
 {
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMDFLSDM4RTRYNTlTMTM5OUMwQUtaMjdROUsiLCJ1c2VybmFtZSI6Im5ld3VzZXIiLCJyb2xlIjoidXNlciIsImNhbl93cml0ZSI6dHJ1ZSwic3ViIjoiMDFLSDM4RTRYNTlTMTM5OUMwQUtaMjdROUsiLCJleHAiOjE3NzA3MTMzODQsIm5iZiI6MTc3MDcwOTc1NCwiaWF0IjoxNzcwNzA5Nzg0fQ.8eXAnaZg-TSXtloL4u8rRi_zrjRb26DDAetPkuZnZ58",
-  "refresh_token": "9y-gvagGTyf0DmBQSTgigor8_oTp_F8shtpv7A48gWg=",
-  "expires_at": "2026-02-10T08:49:44.915026874Z",
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMDFLSDU4VjJQVjZaQU0zMTlGQlBUMUJGVjYiLCJ1c2VybmFtZSI6Im5ld3VzZXIiLCJyb2xlIjoidXNlciIsImNhbl93cml0ZSI6dHJ1ZSwic3ViIjoiMDFLSDU4VjJQVjZaQU0zMTlGQlBUMUJGVjYiLCJleHAiOjE3NzA3ODA5MTgsIm5iZiI6MTc3MDc3NzI4OCwiaWF0IjoxNzcwNzc3MzE4fQ.92VaCZHog_u0GIae-5uJ7CUTcpozrwoz5DcvufH_WFo",
+  "refresh_token": "4DxBuYxZxC79zZnbuF2yHY74RuFtnHaUW6v2ozSgwUs=",
+  "expires_at": "2026-02-11T03:35:18.155242475Z",
   "token_type": "Bearer",
   "user": {
-    "id": "01KH38E4X59S1399C0AKZ27Q9K",
+    "id": "01KH58V2PV6ZAM319FBPT1BFV6",
     "username": "newuser",
     "email": "newuser@example.com",
     "role": "user",
@@ -41,7 +41,7 @@ curl -s -X GET "http://localhost:6006/auth:me" \
 ```json
 {
   "user": {
-    "id": "01KH38E4X59S1399C0AKZ27Q9K",
+    "id": "01KH58V2PV6ZAM319FBPT1BFV6",
     "username": "newuser",
     "email": "newuser@example.com",
     "role": "user",
@@ -69,7 +69,7 @@ curl -s -X POST "http://localhost:6006/auth:me" \
 {
   "message": "user updated successfully",
   "user": {
-    "id": "01KH38E4X59S1399C0AKZ27Q9K",
+    "id": "01KH58V2PV6ZAM319FBPT1BFV6",
     "username": "newuser",
     "email": "newemail@example.com",
     "role": "user",
@@ -98,7 +98,7 @@ curl -s -X POST "http://localhost:6006/auth:me" \
 {
   "message": "password updated successfully, please login again",
   "user": {
-    "id": "01KH38E4X59S1399C0AKZ27Q9K",
+    "id": "01KH58V2PV6ZAM319FBPT1BFV6",
     "username": "newuser",
     "email": "newemail@example.com",
     "role": "user",
@@ -123,12 +123,12 @@ curl -s -X POST "http://localhost:6006/auth:refresh" \
 
 ```json
 {
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMDFLSDM4RTRYNTlTMTM5OUMwQUtaMjdROUsiLCJ1c2VybmFtZSI6Im5ld3VzZXIiLCJyb2xlIjoidXNlciIsImNhbl93cml0ZSI6dHJ1ZSwic3ViIjoiMDFLSDM4RTRYNTlTMTM5OUMwQUtaMjdROUsiLCJleHAiOjE3NzA3MTMzODcsIm5iZiI6MTc3MDcwOTc1NywiaWF0IjoxNzcwNzA5Nzg3fQ.1Kseh4GbdWMXdMo2C9AkwgqVCWHmA59z_C0vhouRYg8",
-  "refresh_token": "5468_9rObtkXOzHKFH4UqdvGaAKychif_YzZbc0ZQMc=",
-  "expires_at": "2026-02-10T08:49:47.563571789Z",
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMDFLSDU4VjJQVjZaQU0zMTlGQlBUMUJGVjYiLCJ1c2VybmFtZSI6Im5ld3VzZXIiLCJyb2xlIjoidXNlciIsImNhbl93cml0ZSI6dHJ1ZSwic3ViIjoiMDFLSDU4VjJQVjZaQU0zMTlGQlBUMUJGVjYiLCJleHAiOjE3NzA3ODA5MjEsIm5iZiI6MTc3MDc3NzI5MSwiaWF0IjoxNzcwNzc3MzIxfQ.BcrvgqQy7bCFjBbvV7t0F7DblQGYkq12xRP2fvpdis8",
+  "refresh_token": "W8ktmOw6jFywWBh_rE1FlfONk-Xi0sOy7eVJwRQwy8s=",
+  "expires_at": "2026-02-11T03:35:21.186642708Z",
   "token_type": "Bearer",
   "user": {
-    "id": "01KH38E4X59S1399C0AKZ27Q9K",
+    "id": "01KH58V2PV6ZAM319FBPT1BFV6",
     "username": "newuser",
     "email": "newemail@example.com",
     "role": "user",

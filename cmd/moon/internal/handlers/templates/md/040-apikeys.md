@@ -21,14 +21,14 @@ curl -s -X POST "http://localhost:6006/apikeys:create" \
   "message": "API key created successfully",
   "warning": "Store this key securely. It will not be shown again.",
   "apikey": {
-    "id": "01KH3995D3CT3XCJ41D1R7N4GE",
+    "id": "01KH58VDTRJ89NV9Y1JZW0Y42R",
     "name": "Integration Service",
     "description": "Key for integration",
     "role": "user",
     "can_write": false,
-    "created_at": "2026-02-10T08:04:28Z"
+    "created_at": "2026-02-11T02:35:27Z"
   },
-  "key": "moon_live_J54o8EWIHYO34XcjAfKbwZc3tOFcDM2Qyi034fO3q1LdQP61e58bElM3KZM0hrQ6"
+  "key": "moon_live_dH2a8m09kSE5NBYnJdVKaNsk95WF1ocRaybsEzpvHcdLe3FyaMaaw6hO5vAdFRtS"
 }
 ```
 
@@ -45,20 +45,20 @@ curl -s -X GET "http://localhost:6006/apikeys:list" \
 {
   "apikeys": [
     {
-      "id": "01KH3995D3CT3XCJ41D1R7N4GE",
-      "name": "Integration Service",
-      "description": "Key for integration",
-      "role": "user",
-      "can_write": false,
-      "created_at": "2026-02-10T08:04:28Z"
-    },
-    {
       "id": "01KH3995WN726N9TA3Y2Q7G2B6",
       "name": "Another Service",
       "description": "Another key for testing",
       "role": "user",
       "can_write": false,
       "created_at": "2026-02-10T08:04:29Z"
+    },
+    {
+      "id": "01KH58VDTRJ89NV9Y1JZW0Y42R",
+      "name": "Integration Service",
+      "description": "Key for integration",
+      "role": "user",
+      "can_write": false,
+      "created_at": "2026-02-11T02:35:27Z"
     }
   ],
   "next_cursor": null,
@@ -69,7 +69,7 @@ curl -s -X GET "http://localhost:6006/apikeys:list" \
 ### Get API Key
 
 ```bash
-curl -s -X GET "http://localhost:6006/apikeys:get?id=$ULID" \
+curl -s -X GET "http://localhost:6006/apikeys:get?id=01KH3995WN726N9TA3Y2Q7G2B6" \
     -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
 ```
 
@@ -78,12 +78,12 @@ curl -s -X GET "http://localhost:6006/apikeys:get?id=$ULID" \
 ```json
 {
   "apikey": {
-    "id": "01KH3995D3CT3XCJ41D1R7N4GE",
-    "name": "Integration Service",
-    "description": "Key for integration",
+    "id": "01KH3995WN726N9TA3Y2Q7G2B6",
+    "name": "Another Service",
+    "description": "Another key for testing",
     "role": "user",
     "can_write": false,
-    "created_at": "2026-02-10T08:04:28Z"
+    "created_at": "2026-02-10T08:04:29Z"
   }
 }
 ```
@@ -93,7 +93,7 @@ curl -s -X GET "http://localhost:6006/apikeys:get?id=$ULID" \
 ***Note:*** Update metadata fields (name, description, can_write) without changing the API key itself. The key remains valid. To generate a new key, use the rotation action.
 
 ```bash
-curl -s -X POST "http://localhost:6006/apikeys:update?id=$ULID" \
+curl -s -X POST "http://localhost:6006/apikeys:update?id=01KH3995WN726N9TA3Y2Q7G2B6" \
     -H "Authorization: Bearer $ACCESS_TOKEN" \
     -H "Content-Type: application/json" \
     -d '
@@ -111,12 +111,12 @@ curl -s -X POST "http://localhost:6006/apikeys:update?id=$ULID" \
 {
   "message": "API key updated successfully",
   "apikey": {
-    "id": "01KH3995D3CT3XCJ41D1R7N4GE",
+    "id": "01KH3995WN726N9TA3Y2Q7G2B6",
     "name": "Updated Service Name",
     "description": "Updated description",
     "role": "user",
     "can_write": true,
-    "created_at": "2026-02-10T08:04:28Z"
+    "created_at": "2026-02-10T08:04:29Z"
   }
 }
 ```
@@ -126,7 +126,7 @@ curl -s -X POST "http://localhost:6006/apikeys:update?id=$ULID" \
 Use `rotate` to securely generate a new API key and invalidate the old one in a single step, minimizing overlap between valid keys.
 
 ```bash
-curl -s -X POST "http://localhost:6006/apikeys:update?id=$ULID" \
+curl -s -X POST "http://localhost:6006/apikeys:update?id=01KH3995WN726N9TA3Y2Q7G2B6" \
     -H "Authorization: Bearer $ACCESS_TOKEN" \
     -H "Content-Type: application/json" \
     -d '
@@ -143,21 +143,21 @@ curl -s -X POST "http://localhost:6006/apikeys:update?id=$ULID" \
   "message": "API key rotated successfully",
   "warning": "Store this key securely. It will not be shown again.",
   "apikey": {
-    "id": "01KH3995D3CT3XCJ41D1R7N4GE",
+    "id": "01KH3995WN726N9TA3Y2Q7G2B6",
     "name": "Updated Service Name",
     "description": "Updated description",
     "role": "user",
     "can_write": true,
-    "created_at": "2026-02-10T08:04:28Z"
+    "created_at": "2026-02-10T08:04:29Z"
   },
-  "key": "moon_live_OrWBxb74gSAF2ceng20wxsOYKkgVvk6tagQTcJAbZFkcdcYbRr7pOpHX4e4TltGf"
+  "key": "moon_live_WLrQmG5bKUwT1Li4zratN1iZp26GK64m6gtU0Dcp17Pv5WeH6J9VE2AQEkWbpalb"
 }
 ```
 
 ### Delete API Key
 
 ```bash
-curl -s -X POST "http://localhost:6006/apikeys:destroy?id=$ULID" \
+curl -s -X POST "http://localhost:6006/apikeys:destroy?id=01KH3995WN726N9TA3Y2Q7G2B6" \
     -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
 ```
 

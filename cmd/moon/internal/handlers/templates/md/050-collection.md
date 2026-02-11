@@ -71,7 +71,10 @@ curl -s -X GET "http://localhost:6006/collections:list" \
 ```json
 {
   "collections": [
-    "products"
+    {
+      "name": "products",
+      "records": 0
+    }
   ],
   "count": 1
 }
