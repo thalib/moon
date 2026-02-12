@@ -1130,65 +1130,97 @@ func TestGenerateModifyColumnDDL(t *testing.T) {
 	}
 }
 
-// TestUpdate_PreventDefaultValueChange tests that default values cannot be changed after creation
-func TestUpdate_PreventDefaultValueChange(t *testing.T) {
+// TestCreate_RejectDefaultField tests that default field is rejected in create requests
+func TestCreate_RejectDefaultField(t *testing.T) {
 	handler, driver := setupTestHandler(t)
 	defer driver.Close()
 
-	// Create a collection with a default value for nullable fields
-	createReq := CreateRequest{
-		Name: "test_defaults",
-		Columns: []registry.Column{
-			{Name: "status", Type: registry.TypeString, Nullable: true, DefaultValue: stringPtr("pending")},
-			{Name: "count", Type: registry.TypeInteger, Nullable: true, DefaultValue: stringPtr("0")},
+	tests := []struct {
+		name    string
+		payload string
+		errMsg  string
+	}{
+		{
+			name: "reject default field",
+			payload: `{
+				"name": "test_reject_default",
+				"columns": [
+					{
+						"name": "status",
+						"type": "string",
+						"nullable": true,
+						"default": "pending"
+					}
+				]
+			}`,
+			errMsg: "unknown field 'default'",
+		},
+		{
+			name: "reject default_value field",
+			payload: `{
+				"name": "test_reject_default_value",
+				"columns": [
+					{
+						"name": "count",
+						"type": "integer",
+						"nullable": true,
+						"default_value": "0"
+					}
+				]
+			}`,
+			errMsg: "unknown field 'default_value'",
+		},
+		{
+			name: "reject default in second column",
+			payload: `{
+				"name": "test_reject_default2",
+				"columns": [
+					{
+						"name": "name",
+						"type": "string",
+						"nullable": false
+					},
+					{
+						"name": "status",
+						"type": "string",
+						"nullable": true,
+						"default": "active"
+					}
+				]
+			}`,
+			errMsg: "unknown field 'default'",
 		},
 	}
-	createBody, _ := json.Marshal(createReq)
-	createHTTPReq := httptest.NewRequest(http.MethodPost, "/collections:create", bytes.NewReader(createBody))
-	createW := httptest.NewRecorder()
-	handler.Create(createW, createHTTPReq)
 
-	if createW.Code != http.StatusCreated {
-		t.Fatalf("Failed to create collection: %s", createW.Body.String())
-	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/collections:create", strings.NewReader(tt.payload))
+			w := httptest.NewRecorder()
+			handler.Create(w, req)
 
-	// Attempt to change the default value
-	updateReq := UpdateRequest{
-		Name: "test_defaults",
-		ModifyColumns: []ModifyColumn{
-			{
-				Name:         "status",
-				Type:         registry.TypeString,
-				DefaultValue: stringPtr("active"), // Trying to change from "pending" to "active"
-			},
-		},
-	}
-	updateBody, _ := json.Marshal(updateReq)
-	updateHTTPReq := httptest.NewRequest(http.MethodPost, "/collections:update", bytes.NewReader(updateBody))
-	updateW := httptest.NewRecorder()
-	handler.Update(updateW, updateHTTPReq)
+			if w.Code != http.StatusBadRequest {
+				t.Errorf("Expected status %d, got %d", http.StatusBadRequest, w.Code)
+			}
 
-	// Should fail with 400 Bad Request
-	if updateW.Code != http.StatusBadRequest {
-		t.Errorf("Expected status %d for changing default value, got %d", http.StatusBadRequest, updateW.Code)
-	}
-
-	// Verify error message mentions immutability
-	if !strings.Contains(updateW.Body.String(), "immutable") {
-		t.Errorf("Error message should mention immutability, got: %s", updateW.Body.String())
+			body := w.Body.String()
+			if !strings.Contains(body, tt.errMsg) {
+				t.Errorf("Expected error message to contain '%s', got: %s", tt.errMsg, body)
+			}
+		})
 	}
 }
 
-// TestUpdate_SameDefaultValueAllowed tests that providing the same default value is allowed
-func TestUpdate_SameDefaultValueAllowed(t *testing.T) {
+// TestUpdate_RejectDefaultField tests that default field is rejected in update requests
+func TestUpdate_RejectDefaultField(t *testing.T) {
 	handler, driver := setupTestHandler(t)
 	defer driver.Close()
 
-	// Create a collection with a default value for nullable field
+	// First create a collection
 	createReq := CreateRequest{
-		Name: "test_defaults2",
+		Name: "test_update_reject",
 		Columns: []registry.Column{
-			{Name: "priority", Type: registry.TypeInteger, Nullable: true, DefaultValue: stringPtr("5")},
+			{Name: "name", Type: registry.TypeString, Nullable: false},
+			{Name: "status", Type: registry.TypeString, Nullable: true},
 		},
 	}
 	createBody, _ := json.Marshal(createReq)
@@ -1200,24 +1232,115 @@ func TestUpdate_SameDefaultValueAllowed(t *testing.T) {
 		t.Fatalf("Failed to create collection: %s", createW.Body.String())
 	}
 
-	// Modify column with the SAME default value (should be allowed)
-	updateReq := UpdateRequest{
-		Name: "test_defaults2",
-		ModifyColumns: []ModifyColumn{
-			{
-				Name:         "priority",
-				Type:         registry.TypeInteger,
-				DefaultValue: stringPtr("5"), // Same value
-			},
+	tests := []struct {
+		name    string
+		payload string
+		errMsg  string
+	}{
+		{
+			name: "reject default in add_columns",
+			payload: `{
+				"name": "test_update_reject",
+				"add_columns": [
+					{
+						"name": "priority",
+						"type": "integer",
+						"nullable": true,
+						"default": "5"
+					}
+				]
+			}`,
+			errMsg: "unknown field 'default'",
+		},
+		{
+			name: "reject default_value in add_columns",
+			payload: `{
+				"name": "test_update_reject",
+				"add_columns": [
+					{
+						"name": "count",
+						"type": "integer",
+						"nullable": true,
+						"default_value": "0"
+					}
+				]
+			}`,
+			errMsg: "unknown field 'default_value'",
+		},
+		{
+			name: "reject default in modify_columns",
+			payload: `{
+				"name": "test_update_reject",
+				"modify_columns": [
+					{
+						"name": "status",
+						"type": "string",
+						"default": "active"
+					}
+				]
+			}`,
+			errMsg: "unknown field 'default'",
+		},
+		{
+			name: "reject default_value in modify_columns",
+			payload: `{
+				"name": "test_update_reject",
+				"modify_columns": [
+					{
+						"name": "status",
+						"type": "string",
+						"default_value": "pending"
+					}
+				]
+			}`,
+			errMsg: "unknown field 'default_value'",
 		},
 	}
-	updateBody, _ := json.Marshal(updateReq)
-	updateHTTPReq := httptest.NewRequest(http.MethodPost, "/collections:update", bytes.NewReader(updateBody))
-	updateW := httptest.NewRecorder()
-	handler.Update(updateW, updateHTTPReq)
 
-	// Should succeed (200 OK)
-	if updateW.Code != http.StatusOK {
-		t.Errorf("Expected status %d for same default value, got %d: %s", http.StatusOK, updateW.Code, updateW.Body.String())
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/collections:update", strings.NewReader(tt.payload))
+			w := httptest.NewRecorder()
+			handler.Update(w, req)
+
+			if w.Code != http.StatusBadRequest {
+				t.Errorf("Expected status %d, got %d", http.StatusBadRequest, w.Code)
+			}
+
+			body := w.Body.String()
+			if !strings.Contains(body, tt.errMsg) {
+				t.Errorf("Expected error message to contain '%s', got: %s", tt.errMsg, body)
+			}
+		})
+	}
+}
+
+// TestCreate_AllowWithoutDefault tests that collections can be created without default fields
+func TestCreate_AllowWithoutDefault(t *testing.T) {
+	handler, driver := setupTestHandler(t)
+	defer driver.Close()
+
+	payload := `{
+		"name": "test_no_default",
+		"columns": [
+			{
+				"name": "name",
+				"type": "string",
+				"nullable": false
+			},
+			{
+				"name": "status",
+				"type": "string",
+				"nullable": true
+			}
+		]
+	}`
+
+	req := httptest.NewRequest(http.MethodPost, "/collections:create", strings.NewReader(payload))
+	w := httptest.NewRecorder()
+	handler.Create(w, req)
+
+	if w.Code != http.StatusCreated {
+		t.Errorf("Expected status %d, got %d: %s", http.StatusCreated, w.Code, w.Body.String())
 	}
 }

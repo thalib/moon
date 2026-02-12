@@ -4,9 +4,11 @@
 package handlers
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"regexp"
@@ -127,6 +129,105 @@ type DestroyResponse struct {
 	Message string `json:"message"`
 }
 
+// decodeCreateRequest decodes a CreateRequest and validates that no default fields are present
+func decodeCreateRequest(body io.Reader, req *CreateRequest) error {
+	// Read body into buffer so we can parse it twice
+	bodyBytes, err := io.ReadAll(body)
+	if err != nil {
+		return fmt.Errorf("invalid request body")
+	}
+
+	// First, validate for forbidden default fields
+	if err := validateNoDefaultFields(bodyBytes); err != nil {
+		return err
+	}
+
+	// Decode into the target struct
+	decoder := json.NewDecoder(bytes.NewReader(bodyBytes))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(req); err != nil {
+		return fmt.Errorf("invalid request body")
+	}
+
+	return nil
+}
+
+// decodeUpdateRequest decodes an UpdateRequest and validates that no default fields are present
+func decodeUpdateRequest(body io.Reader, req *UpdateRequest) error {
+	// Read body into buffer so we can parse it twice
+	bodyBytes, err := io.ReadAll(body)
+	if err != nil {
+		return fmt.Errorf("invalid request body")
+	}
+
+	// First, validate for forbidden default fields
+	if err := validateNoDefaultFields(bodyBytes); err != nil {
+		return err
+	}
+
+	// Decode into the target struct
+	decoder := json.NewDecoder(bytes.NewReader(bodyBytes))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(req); err != nil {
+		return fmt.Errorf("invalid request body")
+	}
+
+	return nil
+}
+
+// validateNoDefaultFields checks if any default or default_value fields are present in the JSON
+func validateNoDefaultFields(data []byte) error {
+	// Parse as generic JSON to check for forbidden fields
+	var raw map[string]any
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return fmt.Errorf("invalid request body")
+	}
+
+	// Check columns array if present
+	if columns, ok := raw["columns"].([]any); ok {
+		for i, col := range columns {
+			if colMap, ok := col.(map[string]any); ok {
+				if _, hasDefault := colMap["default"]; hasDefault {
+					return fmt.Errorf("unknown field 'default' in columns[%d]", i)
+				}
+				if _, hasDefaultValue := colMap["default_value"]; hasDefaultValue {
+					return fmt.Errorf("unknown field 'default_value' in columns[%d]", i)
+				}
+			}
+		}
+	}
+
+	// Check add_columns array if present (for update requests)
+	if addColumns, ok := raw["add_columns"].([]any); ok {
+		for i, col := range addColumns {
+			if colMap, ok := col.(map[string]any); ok {
+				if _, hasDefault := colMap["default"]; hasDefault {
+					return fmt.Errorf("unknown field 'default' in add_columns[%d]", i)
+				}
+				if _, hasDefaultValue := colMap["default_value"]; hasDefaultValue {
+					return fmt.Errorf("unknown field 'default_value' in add_columns[%d]", i)
+				}
+			}
+		}
+	}
+
+	// Check modify_columns array if present (for update requests)
+	if modifyColumns, ok := raw["modify_columns"].([]any); ok {
+		for i, col := range modifyColumns {
+			if colMap, ok := col.(map[string]any); ok {
+				if _, hasDefault := colMap["default"]; hasDefault {
+					return fmt.Errorf("unknown field 'default' in modify_columns[%d]", i)
+				}
+				if _, hasDefaultValue := colMap["default_value"]; hasDefaultValue {
+					return fmt.Errorf("unknown field 'default_value' in modify_columns[%d]", i)
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
 // List handles GET /collections:list
 func (h *CollectionsHandler) List(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -220,8 +321,8 @@ func (h *CollectionsHandler) Get(w http.ResponseWriter, r *http.Request) {
 // Create handles POST /collections:create
 func (h *CollectionsHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var req CreateRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+	if err := decodeCreateRequest(r.Body, &req); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -319,8 +420,8 @@ func (h *CollectionsHandler) Create(w http.ResponseWriter, r *http.Request) {
 // Update handles POST /collections:update
 func (h *CollectionsHandler) Update(w http.ResponseWriter, r *http.Request) {
 	var req UpdateRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+	if err := decodeUpdateRequest(r.Body, &req); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 

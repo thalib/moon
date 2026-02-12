@@ -45,19 +45,19 @@ func TestDefaultValues_Integration(t *testing.T) {
 		},
 	})
 
-	// 1. Create collection with various default values for nullable fields
+	// 1. Create collection with type default values for nullable fields (no custom defaults)
 	createReq := CreateRequest{
 		Name: "test_products",
 		Columns: []registry.Column{
-			{Name: "name", Type: registry.TypeString, Nullable: false},                                     // required, no default
-			{Name: "status", Type: registry.TypeString, Nullable: true, DefaultValue: stringPtr("pending")}, // nullable with custom default
-			{Name: "price", Type: registry.TypeInteger, Nullable: false},                                   // required, no default
-			{Name: "stock", Type: registry.TypeInteger, Nullable: true, DefaultValue: stringPtr("10")},     // nullable with custom default
-			{Name: "discount", Type: registry.TypeDecimal, Nullable: true},                                 // nullable with type default "0.00"
-			{Name: "featured", Type: registry.TypeBoolean, Nullable: true},                                 // nullable with type default false
-			{Name: "verified", Type: registry.TypeBoolean, Nullable: true, DefaultValue: stringPtr("true")}, // nullable with custom default
-			{Name: "metadata", Type: registry.TypeJSON, Nullable: true},                                    // nullable with type default "{}"
-			{Name: "notes", Type: registry.TypeString, Nullable: true},                                     // nullable with type default ""
+			{Name: "name", Type: registry.TypeString, Nullable: false},     // required, no default
+			{Name: "status", Type: registry.TypeString, Nullable: true},    // nullable with type default ""
+			{Name: "price", Type: registry.TypeInteger, Nullable: false},   // required, no default
+			{Name: "stock", Type: registry.TypeInteger, Nullable: true},    // nullable with type default 0
+			{Name: "discount", Type: registry.TypeDecimal, Nullable: true}, // nullable with type default "0.00"
+			{Name: "featured", Type: registry.TypeBoolean, Nullable: true}, // nullable with type default false
+			{Name: "verified", Type: registry.TypeBoolean, Nullable: true}, // nullable with type default false
+			{Name: "metadata", Type: registry.TypeJSON, Nullable: true},    // nullable with type default "{}"
+			{Name: "notes", Type: registry.TypeString, Nullable: true},     // nullable with type default ""
 		},
 	}
 	createBody, _ := json.Marshal(createReq)
@@ -121,18 +121,18 @@ func TestDefaultValues_Integration(t *testing.T) {
 
 	record := listResp.Data[0]
 
-	// Verify database defaults were applied
+	// Verify database defaults were applied (all type defaults now)
 	tests := []struct {
 		field    string
 		expected any
 	}{
 		{"name", "Test Product"}, // provided
-		{"status", "pending"},    // custom default
+		{"status", ""},           // type default (empty string)
 		{"price", float64(99)},   // provided
-		{"stock", float64(10)},   // custom default
+		{"stock", float64(0)},    // type default
 		{"discount", "0.00"},     // type default
 		{"featured", false},      // type default (stored as 0 in SQLite)
-		{"verified", true},       // custom default
+		{"verified", false},      // type default
 		{"metadata", "{}"},       // type default
 		{"notes", ""},            // type default (empty string)
 	}
@@ -215,12 +215,12 @@ func TestDefaultValues_BatchCreate(t *testing.T) {
 		},
 	})
 
-	// Create collection with nullable field that has a default
+	// Create collection with nullable field that has type default (0)
 	createReq := CreateRequest{
 		Name: "batch_test",
 		Columns: []registry.Column{
 			{Name: "title", Type: registry.TypeString, Nullable: false},
-			{Name: "count", Type: registry.TypeInteger, Nullable: true, DefaultValue: stringPtr("0")},
+			{Name: "count", Type: registry.TypeInteger, Nullable: true}, // type default is 0
 		},
 	}
 	createBody, _ := json.Marshal(createReq)

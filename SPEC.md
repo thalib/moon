@@ -88,18 +88,20 @@ The `nullable` property controls API request validation and default value applic
 - Field **MUST** be present in every API request with a valid value
 - Omitting the field or setting it to `null` results in a validation error
 - **No automatic default values** are applied at the application level
-- Database-level defaults can be set using the `default` property during collection creation
+- Non-nullable fields cannot have default values
 
 **`nullable: true` (Optional Fields):**
 - Field **MAY** be omitted from API requests
-- When omitted, the database column default is used (set during table creation)
+- When omitted, the database column default is used (automatically set by Moon backend during table creation)
 - Can explicitly be set to `null` in requests (stored as NULL in database)
 
 ### Collection Creation Defaults
 
-When creating a collection with `/collections:create`, you can specify the `default` property to set database column defaults. These defaults are applied by the database when a field is omitted from an INSERT statement.
+**Important:** Default values for columns are managed internally by the Moon backend and **cannot be set or modified via API requests** to `/collections:create` or `/collections:update`. Any request containing `default` or `default_value` fields will be rejected with a 400 Bad Request error.
 
-**Default Values by Type** (applied during collection creation if not explicitly specified):
+When collections are created, Moon automatically applies type-based default values for nullable fields at the database level.
+
+**Default Values by Type** (automatically applied during collection creation for nullable fields):
 
 | Type | Default Value | Notes |
 |------|--------------|-------|
@@ -110,47 +112,89 @@ When creating a collection with `/collections:create`, you can specify the `defa
 | `datetime` | `null` | Applied for nullable fields |
 | `json` | `"{}"` (empty object) | Applied only if field is nullable |
 
-**Important:** Defaults are only set for nullable fields during collection creation. Non-nullable fields have NO default and must always be provided in API requests.
+**Important:** Defaults are automatically set for nullable fields during collection creation by the Moon backend. Non-nullable fields have NO default and must always be provided in API requests.
 
-### Field-Specific Default Values
+### API Restrictions on Default Values
 
-To override the type default for a nullable field, specify the `default` property in the collection schema:
+**Default values cannot be set or modified via API endpoints:**
 
-**JSON Schema Example:**
+- The `/collections:create` endpoint does NOT accept `default` or `default_value` fields in column definitions
+- The `/collections:update` endpoint does NOT accept `default` or `default_value` fields in `add_columns` or `modify_columns` operations
+- Any request containing these fields will be rejected with a 400 Bad Request error
+
+**Example of rejected request:**
 
 ```json
+// ❌ REJECTED - This request will fail with 400 Bad Request
+POST /collections:create
 {
-  "name": "priority",
-  "type": "integer",
-  "nullable": true,
-  "default": "5"
+  "name": "tasks",
+  "columns": [
+    {
+      "name": "priority",
+      "type": "integer",
+      "nullable": true,
+      "default": "5"  // ❌ Not allowed - will trigger validation error
+    }
+  ]
 }
 ```
 
-**SQL Behavior:**
+**Error Response:**
 
-When a field-specific default is set for a nullable field, Moon generates SQL `DEFAULT` constraints:
-
-```sql
-CREATE TABLE tasks (
-  priority INTEGER DEFAULT 5
-);
+```json
+{
+  "code": 400,
+  "error": "unknown field 'default' in column 0"
+}
 ```
 
-**Type-Specific Default Format:**
+**Correct usage:**
 
-- **`string`**: Any string value (e.g., `"default": "pending"`)
-- **`integer`**: Numeric string (e.g., `"default": "0"` or `"default": "-1"`)
-- **`decimal`**: Decimal string (e.g., `"default": "0.00"` or `"default": "99.99"`)
-- **`boolean`**: `"true"` or `"false"` (lowercase strings)
-- **`datetime`**: RFC3339 format (e.g., `"default": "2026-02-12T00:00:00Z"`) or `"null"`
-- **`json`**: Valid JSON string (e.g., `"default": "{}"` or `"default": "[]"`)
+```json
+// ✓ ACCEPTED - Default values are applied automatically by the backend
+POST /collections:create
+{
+  "name": "tasks",
+  "columns": [
+    {
+      "name": "priority",
+      "type": "integer",
+      "nullable": true
+      // Type default (0) will be applied automatically
+    }
+  ]
+}
+```
 
-**Important Constraints:**
+### Reading Default Values from Schema
 
-1. Default values **must match the field's data type** (e.g., `"default": "0"` for integer, not `"default": 0`)
-2. Default values are **immutable after collection creation** - attempting to change a default value will result in an error to prevent data inconsistency
-3. Default values can **only be set for nullable fields** (`nullable: true`)
+While default values cannot be set via API, they **are visible in schema responses**. Use `/collections:get` to inspect the default values that the backend has configured for a collection:
+
+```json
+GET /collections:get?name=tasks
+
+Response:
+{
+  "collection": {
+    "name": "tasks",
+    "columns": [
+      {
+        "name": "priority",
+        "type": "integer",
+        "nullable": true,
+        "default_value": "0"  // ✓ Visible in schema responses
+      }
+    ]
+  }
+}
+```
+
+### Field-Specific Default Values
+
+~~To override the type default for a nullable field, specify the `default` property in the collection schema:~~
+
+**DEPRECATED:** Custom default values can no longer be set via API endpoints. All nullable fields automatically receive type-based defaults as shown in the table above.
 
 ### nullable vs. default
 
@@ -158,26 +202,26 @@ CREATE TABLE tasks (
   - `nullable: false` → field **MUST** be provided in every API request (validation error if omitted)
   - `nullable: true` → field **MAY** be omitted from API requests (uses database default if omitted)
 
-- **`default` (Schema/Database):** Specifies the database column default value for nullable fields
-  - Set at the schema level during collection creation
+- **`default_value` (Schema/Database - Read-Only):** The database column default value for nullable fields
+  - Automatically set by the backend for nullable fields
   - Enforced by the database layer (not application logic)
-  - Can only be specified for nullable fields
-  - Cannot be changed after collection creation
+  - Only applies to nullable fields
+  - **Cannot be set or modified via API** - managed internally by Moon
+  - Visible in schema responses from `/collections:get`
 
 **Behavior Matrix:**
 
-| nullable | default | field omitted | field = null | Result |
-|----------|---------|---------------|--------------|---------|
+| nullable | default_value | field omitted | field = null | Result |
+|----------|---------------|---------------|--------------|---------|
 | `false` | N/A* | ✗ | ✗ | **Validation error** - field is required |
-| `true` | not set | ✓ | ✓ | Type default applied (if omitted), NULL (if explicit) |
-| `true` | set | ✓ | ✓ | Custom default applied (if omitted), NULL (if explicit) |
+| `true` | (type default) | ✓ | ✓ | Type default applied (if omitted), NULL (if explicit) |
 
-*Note: N/A means defaults cannot be specified for non-nullable fields during collection creation. These fields must always be provided in API requests.
+*Note: Default values are automatically applied by the backend for nullable fields. Non-nullable fields must always be provided in API requests.
 
 **Examples:**
 
 ```json
-// Example 1: Required field (no default possible)
+// Example 1: Required field (no default)
 {
   "name": "title",
   "type": "string",
@@ -185,30 +229,20 @@ CREATE TABLE tasks (
   // Must be provided in every API request - no default
 }
 
-// Example 2: Optional field with type default
+// Example 2: Optional field with automatic type default
 {
   "name": "description",
   "type": "string",
   "nullable": true
-  // No default specified → uses type default ("") when omitted
+  // Type default ("") automatically applied by backend when omitted
 }
 
-// Example 3: Optional field with custom default
+// Example 3: Optional integer field with automatic type default
 {
   "name": "priority",
   "type": "integer",
-  "nullable": true,
-  "default": "5"
-  // Custom default (5) applied when omitted, NULL if explicitly set to null
-}
-
-// Example 4: Optional field with null default
-{
-  "name": "notes",
-  "type": "string",
-  "nullable": true,
-  "default": "null"
-  // Explicitly set to NULL when omitted
+  "nullable": true
+  // Type default (0) automatically applied by backend when omitted
 }
 ```
 
@@ -1081,6 +1115,8 @@ Operations are executed in the following order: rename → modify → add → re
 
 **Add Columns:**
 
+**Important:** The `default` and `default_value` fields are **not allowed** in add column requests and will result in a 400 Bad Request error. Type defaults are automatically applied by the backend.
+
 ```json
 {
   "name": "products",
@@ -1089,8 +1125,8 @@ Operations are executed in the following order: rename → modify → add → re
       "name": "category",
       "type": "string",
       "nullable": true,
-      "unique": false,
-      "default_value": null
+      "unique": false
+      // Note: default_value is NOT allowed - Type defaults are applied automatically
     }
   ]
 }
@@ -1128,6 +1164,8 @@ Operations are executed in the following order: rename → modify → add → re
 
 **Modify Columns:**
 
+**Important:** The `default` and `default_value` fields are **not allowed** in modify column requests and will result in a 400 Bad Request error.
+
 ```json
 {
   "name": "products",
@@ -1136,8 +1174,8 @@ Operations are executed in the following order: rename → modify → add → re
       "name": "price",
       "type": "integer",
       "nullable": false,
-      "unique": false,
-      "default_value": "0"
+      "unique": false
+      // Note: default_value is NOT allowed and will be rejected
     }
   ]
 }
@@ -1146,6 +1184,7 @@ Operations are executed in the following order: rename → modify → add → re
 - Cannot modify system columns (`id`, `ulid`)
 - Column must exist
 - Type changes should be compatible with existing data
+- **Cannot set or modify `default` or `default_value` fields** - these are managed internally
 
 **Combined Operations Example:**
 
