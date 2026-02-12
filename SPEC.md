@@ -168,9 +168,11 @@ CREATE TABLE tasks (
 
 | nullable | default | field omitted | field = null | Result |
 |----------|---------|---------------|--------------|---------|
-| `false` | N/A | ✗ | ✗ | **Validation error** - field is required |
+| `false` | N/A* | ✗ | ✗ | **Validation error** - field is required |
 | `true` | not set | ✓ | ✓ | Type default applied (if omitted), NULL (if explicit) |
 | `true` | set | ✓ | ✓ | Custom default applied (if omitted), NULL (if explicit) |
+
+*Note: N/A means defaults cannot be specified for non-nullable fields during collection creation. These fields must always be provided in API requests.
 
 **Examples:**
 

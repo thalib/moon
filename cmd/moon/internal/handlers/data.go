@@ -2406,26 +2406,17 @@ func validateFieldsWithMode(data map[string]any, collection *registry.Collection
 		}
 	}
 
-	// Validate required fields (nullable=false) - only for create operations
-	if requireAll {
-		for _, col := range collection.Columns {
-			if !col.Nullable {
-				val, exists := data[col.Name]
-				if !exists {
-					return fmt.Errorf("required field '%s' is missing (nullable=false)", col.Name)
-				}
-				if val == nil {
-					return fmt.Errorf("required field '%s' cannot be null (nullable=false)", col.Name)
-				}
+	// Validate required fields (nullable=false)
+	for _, col := range collection.Columns {
+		if !col.Nullable {
+			val, exists := data[col.Name]
+			// For create operations, field must exist
+			if requireAll && !exists {
+				return fmt.Errorf("required field '%s' is missing (nullable=false)", col.Name)
 			}
-		}
-	} else {
-		// For update operations, only check that provided required fields are not null
-		for _, col := range collection.Columns {
-			if !col.Nullable {
-				if val, exists := data[col.Name]; exists && val == nil {
-					return fmt.Errorf("required field '%s' cannot be null (nullable=false)", col.Name)
-				}
+			// For both create and update, provided values cannot be null
+			if exists && val == nil {
+				return fmt.Errorf("required field '%s' cannot be null (nullable=false)", col.Name)
 			}
 		}
 	}

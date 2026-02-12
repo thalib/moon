@@ -666,6 +666,7 @@ func applyColumnDefaults(column *registry.Column) {
 	}
 
 	// Apply type-based defaults for nullable fields
+	// Note: These are SQL DEFAULT values, so string types need quotes
 	var defaultValue string
 	switch column.Type {
 	case registry.TypeString:
@@ -675,7 +676,7 @@ func applyColumnDefaults(column *registry.Column) {
 	case registry.TypeDecimal:
 		defaultValue = "'0.00'"
 	case registry.TypeBoolean:
-		defaultValue = "false"
+		defaultValue = "0" // SQLite uses 0/1 for boolean
 	case registry.TypeDatetime:
 		defaultValue = "NULL"
 	case registry.TypeJSON:
