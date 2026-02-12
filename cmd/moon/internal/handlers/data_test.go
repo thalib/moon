@@ -244,7 +244,7 @@ func TestDataHandler_Create_MissingRequiredField(t *testing.T) {
 	reqBody := CreateDataRequest{
 		Data: map[string]any{
 			"name": "Test Product",
-			// missing required field "price"
+			// missing required field "price" - should apply default value (0)
 		},
 	}
 	body, _ := json.Marshal(reqBody)
@@ -254,8 +254,24 @@ func TestDataHandler_Create_MissingRequiredField(t *testing.T) {
 
 	handler.Create(w, req, "products")
 
-	if w.Code != http.StatusBadRequest {
-		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
+	// With default values, missing required fields now succeed with defaults applied
+	if w.Code != http.StatusCreated {
+		t.Errorf("expected status %d, got %d", http.StatusCreated, w.Code)
+	}
+
+	// Verify response includes the default value
+	var response CreateDataResponse
+	if err := json.NewDecoder(w.Body).Decode(&response); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	if response.Data["name"] != "Test Product" {
+		t.Errorf("expected name 'Test Product', got %v", response.Data["name"])
+	}
+
+	// Verify default value was applied for price
+	if price, ok := response.Data["price"].(float64); !ok || price != 0 {
+		t.Errorf("expected default price 0, got %v", response.Data["price"])
 	}
 }
 

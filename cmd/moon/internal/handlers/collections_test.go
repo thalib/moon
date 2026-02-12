@@ -1129,3 +1129,96 @@ func TestGenerateModifyColumnDDL(t *testing.T) {
 		})
 	}
 }
+
+// TestUpdate_PreventDefaultValueChange tests that default values cannot be changed after creation
+func TestUpdate_PreventDefaultValueChange(t *testing.T) {
+	handler, driver := setupTestHandler(t)
+	defer driver.Close()
+
+	// Create a collection with a default value
+	createReq := CreateRequest{
+		Name: "test_defaults",
+		Columns: []registry.Column{
+			{Name: "status", Type: registry.TypeString, Nullable: false, DefaultValue: stringPtr("pending")},
+			{Name: "count", Type: registry.TypeInteger, Nullable: false, DefaultValue: stringPtr("0")},
+		},
+	}
+	createBody, _ := json.Marshal(createReq)
+	createHTTPReq := httptest.NewRequest(http.MethodPost, "/collections:create", bytes.NewReader(createBody))
+	createW := httptest.NewRecorder()
+	handler.Create(createW, createHTTPReq)
+
+	if createW.Code != http.StatusCreated {
+		t.Fatalf("Failed to create collection: %s", createW.Body.String())
+	}
+
+	// Attempt to change the default value
+	updateReq := UpdateRequest{
+		Name: "test_defaults",
+		ModifyColumns: []ModifyColumn{
+			{
+				Name:         "status",
+				Type:         registry.TypeString,
+				DefaultValue: stringPtr("active"), // Trying to change from "pending" to "active"
+			},
+		},
+	}
+	updateBody, _ := json.Marshal(updateReq)
+	updateHTTPReq := httptest.NewRequest(http.MethodPost, "/collections:update", bytes.NewReader(updateBody))
+	updateW := httptest.NewRecorder()
+	handler.Update(updateW, updateHTTPReq)
+
+	// Should fail with 400 Bad Request
+	if updateW.Code != http.StatusBadRequest {
+		t.Errorf("Expected status %d for changing default value, got %d", http.StatusBadRequest, updateW.Code)
+	}
+
+	// Verify error message mentions immutability
+	if !strings.Contains(updateW.Body.String(), "immutable") {
+		t.Errorf("Error message should mention immutability, got: %s", updateW.Body.String())
+	}
+}
+
+// TestUpdate_SameDefaultValueAllowed tests that providing the same default value is allowed
+func TestUpdate_SameDefaultValueAllowed(t *testing.T) {
+	handler, driver := setupTestHandler(t)
+	defer driver.Close()
+
+	// Create a collection with a default value
+	createReq := CreateRequest{
+		Name: "test_defaults2",
+		Columns: []registry.Column{
+			{Name: "priority", Type: registry.TypeInteger, Nullable: false, DefaultValue: stringPtr("5")},
+		},
+	}
+	createBody, _ := json.Marshal(createReq)
+	createHTTPReq := httptest.NewRequest(http.MethodPost, "/collections:create", bytes.NewReader(createBody))
+	createW := httptest.NewRecorder()
+	handler.Create(createW, createHTTPReq)
+
+	if createW.Code != http.StatusCreated {
+		t.Fatalf("Failed to create collection: %s", createW.Body.String())
+	}
+
+	// Modify column with the SAME default value (should be allowed)
+	updateReq := UpdateRequest{
+		Name: "test_defaults2",
+		ModifyColumns: []ModifyColumn{
+			{
+				Name:         "priority",
+				Type:         registry.TypeInteger,
+				DefaultValue: stringPtr("5"), // Same value
+			},
+		},
+	}
+	updateBody, _ := json.Marshal(updateReq)
+	updateHTTPReq := httptest.NewRequest(http.MethodPost, "/collections:update", bytes.NewReader(updateBody))
+	updateW := httptest.NewRecorder()
+	handler.Update(updateW, updateHTTPReq)
+
+	// Should succeed (200 OK)
+	if updateW.Code != http.StatusOK {
+		t.Errorf("Expected status %d for same default value, got %d: %s", http.StatusOK, updateW.Code, updateW.Body.String())
+	}
+}
+

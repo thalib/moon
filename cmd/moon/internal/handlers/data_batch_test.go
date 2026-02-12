@@ -31,9 +31,9 @@ func TestBatchCreate_BestEffort_PartialSuccess(t *testing.T) {
 	driver := &mockDataDriver{dialect: database.DialectSQLite}
 	handler := NewDataHandler(driver, reg, testConfig())
 
-	// Second item is missing required field "price"
+	// Second item has invalid field type (string instead of integer for price)
 	reqBody := BatchCreateDataRequest{
-		Data: json.RawMessage(`[{"name": "Product1", "price": 100}, {"name": "Product2"}]`),
+		Data: json.RawMessage(`[{"name": "Product1", "price": 100}, {"name": "Product2", "price": "invalid"}]`),
 	}
 	body, _ := json.Marshal(reqBody)
 
