@@ -475,18 +475,9 @@ func (h *DataHandler) createSingle(w http.ResponseWriter, r *http.Request, colle
 			}
 			values = append(values, val)
 			i++
-		} else {
-			// Field is missing - apply default value
-			defaultVal := getDefaultValue(col)
-			columns = append(columns, col.Name)
-			if h.db.Dialect() == database.DialectPostgres {
-				placeholders = append(placeholders, fmt.Sprintf("$%d", i))
-			} else {
-				placeholders = append(placeholders, "?")
-			}
-			values = append(values, defaultVal)
-			i++
 		}
+		// If field is missing and nullable, let database DEFAULT handle it
+		// If field is missing and not nullable, validation already rejected the request
 	}
 
 	query := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)",
@@ -511,18 +502,12 @@ func (h *DataHandler) createSingle(w http.ResponseWriter, r *http.Request, colle
 	responseData := make(map[string]any)
 	responseData["id"] = ulid
 
-	// Include all fields from request plus any defaults that were applied
+	// Include all fields from request
 	for _, col := range collection.Columns {
 		if val, ok := data[col.Name]; ok {
-			// Field was in request
 			responseData[col.Name] = val
-		} else {
-			// Field was missing, default was applied
-			defaultVal := getDefaultValue(col)
-			if defaultVal != nil {
-				responseData[col.Name] = defaultVal
-			}
 		}
+		// Omitted fields are not included in response - client can query the record to see defaults
 	}
 
 	response := CreateDataResponse{
@@ -611,18 +596,9 @@ func (h *DataHandler) createBatchAtomic(w http.ResponseWriter, ctx context.Conte
 				}
 				values = append(values, val)
 				i++
-			} else {
-				// Field is missing - apply default value
-				defaultVal := getDefaultValue(col)
-				columns = append(columns, col.Name)
-				if h.db.Dialect() == database.DialectPostgres {
-					placeholders = append(placeholders, fmt.Sprintf("$%d", i))
-				} else {
-					placeholders = append(placeholders, "?")
-				}
-				values = append(values, defaultVal)
-				i++
 			}
+			// If field is missing and nullable, let database DEFAULT handle it
+			// If field is missing and not nullable, validation already rejected the request
 		}
 
 		query := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)",
@@ -646,18 +622,12 @@ func (h *DataHandler) createBatchAtomic(w http.ResponseWriter, ctx context.Conte
 		responseData := make(map[string]any)
 		responseData["id"] = ulid
 
-		// Include all fields from request plus any defaults that were applied
+		// Include all fields from request
 		for _, col := range collection.Columns {
 			if val, ok := item[col.Name]; ok {
-				// Field was in request
 				responseData[col.Name] = val
-			} else {
-				// Field was missing, default was applied
-				defaultVal := getDefaultValue(col)
-				if defaultVal != nil {
-					responseData[col.Name] = defaultVal
-				}
 			}
+			// Omitted fields are not included in response - client can query the record to see defaults
 		}
 		createdRecords = append(createdRecords, responseData)
 	}
@@ -711,7 +681,6 @@ func (h *DataHandler) createBatchBestEffort(w http.ResponseWriter, ctx context.C
 		}
 		i++
 
-		requiredFieldMissing := false
 		for _, col := range collection.Columns {
 			if val, ok := item[col.Name]; ok {
 				// Field is present in request - use it
@@ -723,21 +692,9 @@ func (h *DataHandler) createBatchBestEffort(w http.ResponseWriter, ctx context.C
 				}
 				values = append(values, val)
 				i++
-			} else {
-				// Field is missing - apply default value
-				defaultVal := getDefaultValue(col)
-				columns = append(columns, col.Name)
-				if h.db.Dialect() == database.DialectPostgres {
-					placeholders = append(placeholders, fmt.Sprintf("$%d", i))
-				} else {
-					placeholders = append(placeholders, "?")
-				}
-				values = append(values, defaultVal)
-				i++
 			}
-		}
-		if requiredFieldMissing {
-			continue
+			// If field is missing and nullable, let database DEFAULT handle it
+			// If field is missing and not nullable, validation already rejected the request
 		}
 
 		query := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)",
@@ -767,18 +724,12 @@ func (h *DataHandler) createBatchBestEffort(w http.ResponseWriter, ctx context.C
 		responseData := make(map[string]any)
 		responseData["id"] = ulid
 
-		// Include all fields from request plus any defaults that were applied
+		// Include all fields from request
 		for _, col := range collection.Columns {
 			if val, ok := item[col.Name]; ok {
-				// Field was in request
 				responseData[col.Name] = val
-			} else {
-				// Field was missing, default was applied
-				defaultVal := getDefaultValue(col)
-				if defaultVal != nil {
-					responseData[col.Name] = defaultVal
-				}
 			}
+			// Omitted fields are not included in response - client can query the record to see defaults
 		}
 
 		results = append(results, BatchItemResult{
@@ -884,7 +835,7 @@ func (h *DataHandler) updateSingleLegacy(w http.ResponseWriter, r *http.Request,
 	}
 
 	// Validate fields against schema
-	if err := validateFields(req.Data, collection); err != nil {
+	if err := validateFieldsForUpdate(req.Data, collection); err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -993,7 +944,7 @@ func (h *DataHandler) updateSingle(w http.ResponseWriter, r *http.Request, colle
 	}
 
 	// Validate fields against schema
-	if err := validateFields(item, collection); err != nil {
+	if err := validateFieldsForUpdate(item, collection); err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -1127,7 +1078,7 @@ func (h *DataHandler) updateBatchAtomic(w http.ResponseWriter, ctx context.Conte
 			writeError(w, http.StatusBadRequest, fmt.Sprintf("validation error at index %d: invalid id: %v", idx, err))
 			return
 		}
-		if err := validateFields(item, collection); err != nil {
+		if err := validateFieldsForUpdate(item, collection); err != nil {
 			writeError(w, http.StatusBadRequest, fmt.Sprintf("validation error at index %d: %v", idx, err))
 			return
 		}
@@ -1277,7 +1228,7 @@ func (h *DataHandler) updateBatchBestEffort(w http.ResponseWriter, ctx context.C
 		}
 
 		// Validate item
-		if err := validateFields(item, collection); err != nil {
+		if err := validateFieldsForUpdate(item, collection); err != nil {
 			results = append(results, BatchItemResult{
 				Index:        idx,
 				ID:           id,
@@ -2427,7 +2378,19 @@ func convertToBoolean(val any) bool {
 }
 
 // validateFields validates request data against collection schema
+// requireAll: if true, requires all non-nullable fields to be present (for create operations)
+//             if false, only validates fields that are present (for update operations)
 func validateFields(data map[string]any, collection *registry.Collection) error {
+	return validateFieldsWithMode(data, collection, true)
+}
+
+// validateFieldsForUpdate validates request data for update operations (doesn't require all fields)
+func validateFieldsForUpdate(data map[string]any, collection *registry.Collection) error {
+	return validateFieldsWithMode(data, collection, false)
+}
+
+// validateFieldsWithMode validates request data with configurable required field checking
+func validateFieldsWithMode(data map[string]any, collection *registry.Collection, requireAll bool) error {
 	// Check for unknown fields
 	validFields := make(map[string]bool)
 	for _, col := range collection.Columns {
@@ -2440,6 +2403,21 @@ func validateFields(data map[string]any, collection *registry.Collection) error 
 	for field := range data {
 		if !validFields[field] {
 			return fmt.Errorf("unknown field '%s'", field)
+		}
+	}
+
+	// Validate required fields (nullable=false)
+	for _, col := range collection.Columns {
+		if !col.Nullable {
+			val, exists := data[col.Name]
+			// For create operations, field must exist
+			if requireAll && !exists {
+				return fmt.Errorf("required field '%s' is missing (nullable=false)", col.Name)
+			}
+			// For both create and update, provided values cannot be null
+			if exists && val == nil {
+				return fmt.Errorf("required field '%s' cannot be null (nullable=false)", col.Name)
+			}
 		}
 	}
 

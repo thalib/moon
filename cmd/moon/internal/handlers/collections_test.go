@@ -1135,12 +1135,12 @@ func TestUpdate_PreventDefaultValueChange(t *testing.T) {
 	handler, driver := setupTestHandler(t)
 	defer driver.Close()
 
-	// Create a collection with a default value
+	// Create a collection with a default value for nullable fields
 	createReq := CreateRequest{
 		Name: "test_defaults",
 		Columns: []registry.Column{
-			{Name: "status", Type: registry.TypeString, Nullable: false, DefaultValue: stringPtr("pending")},
-			{Name: "count", Type: registry.TypeInteger, Nullable: false, DefaultValue: stringPtr("0")},
+			{Name: "status", Type: registry.TypeString, Nullable: true, DefaultValue: stringPtr("pending")},
+			{Name: "count", Type: registry.TypeInteger, Nullable: true, DefaultValue: stringPtr("0")},
 		},
 	}
 	createBody, _ := json.Marshal(createReq)
@@ -1184,11 +1184,11 @@ func TestUpdate_SameDefaultValueAllowed(t *testing.T) {
 	handler, driver := setupTestHandler(t)
 	defer driver.Close()
 
-	// Create a collection with a default value
+	// Create a collection with a default value for nullable field
 	createReq := CreateRequest{
 		Name: "test_defaults2",
 		Columns: []registry.Column{
-			{Name: "priority", Type: registry.TypeInteger, Nullable: false, DefaultValue: stringPtr("5")},
+			{Name: "priority", Type: registry.TypeInteger, Nullable: true, DefaultValue: stringPtr("5")},
 		},
 	}
 	createBody, _ := json.Marshal(createReq)

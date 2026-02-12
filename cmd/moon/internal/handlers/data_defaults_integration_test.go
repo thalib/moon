@@ -45,19 +45,19 @@ func TestDefaultValues_Integration(t *testing.T) {
 		},
 	})
 
-	// 1. Create collection with various default values
+	// 1. Create collection with various default values for nullable fields
 	createReq := CreateRequest{
 		Name: "test_products",
 		Columns: []registry.Column{
-			{Name: "name", Type: registry.TypeString, Nullable: false},                                       // global default: ""
-			{Name: "status", Type: registry.TypeString, Nullable: false, DefaultValue: stringPtr("pending")}, // custom default
-			{Name: "price", Type: registry.TypeInteger, Nullable: false},                                     // global default: 0
-			{Name: "stock", Type: registry.TypeInteger, Nullable: false, DefaultValue: stringPtr("10")},      // custom default
-			{Name: "discount", Type: registry.TypeDecimal, Nullable: false},                                  // global default: "0.00"
-			{Name: "featured", Type: registry.TypeBoolean, Nullable: false},                                  // global default: false
-			{Name: "verified", Type: registry.TypeBoolean, Nullable: false, DefaultValue: stringPtr("true")}, // custom default
-			{Name: "metadata", Type: registry.TypeJSON, Nullable: false},                                     // global default: "{}"
-			{Name: "notes", Type: registry.TypeString, Nullable: true},                                       // nullable: NULL
+			{Name: "name", Type: registry.TypeString, Nullable: false},                                     // required, no default
+			{Name: "status", Type: registry.TypeString, Nullable: true, DefaultValue: stringPtr("pending")}, // nullable with custom default
+			{Name: "price", Type: registry.TypeInteger, Nullable: false},                                   // required, no default
+			{Name: "stock", Type: registry.TypeInteger, Nullable: true, DefaultValue: stringPtr("10")},     // nullable with custom default
+			{Name: "discount", Type: registry.TypeDecimal, Nullable: true},                                 // nullable with type default "0.00"
+			{Name: "featured", Type: registry.TypeBoolean, Nullable: true},                                 // nullable with type default false
+			{Name: "verified", Type: registry.TypeBoolean, Nullable: true, DefaultValue: stringPtr("true")}, // nullable with custom default
+			{Name: "metadata", Type: registry.TypeJSON, Nullable: true},                                    // nullable with type default "{}"
+			{Name: "notes", Type: registry.TypeString, Nullable: true},                                     // nullable with type default ""
 		},
 	}
 	createBody, _ := json.Marshal(createReq)
@@ -69,12 +69,12 @@ func TestDefaultValues_Integration(t *testing.T) {
 		t.Fatalf("Failed to create collection: %s", createW.Body.String())
 	}
 
-	// 2. Insert record with only some fields (others should get defaults)
+	// 2. Insert record with only required fields (nullable fields should use database defaults)
 	insertReq := CreateDataRequest{
 		Data: map[string]any{
 			"name":  "Test Product",
 			"price": 99,
-			// All other fields omitted - should get defaults
+			// All nullable fields omitted - should get database defaults
 		},
 	}
 	insertBody, _ := json.Marshal(insertReq)
@@ -86,40 +86,65 @@ func TestDefaultValues_Integration(t *testing.T) {
 		t.Fatalf("Failed to insert record: %s", insertW.Body.String())
 	}
 
-	// 3. Verify the response includes all defaults
+	// 3. Verify the response includes only provided fields (defaults are not in response)
 	var insertResp CreateDataResponse
 	if err := json.NewDecoder(insertW.Body).Decode(&insertResp); err != nil {
 		t.Fatalf("Failed to decode response: %v", err)
 	}
 
-	// Check all expected defaults
+	// Check provided fields are in response
+	if name, exists := insertResp.Data["name"]; !exists || name != "Test Product" {
+		t.Errorf("name: expected 'Test Product', got %v", name)
+	}
+	if price, exists := insertResp.Data["price"]; !exists || price != float64(99) {
+		t.Errorf("price: expected 99, got %v", price)
+	}
+
+	// Omitted fields should not be in response (database defaults were applied)
+	// To verify defaults, we need to query the record
+	listReq := httptest.NewRequest(http.MethodGet, "/test_products:list", nil)
+	listW := httptest.NewRecorder()
+	dataHandler.List(listW, listReq, "test_products")
+
+	if listW.Code != http.StatusOK {
+		t.Fatalf("Failed to list records: %s", listW.Body.String())
+	}
+
+	var listResp DataListResponse
+	if err := json.NewDecoder(listW.Body).Decode(&listResp); err != nil {
+		t.Fatalf("Failed to decode list response: %v", err)
+	}
+
+	if len(listResp.Data) != 1 {
+		t.Fatalf("Expected 1 record, got %d", len(listResp.Data))
+	}
+
+	record := listResp.Data[0]
+
+	// Verify database defaults were applied
 	tests := []struct {
 		field    string
 		expected any
 	}{
 		{"name", "Test Product"}, // provided
 		{"status", "pending"},    // custom default
-		{"price", float64(99)},   // provided (JSON decodes to float64)
-		{"stock", float64(10)},   // custom default (JSON decodes to float64)
-		{"discount", "0.00"},     // global default
-		{"featured", false},      // global default
+		{"price", float64(99)},   // provided
+		{"stock", float64(10)},   // custom default
+		{"discount", "0.00"},     // type default
+		{"featured", false},      // type default (stored as 0 in SQLite)
 		{"verified", true},       // custom default
-		{"metadata", "{}"},       // global default
+		{"metadata", "{}"},       // type default
+		{"notes", ""},            // type default (empty string)
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.field, func(t *testing.T) {
-			got := insertResp.Data[tt.field]
+			got := record[tt.field]
 			if got != tt.expected {
 				t.Errorf("%s: expected %v (type %T), got %v (type %T)",
 					tt.field, tt.expected, tt.expected, got, got)
 			}
 		})
-	}
-
-	// Verify nullable field is nil
-	if notes, exists := insertResp.Data["notes"]; exists && notes != nil {
-		t.Errorf("notes: expected nil for nullable field, got %v", notes)
 	}
 
 	// 4. Verify we can override defaults by providing values
@@ -190,12 +215,12 @@ func TestDefaultValues_BatchCreate(t *testing.T) {
 		},
 	})
 
-	// Create collection
+	// Create collection with nullable field that has a default
 	createReq := CreateRequest{
 		Name: "batch_test",
 		Columns: []registry.Column{
 			{Name: "title", Type: registry.TypeString, Nullable: false},
-			{Name: "count", Type: registry.TypeInteger, Nullable: false, DefaultValue: stringPtr("0")},
+			{Name: "count", Type: registry.TypeInteger, Nullable: true, DefaultValue: stringPtr("0")},
 		},
 	}
 	createBody, _ := json.Marshal(createReq)
@@ -207,7 +232,7 @@ func TestDefaultValues_BatchCreate(t *testing.T) {
 		t.Fatalf("Failed to create collection: %s", createW.Body.String())
 	}
 
-	// Batch insert with some records missing "count" field
+	// Batch insert with some records missing "count" field (should use database default)
 	batchReq := BatchCreateDataRequest{
 		Data: json.RawMessage(`[
 			{"title": "Item 1"},
@@ -233,14 +258,56 @@ func TestDefaultValues_BatchCreate(t *testing.T) {
 		t.Fatalf("Expected 3 records, got %d", len(batchResp.Data))
 	}
 
-	// Verify defaults were applied
-	if count := batchResp.Data[0]["count"]; count != float64(0) {
-		t.Errorf("Item 1: expected count 0, got %v", count)
+	// Verify only provided fields are in response
+	// Item 1 and 3 should NOT have count in response (it was omitted, database default applied)
+	if _, exists := batchResp.Data[0]["count"]; exists {
+		t.Errorf("Item 1: count should not be in response (was omitted)")
 	}
 	if count := batchResp.Data[1]["count"]; count != float64(5) {
 		t.Errorf("Item 2: expected count 5, got %v", count)
 	}
-	if count := batchResp.Data[2]["count"]; count != float64(0) {
-		t.Errorf("Item 3: expected count 0, got %v", count)
+	if _, exists := batchResp.Data[2]["count"]; exists {
+		t.Errorf("Item 3: count should not be in response (was omitted)")
+	}
+
+	// To verify defaults were actually applied, query the records
+	listReq := httptest.NewRequest(http.MethodGet, "/batch_test:list", nil)
+	listW := httptest.NewRecorder()
+	dataHandler.List(listW, listReq, "batch_test")
+
+	if listW.Code != http.StatusOK {
+		t.Fatalf("Failed to list records: %s", listW.Body.String())
+	}
+
+	var listResp DataListResponse
+	if err := json.NewDecoder(listW.Body).Decode(&listResp); err != nil {
+		t.Fatalf("Failed to decode list response: %v", err)
+	}
+
+	if len(listResp.Data) != 3 {
+		t.Fatalf("Expected 3 records in list, got %d", len(listResp.Data))
+	}
+
+	// Verify database defaults were applied by checking each record by title
+	for _, record := range listResp.Data {
+		title := record["title"].(string)
+		count := record["count"].(float64)
+
+		switch title {
+		case "Item 1":
+			if count != float64(0) {
+				t.Errorf("Item 1: expected count 0 from database, got %v", count)
+			}
+		case "Item 2":
+			if count != float64(5) {
+				t.Errorf("Item 2: expected count 5, got %v", count)
+			}
+		case "Item 3":
+			if count != float64(0) {
+				t.Errorf("Item 3: expected count 0 from database, got %v", count)
+			}
+		default:
+			t.Errorf("Unexpected title: %s", title)
+		}
 	}
 }

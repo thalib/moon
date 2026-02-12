@@ -282,6 +282,9 @@ func (h *CollectionsHandler) Create(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
+
+		// Apply type-based defaults for nullable fields if not explicitly set
+		applyColumnDefaults(&req.Columns[i])
 	}
 
 	// Generate CREATE TABLE DDL
@@ -649,20 +652,58 @@ func validateColumnType(typeStr string) error {
 	return nil
 }
 
+// applyColumnDefaults applies type-based defaults to nullable columns if not explicitly set.
+// This ensures that nullable columns have database-level defaults during table creation.
+func applyColumnDefaults(column *registry.Column) {
+	// Only apply defaults for nullable fields
+	if !column.Nullable {
+		return
+	}
+
+	// If default is already set, don't override it
+	if column.DefaultValue != nil {
+		return
+	}
+
+	// Apply type-based defaults for nullable fields
+	// Note: These are SQL DEFAULT values, so string types need quotes
+	var defaultValue string
+	switch column.Type {
+	case registry.TypeString:
+		defaultValue = "''"
+	case registry.TypeInteger:
+		defaultValue = "0"
+	case registry.TypeDecimal:
+		defaultValue = "'0.00'"
+	case registry.TypeBoolean:
+		defaultValue = "0" // SQLite uses 0/1 for boolean
+	case registry.TypeDatetime:
+		defaultValue = "NULL"
+	case registry.TypeJSON:
+		defaultValue = "'{}'"
+	default:
+		return
+	}
+
+	column.DefaultValue = &defaultValue
+}
+
 // validateDefaultValue validates a default value against column type.
 func validateDefaultValue(column *registry.Column) error {
 	if column.DefaultValue == nil {
 		return nil // No default value specified
 	}
 
+	// Only nullable fields can have defaults
+	if !column.Nullable {
+		return fmt.Errorf("default values can only be set for nullable fields (column '%s' has nullable=false)", column.Name)
+	}
+
 	value := *column.DefaultValue
 
 	// Check nullable constraint for null default
 	if strings.ToLower(value) == "null" {
-		if !column.Nullable {
-			return fmt.Errorf("default value cannot be null for non-nullable column '%s'", column.Name)
-		}
-		return nil
+		return nil // "null" is always valid for nullable fields
 	}
 
 	// Validate format based on type

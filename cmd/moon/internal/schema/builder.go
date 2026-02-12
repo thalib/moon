@@ -68,8 +68,8 @@ func (b *Builder) FromCollection(collection *registry.Collection) *Schema {
 			Nullable: col.Nullable,
 		}
 
-		// Add default value if present
-		if col.DefaultValue != nil {
+		// Only show default value for nullable fields
+		if col.Nullable && col.DefaultValue != nil {
 			var defaultVal any = *col.DefaultValue
 			fieldSchema.Default = &defaultVal
 		}

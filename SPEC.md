@@ -78,48 +78,63 @@ If upgrading from a previous version that supported `text` or `float` types:
 
 ## Default Values
 
-Moon supports two levels of default values for collection fields:
+Moon handles default values strictly at the database column level during collection creation. Default values are NOT applied record-by-record during insert operations.
 
-### Global Default Values
+### Nullable Field Behavior
 
-When a required (`nullable: false`) field is not provided in an API request and no field-specific `default` is set in the schema, Moon automatically applies these global defaults:
+The `nullable` property controls API request validation and default value application:
 
-| Type | Global Default | Notes |
-|------|---------------|-------|
-| `string` | `""` (empty string) | Applied at application level |
-| `integer` | `0` | Applied at application level |
-| `decimal` | `"0.00"` | Applied at application level |
-| `boolean` | `false` | Applied at application level |
-| `datetime` | `null` | Stored as NULL even for non-nullable fields |
-| `json` | `"{}"` (empty object) | Applied at application level |
+**`nullable: false` (Required Fields):**
+- Field **MUST** be present in every API request with a valid value
+- Omitting the field or setting it to `null` results in a validation error
+- **No automatic default values** are applied at the application level
+- Database-level defaults can be set using the `default` property during collection creation
 
-**Important Notes:**
+**`nullable: true` (Optional Fields):**
+- Field **MAY** be omitted from API requests
+- When omitted, the database column default is used (set during table creation)
+- Can explicitly be set to `null` in requests (stored as NULL in database)
 
-- Global defaults are enforced by Moon's application logic during record creation
-- For `datetime` fields, the global default is `null` (stored as NULL), even if the field is marked as non-nullable
-- For nullable fields (`nullable: true`) without an explicit default, `null` is stored when the field is omitted or set to `null` in the request
+### Collection Creation Defaults
+
+When creating a collection with `/collections:create`, you can specify the `default` property to set database column defaults. These defaults are applied by the database when a field is omitted from an INSERT statement.
+
+**Default Values by Type** (applied during collection creation if not explicitly specified):
+
+| Type | Default Value | Notes |
+|------|--------------|-------|
+| `string` | `""` (empty string) | Applied only if field is nullable |
+| `integer` | `0` | Applied only if field is nullable |
+| `decimal` | `"0.00"` | Applied only if field is nullable |
+| `boolean` | `false` | Applied only if field is nullable |
+| `datetime` | `null` | Applied for nullable fields |
+| `json` | `"{}"` (empty object) | Applied only if field is nullable |
+
+**Important:** Defaults are only set for nullable fields during collection creation. Non-nullable fields have NO default and must always be provided in API requests.
 
 ### Field-Specific Default Values
 
-To override the global default for a specific field, specify the optional `default` property in the collection schema:
+To override the type default for a nullable field, specify the `default` property in the collection schema:
 
 **JSON Schema Example:**
 
 ```json
 {
-  "name": "status",
-  "type": "boolean",
-  "nullable": false,
-  "default": "true"
+  "name": "priority",
+  "type": "integer",
+  "nullable": true,
+  "default": "5"
 }
 ```
 
 **SQL Behavior:**
 
-When a field-specific default is set, Moon generates appropriate SQL `DEFAULT` constraints:
+When a field-specific default is set for a nullable field, Moon generates SQL `DEFAULT` constraints:
 
 ```sql
-ALTER TABLE users ALTER COLUMN status SET DEFAULT true;
+CREATE TABLE tasks (
+  priority INTEGER DEFAULT 5
+);
 ```
 
 **Type-Specific Default Format:**
@@ -135,63 +150,65 @@ ALTER TABLE users ALTER COLUMN status SET DEFAULT true;
 
 1. Default values **must match the field's data type** (e.g., `"default": "0"` for integer, not `"default": 0`)
 2. Default values are **immutable after collection creation** - attempting to change a default value will result in an error to prevent data inconsistency
-3. Use `"default": "null"` (string) for nullable fields to explicitly set NULL as the default
+3. Default values can **only be set for nullable fields** (`nullable: true`)
 
 ### nullable vs. default
 
-- **`nullable` (API):** Controls whether a field can be omitted or set to `null` in API requests
-  - `nullable: true` → field can be omitted or explicitly set to `null`
-  - `nullable: false` → field must have a non-null value (uses default if not provided)
+- **`nullable` (API):** Controls whether a field must be provided in API requests
+  - `nullable: false` → field **MUST** be provided in every API request (validation error if omitted)
+  - `nullable: true` → field **MAY** be omitted from API requests (uses database default if omitted)
 
-- **`default` (Schema/Database):** Specifies the value assigned when no value is provided in the API request
+- **`default` (Schema/Database):** Specifies the database column default value for nullable fields
   - Set at the schema level during collection creation
-  - Enforced by the application and/or database layer
+  - Enforced by the database layer (not application logic)
+  - Can only be specified for nullable fields
   - Cannot be changed after collection creation
 
 **Behavior Matrix:**
 
 | nullable | default | field omitted | field = null | Result |
 |----------|---------|---------------|--------------|---------|
-| `false` | not set | ✓ | ✗ | Global default applied |
-| `false` | set | ✓ | ✗ | Field-specific default applied |
-| `true` | not set | ✓ | ✓ | NULL stored |
-| `true` | set | ✓ | ✓ | Field-specific default applied (if omitted), NULL (if explicit) |
+| `false` | N/A* | ✗ | ✗ | **Validation error** - field is required |
+| `true` | not set | ✓ | ✓ | Type default applied (if omitted), NULL (if explicit) |
+| `true` | set | ✓ | ✓ | Custom default applied (if omitted), NULL (if explicit) |
+
+*Note: N/A means defaults cannot be specified for non-nullable fields during collection creation. These fields must always be provided in API requests.
 
 **Examples:**
 
 ```json
-// Example 1: Required field with global default
+// Example 1: Required field (no default possible)
 {
-  "name": "score",
-  "type": "integer",
-  "nullable": false
-  // No default specified → uses global default (0)
-}
-
-// Example 2: Required field with custom default
-{
-  "name": "status",
+  "name": "title",
   "type": "string",
-  "nullable": false,
-  "default": "pending"
-  // Custom default overrides global default ("")
+  "nullable": false
+  // Must be provided in every API request - no default
 }
 
-// Example 3: Optional field (nullable)
+// Example 2: Optional field with type default
 {
-  "name": "notes",
+  "name": "description",
   "type": "string",
   "nullable": true
-  // No default specified → NULL if omitted
+  // No default specified → uses type default ("") when omitted
 }
 
-// Example 4: Optional field with default
+// Example 3: Optional field with custom default
 {
   "name": "priority",
   "type": "integer",
   "nullable": true,
   "default": "5"
-  // Default applied if omitted, NULL if explicitly set to null
+  // Custom default (5) applied when omitted, NULL if explicitly set to null
+}
+
+// Example 4: Optional field with null default
+{
+  "name": "notes",
+  "type": "string",
+  "nullable": true,
+  "default": "null"
+  // Explicitly set to NULL when omitted
 }
 ```
 
