@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/thalib/moon/cmd/moon/internal/config"
@@ -244,7 +245,7 @@ func TestDataHandler_Create_MissingRequiredField(t *testing.T) {
 	reqBody := CreateDataRequest{
 		Data: map[string]any{
 			"name": "Test Product",
-			// missing required field "price" - should apply default value (0)
+			// missing required field "price" - should fail validation
 		},
 	}
 	body, _ := json.Marshal(reqBody)
@@ -254,24 +255,15 @@ func TestDataHandler_Create_MissingRequiredField(t *testing.T) {
 
 	handler.Create(w, req, "products")
 
-	// With default values, missing required fields now succeed with defaults applied
-	if w.Code != http.StatusCreated {
-		t.Errorf("expected status %d, got %d", http.StatusCreated, w.Code)
+	// With new behavior, missing required fields should fail
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
 	}
 
-	// Verify response includes the default value
-	var response CreateDataResponse
-	if err := json.NewDecoder(w.Body).Decode(&response); err != nil {
-		t.Fatalf("failed to decode response: %v", err)
-	}
-
-	if response.Data["name"] != "Test Product" {
-		t.Errorf("expected name 'Test Product', got %v", response.Data["name"])
-	}
-
-	// Verify default value was applied for price
-	if price, ok := response.Data["price"].(float64); !ok || price != 0 {
-		t.Errorf("expected default price 0, got %v", response.Data["price"])
+	// Verify error message mentions the missing field
+	respBody := w.Body.String()
+	if !strings.Contains(respBody, "price") || !strings.Contains(respBody, "missing") {
+		t.Errorf("error message should mention missing required field 'price', got: %s", respBody)
 	}
 }
 

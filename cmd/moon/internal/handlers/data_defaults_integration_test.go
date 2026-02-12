@@ -288,14 +288,26 @@ func TestDefaultValues_BatchCreate(t *testing.T) {
 		t.Fatalf("Expected 3 records in list, got %d", len(listResp.Data))
 	}
 
-	// Verify database defaults were applied
-	if count := listResp.Data[0]["count"]; count != float64(0) {
-		t.Errorf("Item 1: expected count 0 from database, got %v", count)
-	}
-	if count := listResp.Data[1]["count"]; count != float64(5) {
-		t.Errorf("Item 2: expected count 5, got %v", count)
-	}
-	if count := listResp.Data[2]["count"]; count != float64(0) {
-		t.Errorf("Item 3: expected count 0 from database, got %v", count)
+	// Verify database defaults were applied by checking each record by title
+	for _, record := range listResp.Data {
+		title := record["title"].(string)
+		count := record["count"].(float64)
+
+		switch title {
+		case "Item 1":
+			if count != float64(0) {
+				t.Errorf("Item 1: expected count 0 from database, got %v", count)
+			}
+		case "Item 2":
+			if count != float64(5) {
+				t.Errorf("Item 2: expected count 5, got %v", count)
+			}
+		case "Item 3":
+			if count != float64(0) {
+				t.Errorf("Item 3: expected count 0 from database, got %v", count)
+			}
+		default:
+			t.Errorf("Unexpected title: %s", title)
+		}
 	}
 }

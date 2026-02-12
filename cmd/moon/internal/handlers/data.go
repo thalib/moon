@@ -835,7 +835,7 @@ func (h *DataHandler) updateSingleLegacy(w http.ResponseWriter, r *http.Request,
 	}
 
 	// Validate fields against schema
-	if err := validateFields(req.Data, collection); err != nil {
+	if err := validateFieldsForUpdate(req.Data, collection); err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -944,7 +944,7 @@ func (h *DataHandler) updateSingle(w http.ResponseWriter, r *http.Request, colle
 	}
 
 	// Validate fields against schema
-	if err := validateFields(item, collection); err != nil {
+	if err := validateFieldsForUpdate(item, collection); err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -1078,7 +1078,7 @@ func (h *DataHandler) updateBatchAtomic(w http.ResponseWriter, ctx context.Conte
 			writeError(w, http.StatusBadRequest, fmt.Sprintf("validation error at index %d: invalid id: %v", idx, err))
 			return
 		}
-		if err := validateFields(item, collection); err != nil {
+		if err := validateFieldsForUpdate(item, collection); err != nil {
 			writeError(w, http.StatusBadRequest, fmt.Sprintf("validation error at index %d: %v", idx, err))
 			return
 		}
@@ -1228,7 +1228,7 @@ func (h *DataHandler) updateBatchBestEffort(w http.ResponseWriter, ctx context.C
 		}
 
 		// Validate item
-		if err := validateFields(item, collection); err != nil {
+		if err := validateFieldsForUpdate(item, collection); err != nil {
 			results = append(results, BatchItemResult{
 				Index:        idx,
 				ID:           id,
@@ -2378,7 +2378,19 @@ func convertToBoolean(val any) bool {
 }
 
 // validateFields validates request data against collection schema
+// requireAll: if true, requires all non-nullable fields to be present (for create operations)
+//             if false, only validates fields that are present (for update operations)
 func validateFields(data map[string]any, collection *registry.Collection) error {
+	return validateFieldsWithMode(data, collection, true)
+}
+
+// validateFieldsForUpdate validates request data for update operations (doesn't require all fields)
+func validateFieldsForUpdate(data map[string]any, collection *registry.Collection) error {
+	return validateFieldsWithMode(data, collection, false)
+}
+
+// validateFieldsWithMode validates request data with configurable required field checking
+func validateFieldsWithMode(data map[string]any, collection *registry.Collection, requireAll bool) error {
 	// Check for unknown fields
 	validFields := make(map[string]bool)
 	for _, col := range collection.Columns {
@@ -2394,15 +2406,26 @@ func validateFields(data map[string]any, collection *registry.Collection) error 
 		}
 	}
 
-	// Validate required fields (nullable=false)
-	for _, col := range collection.Columns {
-		if !col.Nullable {
-			val, exists := data[col.Name]
-			if !exists {
-				return fmt.Errorf("required field '%s' is missing (nullable=false)", col.Name)
+	// Validate required fields (nullable=false) - only for create operations
+	if requireAll {
+		for _, col := range collection.Columns {
+			if !col.Nullable {
+				val, exists := data[col.Name]
+				if !exists {
+					return fmt.Errorf("required field '%s' is missing (nullable=false)", col.Name)
+				}
+				if val == nil {
+					return fmt.Errorf("required field '%s' cannot be null (nullable=false)", col.Name)
+				}
 			}
-			if val == nil {
-				return fmt.Errorf("required field '%s' cannot be null (nullable=false)", col.Name)
+		}
+	} else {
+		// For update operations, only check that provided required fields are not null
+		for _, col := range collection.Columns {
+			if !col.Nullable {
+				if val, exists := data[col.Name]; exists && val == nil {
+					return fmt.Errorf("required field '%s' cannot be null (nullable=false)", col.Name)
+				}
 			}
 		}
 	}
