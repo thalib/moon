@@ -77,6 +77,18 @@ Supported column data types:
 
 ***Note:*** Aggregation functions (sum, avg, min, max) are supported on both `integer` and `decimal` field types.
 
+**Default Values by Type** (applied during collection creation if not explicitly specified):
+
+| Type | Default Value | Notes |
+|------|--------------|-------|
+| `string` | `""` (empty string) | Applied only if field is nullable |
+| `integer` | `0` | Applied only if field is nullable |
+| `decimal` | `"0.00"` | Applied only if field is nullable |
+| `boolean` | `false` | Applied only if field is nullable |
+| `json` | `"{}"` (empty object) | Applied only if field is nullable |
+
+**Important:** Defaults are only set for nullable fields during collection creation. Non-nullable fields have NO default and must always be provided in API requests.
+
 ### Authentication
 
 Except for documentation and health endpoints, all other endpoints require authentication. To access protected endpoints, include the ```Authorization: Bearer <TOKEN>``` header in your requests
