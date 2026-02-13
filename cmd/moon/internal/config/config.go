@@ -198,7 +198,7 @@ var Defaults = struct {
 				BypassAuth:       true,
 			},
 			{
-				Path:             "/doc/", // Prefix pattern matches /doc, /doc/, /doc/llms-full.txt, etc.
+				Path:             "/doc/", // Prefix pattern matches /doc, /doc/, /doc/llms.md, /doc/llms.txt, /doc/llms.json, etc.
 				PatternType:      "prefix",
 				AllowedOrigins:   []string{"*"},
 				AllowedMethods:   []string{"GET", "OPTIONS"},

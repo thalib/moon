@@ -4,10 +4,10 @@
 # Moon – Instructions and API Documentation for AI Coding Agents
 
 > **Quick Start:**
-> 1. [View HTML docs]({{$ApiURL}}/doc/) or [Markdown docs]({{$ApiURL}}/doc/llms-full.txt)
+> 1. [View HTML docs]({{$ApiURL}}/doc/) or [Markdown docs]({{$ApiURL}}/doc/llms.md)
 > 2. [Authenticate](#authentication) (see below)
 > 3. [Try a sample request](#collection-management)
-> 4. [See JSON Appendix](#json-appendix) for machine-readable spec
+> 4. [See JSON Appendix]({{$ApiURL}}/doc/llms.json) for machine-readable spec
 > 5. For help or to report issues, visit [GitHub Issues](https://github.com/devnodesin/moon/issues)
 
 | Property    | Value                                               |
@@ -33,7 +33,6 @@
 - [Query Options](#query-options)
 - [Aggregation Operations](#aggregation-operations)
 - [Security](#security)
-- [JSON Appendix](#json-appendix)
 
 ## Intro
 
@@ -197,16 +196,6 @@ Server-side aggregation endpoints for analytics. Replace `{collection}` with you
 ## Security
 
 {{ include "003-security.md" }}
-
----
-
-## JSON Appendix
-
-This machine-readable appendix enables automated client generation and reduces ambiguity for AI coding agents.
-
-```json
-{{.JSONAppendix}}
-```
 
 ---
 

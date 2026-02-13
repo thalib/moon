@@ -46,7 +46,9 @@ Moon supports Cross-Origin Resource Sharing (CORS) for browser clients with flex
 
 - `GET /health` – Health check
 - `GET /doc` – API docs (HTML)
-- `GET /doc/llms-full.txt` – API docs (Markdown)
+- `GET /doc/llms.md` – API docs (Markdown)
+- `GET /doc/llms.txt` – API docs (Markdown, text format)
+- `GET /doc/llms.json` – JSON appendix for machine consumption
 
 **Default CORS Headers**
 

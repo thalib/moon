@@ -193,8 +193,12 @@ func (s *Server) setupRoutes() {
 	// Documentation endpoints (public) - PRD-058: Dynamic CORS
 	s.mux.HandleFunc("GET "+prefix+"/doc/{$}", dynamicCORS(docHandler.HTML))
 	s.mux.HandleFunc("OPTIONS "+prefix+"/doc/{$}", dynamicCORS(docHandler.HTML))
-	s.mux.HandleFunc("GET "+prefix+"/doc/llms-full.txt", dynamicCORS(docHandler.Markdown))
-	s.mux.HandleFunc("OPTIONS "+prefix+"/doc/llms-full.txt", dynamicCORS(docHandler.Markdown))
+	s.mux.HandleFunc("GET "+prefix+"/doc/llms.md", dynamicCORS(docHandler.Markdown))
+	s.mux.HandleFunc("OPTIONS "+prefix+"/doc/llms.md", dynamicCORS(docHandler.Markdown))
+	s.mux.HandleFunc("GET "+prefix+"/doc/llms.txt", dynamicCORS(docHandler.Markdown))
+	s.mux.HandleFunc("OPTIONS "+prefix+"/doc/llms.txt", dynamicCORS(docHandler.Markdown))
+	s.mux.HandleFunc("GET "+prefix+"/doc/llms.json", dynamicCORS(docHandler.JSON))
+	s.mux.HandleFunc("OPTIONS "+prefix+"/doc/llms.json", dynamicCORS(docHandler.JSON))
 
 	// ==========================================
 	// AUTH ENDPOINTS (No role check)

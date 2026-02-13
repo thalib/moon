@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -69,7 +70,7 @@ func TestDocHandler_HTML(t *testing.T) {
 	if !strings.Contains(body, "Table of Contents") {
 		t.Error("expected table of contents")
 	}
-	if !strings.Contains(body, "Collection Management") {
+	if !strings.Contains(body, "Manage Collections") {
 		t.Error("expected collection management section")
 	}
 	if !strings.Contains(body, "Data Access") {
@@ -102,7 +103,7 @@ func TestDocHandler_Markdown(t *testing.T) {
 	handler := NewDocHandler(reg, cfg, "1.99")
 
 	// Test
-	req := httptest.NewRequest(http.MethodGet, "/doc/llms-full.txt", nil)
+	req := httptest.NewRequest(http.MethodGet, "/doc/llms.md", nil)
 	rec := httptest.NewRecorder()
 
 	handler.Markdown(rec, req)
@@ -252,12 +253,18 @@ func TestDocHandler_WithPrefix(t *testing.T) {
 	handler.HTML(rec, req)
 
 	body := rec.Body.String()
-	// Template uses {{.Prefix}} which outputs "/api/v1" directly in paths
-	if !strings.Contains(body, "/api/v1/collections:list") {
-		t.Error("expected prefix in collections endpoint")
+	// Template shows prefix in curl examples using $ApiURL variable
+	// Tables show generic paths without prefix as reference
+	if !strings.Contains(body, "/api/v1/products:list") {
+		t.Error("expected prefix in curl examples")
 	}
-	if !strings.Contains(body, "/api/v1/{collection}:list") {
-		t.Error("expected prefix in data endpoints")
+	// Check that prefix is mentioned in the documentation
+	if !strings.Contains(body, "/api/v1") {
+		t.Error("expected prefix to be mentioned in documentation")
+	}
+	// Check that the prefix message is present
+	if !strings.Contains(body, "All endpoints are prefixed with") {
+		t.Error("expected prefix message in documentation")
 	}
 }
 
@@ -290,7 +297,7 @@ func TestDocHandler_WithCollections(t *testing.T) {
 	handler := NewDocHandler(reg, cfg, "1.99")
 
 	// Test Markdown - verify handler has access to collections via registry
-	req := httptest.NewRequest(http.MethodGet, "/doc/llms-full.txt", nil)
+	req := httptest.NewRequest(http.MethodGet, "/doc/llms.md", nil)
 	rec := httptest.NewRecorder()
 	handler.Markdown(rec, req)
 
@@ -317,14 +324,14 @@ func TestDocHandler_QuickstartSection(t *testing.T) {
 	handler := NewDocHandler(reg, cfg, "1.99")
 
 	// Test Markdown
-	req := httptest.NewRequest(http.MethodGet, "/doc/llms-full.txt", nil)
+	req := httptest.NewRequest(http.MethodGet, "/doc/llms.md", nil)
 	rec := httptest.NewRecorder()
 	handler.Markdown(rec, req)
 
 	body := rec.Body.String()
 
 	// Check for collection management content which serves as quickstart
-	if !strings.Contains(body, "## Collection Management") {
+	if !strings.Contains(body, "## Manage Collections") {
 		t.Error("expected Collection Management section")
 	}
 	if !strings.Contains(body, "collections:create") {
@@ -389,14 +396,14 @@ func TestDocHandler_ExampleRequests(t *testing.T) {
 	handler := NewDocHandler(reg, cfg, "1.99")
 
 	// Test Markdown
-	req := httptest.NewRequest(http.MethodGet, "/doc/llms-full.txt", nil)
+	req := httptest.NewRequest(http.MethodGet, "/doc/llms.md", nil)
 	rec := httptest.NewRecorder()
 	handler.Markdown(rec, req)
 
 	body := rec.Body.String()
 
 	// Check for key sections and examples in the documentation
-	if !strings.Contains(body, "## Collection Management") {
+	if !strings.Contains(body, "## Manage Collections") {
 		t.Error("expected Collection Management section")
 	}
 	if !strings.Contains(body, "## Data Access") {
@@ -509,24 +516,19 @@ func TestDocHandler_JSONAppendixPresence(t *testing.T) {
 
 	handler := NewDocHandler(reg, cfg, "1.99")
 
-	// Test Markdown
-	req := httptest.NewRequest(http.MethodGet, "/doc/llms-full.txt", nil)
+	// Test JSON endpoint instead of Markdown
+	req := httptest.NewRequest(http.MethodGet, "/doc/llms.json", nil)
 	rec := httptest.NewRecorder()
-	handler.Markdown(rec, req)
+	handler.JSON(rec, req)
 
 	body := rec.Body.String()
-
-	// Check for JSON Appendix section
-	if !strings.Contains(body, "## JSON Appendix") {
-		t.Error("expected JSON Appendix section")
-	}
 
 	// Check for key JSON fields
 	if !strings.Contains(body, `"service": "moon"`) {
 		t.Error("expected service field in JSON appendix")
 	}
-	if !strings.Contains(body, `"version": "1.00"`) {
-		t.Error("expected version field to be 1.00 in JSON appendix")
+	if !strings.Contains(body, `"version": "1.99"`) {
+		t.Error("expected version field to be 1.99 in JSON appendix")
 	}
 	if strings.Contains(body, `"document_version"`) {
 		t.Error("did not expect document_version field in JSON appendix")
@@ -601,10 +603,10 @@ func TestDocHandler_JSONAppendixUniqueAndDataTypes(t *testing.T) {
 
 	handler := NewDocHandler(reg, cfg, "1.99")
 
-	// Test Markdown
-	req := httptest.NewRequest(http.MethodGet, "/doc/llms-full.txt", nil)
+	// Test JSON endpoint instead of Markdown
+	req := httptest.NewRequest(http.MethodGet, "/doc/llms.json", nil)
 	rec := httptest.NewRecorder()
-	handler.Markdown(rec, req)
+	handler.JSON(rec, req)
 
 	body := rec.Body.String()
 
@@ -632,9 +634,9 @@ func TestDocHandler_JSONAppendixUniqueAndDataTypes(t *testing.T) {
 		t.Error("expected integer nullability note")
 	}
 
-	// Check that version is hardcoded to 1.00
-	if !strings.Contains(body, `"version": "1.00"`) {
-		t.Error("expected version to be hardcoded to 1.00")
+	// Check that version matches what was passed to handler
+	if !strings.Contains(body, `"version": "1.99"`) {
+		t.Error("expected version to match handler version (1.99)")
 	}
 
 	// Check that document_version is removed
@@ -692,13 +694,13 @@ func TestDocHandler_JSONAppendixDeterminism(t *testing.T) {
 
 	// Generate documentation with both registries
 	handler1 := NewDocHandler(reg1, cfg, "1.99")
-	req1 := httptest.NewRequest(http.MethodGet, "/doc/llms-full.txt", nil)
+	req1 := httptest.NewRequest(http.MethodGet, "/doc/llms.md", nil)
 	rec1 := httptest.NewRecorder()
 	handler1.Markdown(rec1, req1)
 	body1 := rec1.Body.String()
 
 	handler2 := NewDocHandler(reg2, cfg, "1.99")
-	req2 := httptest.NewRequest(http.MethodGet, "/doc/llms-full.txt", nil)
+	req2 := httptest.NewRequest(http.MethodGet, "/doc/llms.md", nil)
 	rec2 := httptest.NewRecorder()
 	handler2.Markdown(rec2, req2)
 	body2 := rec2.Body.String()
@@ -745,26 +747,18 @@ func TestDocHandler_JSONAppendixRefresh(t *testing.T) {
 
 	handler := NewDocHandler(reg, cfg, "1.99")
 
-	// Generate initial documentation
-	req1 := httptest.NewRequest(http.MethodGet, "/doc/llms-full.txt", nil)
+	// Generate initial JSON
+	req1 := httptest.NewRequest(http.MethodGet, "/doc/llms.json", nil)
 	rec1 := httptest.NewRecorder()
-	handler.Markdown(rec1, req1)
+	handler.JSON(rec1, req1)
 	body1 := rec1.Body.String()
 
-	// Extract the JSON Appendix section
-	startMarker := "## JSON Appendix"
-	startIdx := strings.Index(body1, startMarker)
-	if startIdx == -1 {
-		t.Fatal("JSON Appendix section not found")
-	}
-	jsonSection1 := body1[startIdx:]
-
 	// Verify users is present in JSON appendix
-	if !strings.Contains(jsonSection1, `"name": "users"`) {
+	if !strings.Contains(body1, `"name": "users"`) {
 		t.Error("expected users collection in initial JSON appendix registered_collections")
 	}
 	// Verify products collection is not present in registered_collections
-	if strings.Contains(jsonSection1, `"name": "products"`) {
+	if strings.Contains(body1, `"name": "products"`) {
 		t.Error("did not expect products collection in initial JSON appendix registered_collections")
 	}
 
@@ -786,30 +780,23 @@ func TestDocHandler_JSONAppendixRefresh(t *testing.T) {
 		t.Errorf("expected refresh to return 200, got %d", rec2.Code)
 	}
 
-	// Generate documentation again (should rebuild with new collection)
-	req3 := httptest.NewRequest(http.MethodGet, "/doc/llms-full.txt", nil)
+	// Generate JSON again (should rebuild with new collection)
+	req3 := httptest.NewRequest(http.MethodGet, "/doc/llms.json", nil)
 	rec3 := httptest.NewRecorder()
-	handler.Markdown(rec3, req3)
+	handler.JSON(rec3, req3)
 	body3 := rec3.Body.String()
 
-	// Extract the JSON Appendix section from refreshed doc
-	startIdx3 := strings.Index(body3, startMarker)
-	if startIdx3 == -1 {
-		t.Fatal("JSON Appendix section not found after refresh")
-	}
-	jsonSection3 := body3[startIdx3:]
-
 	// Verify both collections are now present in registered_collections
-	if !strings.Contains(jsonSection3, `"name": "users"`) {
+	if !strings.Contains(body3, `"name": "users"`) {
 		t.Error("expected users collection in refreshed JSON appendix")
 	}
-	if !strings.Contains(jsonSection3, `"name": "products"`) {
+	if !strings.Contains(body3, `"name": "products"`) {
 		t.Error("expected products collection in refreshed JSON appendix")
 	}
-	if !strings.Contains(jsonSection3, `"name": "title"`) {
+	if !strings.Contains(body3, `"name": "title"`) {
 		t.Error("expected title field in refreshed JSON appendix")
 	}
-	if !strings.Contains(jsonSection3, `"name": "price"`) {
+	if !strings.Contains(body3, `"name": "price"`) {
 		t.Error("expected price field in refreshed JSON appendix")
 	}
 }
@@ -860,7 +847,7 @@ func TestDocHandler_IncludeExistingFile(t *testing.T) {
 	handler := NewDocHandler(reg, cfg, "1.99")
 
 	// Test that markdown generation works (which uses the template with include function)
-	req := httptest.NewRequest(http.MethodGet, "/doc/llms-full.txt", nil)
+	req := httptest.NewRequest(http.MethodGet, "/doc/llms.md", nil)
 	rec := httptest.NewRecorder()
 	handler.Markdown(rec, req)
 
@@ -896,7 +883,7 @@ func TestDocHandler_IncludeFileHandlesErrors(t *testing.T) {
 	}
 
 	// Generate markdown - should work even with missing includes
-	req := httptest.NewRequest(http.MethodGet, "/doc/llms-full.txt", nil)
+	req := httptest.NewRequest(http.MethodGet, "/doc/llms.md", nil)
 	rec := httptest.NewRecorder()
 	handler.Markdown(rec, req)
 
@@ -1098,5 +1085,202 @@ func TestDocHandler_IncludeValidation_Documentation(t *testing.T) {
 	// Verify this test documents the expected behavior
 	if len(blockedPatterns) == 0 || len(allowedPatterns) == 0 {
 		t.Error("test should document both blocked and allowed patterns")
+	}
+}
+
+func TestDocHandler_JSON(t *testing.T) {
+	// Setup
+	reg := registry.NewSchemaRegistry()
+	reg.Set(&registry.Collection{
+		Name: "users",
+		Columns: []registry.Column{
+			{Name: "name", Type: registry.TypeString, Nullable: false},
+			{Name: "email", Type: registry.TypeString, Nullable: false},
+		},
+	})
+
+	cfg := &config.AppConfig{
+		Server: config.ServerConfig{
+			Host:   "localhost",
+			Port:   6006,
+			Prefix: "",
+		},
+		JWT: config.JWTConfig{
+			Secret: "test-secret",
+			Expiry: 3600,
+		},
+		APIKey: config.APIKeyConfig{
+			Enabled: true,
+			Header:  "X-API-Key",
+		},
+	}
+
+	handler := NewDocHandler(reg, cfg, "1.99")
+
+	// Test JSON endpoint
+	req := httptest.NewRequest(http.MethodGet, "/doc/llms.json", nil)
+	rec := httptest.NewRecorder()
+
+	handler.JSON(rec, req)
+
+	// Assertions
+	if rec.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d", rec.Code)
+	}
+
+	contentType := rec.Header().Get("Content-Type")
+	if contentType != "application/json; charset=utf-8" {
+		t.Errorf("expected Content-Type application/json; charset=utf-8, got %s", contentType)
+	}
+
+	body := rec.Body.String()
+	if body == "" {
+		t.Error("expected non-empty JSON body")
+	}
+
+	// Check for key JSON fields
+	if !strings.Contains(body, `"service": "moon"`) {
+		t.Error("expected service field in JSON")
+	}
+	if !strings.Contains(body, `"data_access"`) {
+		t.Error("expected data_access field in JSON")
+	}
+	if !strings.Contains(body, `"query"`) {
+		t.Error("expected query field under data_access in JSON")
+	}
+	if !strings.Contains(body, `"aggregation"`) {
+		t.Error("expected aggregation field under data_access in JSON")
+	}
+	if !strings.Contains(body, `"registered_collections"`) {
+		t.Error("expected registered_collections field in JSON")
+	}
+	if !strings.Contains(body, `"users"`) {
+		t.Error("expected users collection in JSON")
+	}
+}
+
+func TestDocHandler_JSONStructure(t *testing.T) {
+	// Setup
+	reg := registry.NewSchemaRegistry()
+	cfg := &config.AppConfig{
+		Server: config.ServerConfig{
+			Host:   "localhost",
+			Port:   6006,
+			Prefix: "",
+		},
+	}
+
+	handler := NewDocHandler(reg, cfg, "1.99")
+
+	// Test that query and aggregation are nested under data_access
+	req := httptest.NewRequest(http.MethodGet, "/doc/llms.json", nil)
+	rec := httptest.NewRecorder()
+
+	handler.JSON(rec, req)
+
+	body := rec.Body.String()
+
+	// Verify structure: data_access.query and data_access.aggregation
+	if !strings.Contains(body, `"data_access"`) {
+		t.Error("expected data_access field in JSON")
+	}
+
+	// Parse JSON to verify structure
+	var jsonData map[string]any
+	if err := json.Unmarshal([]byte(body), &jsonData); err != nil {
+		t.Fatalf("failed to parse JSON: %v", err)
+	}
+
+	// Check that data_access exists
+	dataAccess, ok := jsonData["data_access"].(map[string]any)
+	if !ok {
+		t.Fatal("expected data_access to be an object")
+	}
+
+	// Check that query is under data_access
+	if _, ok := dataAccess["query"]; !ok {
+		t.Error("expected query field under data_access")
+	}
+
+	// Check that aggregation is under data_access
+	if _, ok := dataAccess["aggregation"]; !ok {
+		t.Error("expected aggregation field under data_access")
+	}
+
+	// Ensure query and aggregation are NOT at top level
+	if _, ok := jsonData["query"]; ok {
+		t.Error("query should not be at top level, should be under data_access")
+	}
+	if _, ok := jsonData["aggregation"]; ok {
+		t.Error("aggregation should not be at top level, should be under data_access")
+	}
+}
+
+func TestDocHandler_MarkdownWithoutJSONAppendix(t *testing.T) {
+	// Setup
+	reg := registry.NewSchemaRegistry()
+	cfg := &config.AppConfig{
+		Server: config.ServerConfig{
+			Host:   "localhost",
+			Port:   6006,
+			Prefix: "",
+		},
+	}
+
+	handler := NewDocHandler(reg, cfg, "1.99")
+
+	// Test Markdown endpoint
+	req := httptest.NewRequest(http.MethodGet, "/doc/llms.md", nil)
+	rec := httptest.NewRecorder()
+
+	handler.Markdown(rec, req)
+
+	body := rec.Body.String()
+
+	// Verify that the JSON Appendix section is NOT in markdown
+	if strings.Contains(body, "## JSON Appendix") {
+		t.Error("markdown should not contain JSON Appendix section")
+	}
+
+	// Verify markdown still has main sections
+	if !strings.Contains(body, "# Moon") {
+		t.Error("expected markdown heading")
+	}
+	if !strings.Contains(body, "## Manage Collections") {
+		t.Error("expected Collection Management section")
+	}
+	if !strings.Contains(body, "## Data Access") {
+		t.Error("expected Data Access section")
+	}
+	if !strings.Contains(body, "## Security") {
+		t.Error("expected Security section")
+	}
+}
+
+func TestDocHandler_TextEndpoint(t *testing.T) {
+	// Setup
+	reg := registry.NewSchemaRegistry()
+	cfg := &config.AppConfig{
+		Server: config.ServerConfig{
+			Host:   "localhost",
+			Port:   6006,
+			Prefix: "",
+		},
+	}
+
+	handler := NewDocHandler(reg, cfg, "1.99")
+
+	// Test that /doc/llms.txt returns the same as /doc/llms.md
+	req1 := httptest.NewRequest(http.MethodGet, "/doc/llms.md", nil)
+	rec1 := httptest.NewRecorder()
+	handler.Markdown(rec1, req1)
+
+	req2 := httptest.NewRequest(http.MethodGet, "/doc/llms.txt", nil)
+	rec2 := httptest.NewRecorder()
+	handler.Markdown(rec2, req2)
+
+	// Both should return identical content
+	if rec1.Body.String() != rec2.Body.String() {
+		t.Error("expected /doc/llms.txt to return same content as /doc/llms.md")
 	}
 }

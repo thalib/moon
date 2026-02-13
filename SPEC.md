@@ -402,7 +402,7 @@ Moon supports dynamic CORS endpoint registration with pattern matching:
 
 - **Pattern Types:**
   - `exact`: Matches exact path only (e.g., `/health` matches `/health` but not `/health/status`)
-  - `prefix`: Matches path prefix (e.g., `/doc/` matches `/doc/api`, `/doc/llms-full.txt`. Note: `/doc/` does not match `/doc` without trailing slash)
+  - `prefix`: Matches path prefix (e.g., `/doc/` matches `/doc/api`, `/doc/llms.md`, `/doc/llms.txt`, `/doc/llms.json`. Note: `/doc/` does not match `/doc` without trailing slash)
   - `suffix`: Matches path suffix (e.g., `*.json` matches `/data/users.json`)
   - `contains`: Matches if path contains substring (e.g., `/public/` matches any path with `/public/`)
 
@@ -417,7 +417,7 @@ Moon supports dynamic CORS endpoint registration with pattern matching:
 
 - **Default Endpoints:** If `cors.endpoints` is not specified, these defaults are applied:
   - `/health` (exact, `*`, no auth)
-  - `/doc/` (prefix, `*`, no auth - matches all paths starting with `/doc/` including `/doc/` and `/doc/llms-full.txt`)
+  - `/doc/` (prefix, `*`, no auth - matches all paths starting with `/doc/` including `/doc/`, `/doc/llms.md`, `/doc/llms.txt`, and `/doc/llms.json`)
 
 CORS headers exposed to browsers:
 - `X-RateLimit-Limit`
@@ -1058,7 +1058,9 @@ Moon provides human- and AI-readable documentation endpoints that automatically 
 | Endpoint                     | Method | Purpose                                                              |
 | ---------------------------- | ------ | -------------------------------------------------------------------- |
 | `GET /doc/`                  | `GET`  | Retrieve HTML documentation (single-page, styled)                    |
-| `GET /doc/llms-full.txt`     | `GET`  | Retrieve Markdown documentation (for AI agents and markdown readers) |
+| `GET /doc/llms.md`           | `GET`  | Retrieve Markdown documentation (for AI agents and markdown readers) |
+| `GET /doc/llms.txt`          | `GET`  | Retrieve Markdown documentation (text format, alias to llms.md)      |
+| `GET /doc/llms.json`         | `GET`  | Retrieve JSON appendix for machine consumption                       |
 | `POST /doc:refresh`          | `POST` | Clear cached documentation and force regeneration                    |
 
 **Features:**
@@ -1071,6 +1073,24 @@ Moon provides human- and AI-readable documentation endpoints that automatically 
 - Filtering, sorting, pagination, and field selection documentation
 - Error response format and common status codes
 - Table of contents for easy navigation
+- Separate JSON appendix at `/doc/llms.json` for machine-readable spec
+
+**JSON Appendix Structure:**
+
+The `/doc/llms.json` endpoint provides a structured, machine-readable specification with:
+
+- Service metadata (name, version, base URL)
+- Authentication configuration and modes
+- Complete endpoint listing with methods and parameters
+- Data types with SQL mappings and examples
+- Registered collections with field definitions
+- Query operators and aggregation functions nested under `data_access`:
+  - `data_access.query`: Query operators, syntax, pagination, search
+  - `data_access.aggregation`: Supported functions and numeric types
+- HTTP status codes
+- Rate limiting configuration
+- CORS settings
+- AIP standards compliance
 
 **Caching:**
 
@@ -1083,6 +1103,14 @@ Moon provides human- and AI-readable documentation endpoints that automatically 
 
 - HTML: `Content-Type: text/html; charset=utf-8`
 - Markdown: `Content-Type: text/markdown; charset=utf-8`
+- JSON: `Content-Type: application/json; charset=utf-8`
+
+**Error Handling:**
+
+The `/doc/llms.json` endpoint includes proper error handling:
+- Returns HTTP 404 if JSON appendix is missing
+- Returns HTTP 500 if JSON serialization fails
+- Error responses include descriptive messages for debugging
 - Both: `Cache-Control: public, max-age=3600`
 
 ### E. Collection Column Operations
@@ -1216,7 +1244,7 @@ The server acts as a "Smart Bridge" between the user and the database.
 
 ## Interface & Integration Layer
 
-- **Documentation Endpoints:** Human- and AI-readable documentation is available via `/doc/` (HTML) and `/doc/llms-full.txt` (Markdown) endpoints (see Section 2.D for details).
+- **Documentation Endpoints:** Human- and AI-readable documentation is available via `/doc/` (HTML), `/doc/llms.md` (Markdown), `/doc/llms.txt` (Markdown text), and `/doc/llms.json` (JSON) endpoints (see Section 2.D for details).
 - **Middleware Security:** A high-speed JWT and API Key layer that enforces simple allow/deny permissions per endpoint before the request reaches the dynamic handlers.
 - **Advanced Auth Controls:**
   - JWT role-based authorization per path

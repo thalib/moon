@@ -63,15 +63,15 @@ func TestCORSEndpointConfig_Matches(t *testing.T) {
 			description: "Prefix match for /doc/api",
 		},
 		{
-			name: "prefix_match_doc_llms_full",
+			name: "prefix_match_doc_llms_md",
 			endpoint: CORSEndpointConfig{
 				Path:        "/doc/*",
 				PatternType: "prefix",
 			},
-			path:        "/doc/llms-full.txt",
+			path:        "/doc/llms.md",
 			wantMatch:   true,
 			wantScore:   504,
-			description: "Prefix match for /doc/llms-full.txt",
+			description: "Prefix match for /doc/llms.md",
 		},
 		{
 			name: "prefix_no_match_different_path",

@@ -37,7 +37,7 @@ Moon is intentionally minimal. It does **not** support:
 - **Encryption at Rest:** No built-in data encryption at rest.
 - **Admin UI:** API-only; no built-in web UI or dashboard.
 - **HTTP Methods:** Only supports `GET`, `POST`, and `OPTIONS` (no `PUT`, `PATCH`, or `DELETE`).
-- **Public endpoints:** `/health`, `/doc`, `/doc/llms-full.txt`.
+- **Public endpoints:** `/health`, `/doc`, `/doc/llms.md`, `/doc/llms.txt`, `/doc/llms.json`.
 
 ### Design Constraints
 

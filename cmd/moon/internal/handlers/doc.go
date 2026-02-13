@@ -215,6 +215,44 @@ func (h *DocHandler) Markdown(w http.ResponseWriter, r *http.Request) {
 	w.Write(cached)
 }
 
+// JSON serves the JSON appendix
+func (h *DocHandler) JSON(w http.ResponseWriter, r *http.Request) {
+	// Build JSON appendix
+	jsonAppendix := h.buildJSONAppendix()
+	
+	// Check if JSON appendix is empty or error
+	if jsonAppendix == "" {
+		log.Printf("ERROR: JSON appendix is missing")
+		w.Header().Set(constants.HeaderContentType, constants.MIMEApplicationJSON)
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]any{
+			"error": "JSON appendix not available",
+			"code":  http.StatusNotFound,
+		})
+		return
+	}
+
+	// Check if appendix contains error
+	if strings.Contains(jsonAppendix, `"error"`) {
+		log.Printf("ERROR: Failed to generate JSON appendix")
+		w.Header().Set(constants.HeaderContentType, constants.MIMEApplicationJSON)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]any{
+			"error": "Failed to generate JSON appendix",
+			"code":  http.StatusInternalServerError,
+		})
+		return
+	}
+
+	// Set cache headers
+	w.Header().Set(constants.HeaderContentType, "application/json; charset=utf-8")
+	w.Header().Set("Cache-Control", "public, max-age=3600")
+	w.Header().Set("Last-Modified", h.lastModified.UTC().Format(http.TimeFormat))
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(jsonAppendix))
+}
+
 // RefreshCache clears the cached documentation
 func (h *DocHandler) RefreshCache(w http.ResponseWriter, r *http.Request) {
 	h.cacheMutex.Lock()
@@ -365,13 +403,18 @@ type JSONAppendixData struct {
 	DataTypes       []DataTypeInfo     `json:"data_types"`
 	RegisteredColls []CollectionDetail `json:"registered_collections"`
 	Endpoints       map[string]any     `json:"endpoints"`
-	Query           map[string]any     `json:"query"`
-	Aggregation     map[string]any     `json:"aggregation"`
+	DataAccess      DataAccessInfo     `json:"data_access"`
 	HTTPStatusCodes map[string]string  `json:"http_status_codes"`
 	RateLimiting    map[string]any     `json:"rate_limiting"`
 	CORS            map[string]any     `json:"cors"`
 	Guarantees      map[string]bool    `json:"guarantees"`
 	AIPStandards    map[string]string  `json:"aip_standards"`
+}
+
+// DataAccessInfo holds query and aggregation information
+type DataAccessInfo struct {
+	Query       map[string]any `json:"query"`
+	Aggregation map[string]any `json:"aggregation"`
 }
 
 // AuthInfo holds authentication configuration
@@ -769,10 +812,22 @@ func (h *DocHandler) buildJSONAppendix() string {
 					"description":   "HTML documentation",
 				},
 				"markdown": map[string]any{
-					"path":          "/doc/md",
+					"path":          "/doc/llms.md",
 					"method":        "GET",
 					"auth_required": false,
 					"description":   "Markdown documentation",
+				},
+				"markdown_txt": map[string]any{
+					"path":          "/doc/llms.txt",
+					"method":        "GET",
+					"auth_required": false,
+					"description":   "Markdown documentation (text format)",
+				},
+				"json": map[string]any{
+					"path":          "/doc/llms.json",
+					"method":        "GET",
+					"auth_required": false,
+					"description":   "JSON appendix for machine consumption",
 				},
 				"refresh": map[string]any{
 					"path":          "/doc:refresh",
@@ -783,42 +838,44 @@ func (h *DocHandler) buildJSONAppendix() string {
 				},
 			},
 		},
-		Query: map[string]any{
-			"operators": []string{"eq", "ne", "gt", "lt", "gte", "lte", "like", "in"},
-			"syntax": map[string]any{
-				"filter": "?column[operator]=value",
-				"examples": []string{
-					"?price[gte]=100",
-					"?category[eq]=electronics",
-					"?name[like]=%mouse%",
+		DataAccess: DataAccessInfo{
+			Query: map[string]any{
+				"operators": []string{"eq", "ne", "gt", "lt", "gte", "lte", "like", "in"},
+				"syntax": map[string]any{
+					"filter": "?column[operator]=value",
+					"examples": []string{
+						"?price[gte]=100",
+						"?category[eq]=electronics",
+						"?name[like]=%mouse%",
+					},
+				},
+				"sorting": map[string]any{
+					"syntax":     "?sort={field1,-field2}",
+					"ascending":  "field",
+					"descending": "-field",
+					"example":    "?sort=-price,name",
+				},
+				"pagination": map[string]any{
+					"cursor_param": "after",
+					"limit_param":  "limit",
+					"example":      "?limit=10&after=01ARZ3NDEKTSV4RRFFQ69G5FBX",
+				},
+				"search": map[string]any{
+					"full_text_param": "q",
+					"description":     "Searches across all text/string columns",
+					"example":         "?q=wireless",
+				},
+				"field_selection": map[string]any{
+					"param":       "fields",
+					"description": "Return only specified fields (id always included)",
+					"example":     "?fields=name,price",
 				},
 			},
-			"sorting": map[string]any{
-				"syntax":     "?sort={field1,-field2}",
-				"ascending":  "field",
-				"descending": "-field",
-				"example":    "?sort=-price,name",
+			Aggregation: map[string]any{
+				"supported":     []string{"count", "sum", "avg", "min", "max"},
+				"numeric_types": []string{"integer", "decimal"},
+				"note":          "Aggregation functions work on integer and decimal field types only",
 			},
-			"pagination": map[string]any{
-				"cursor_param": "after",
-				"limit_param":  "limit",
-				"example":      "?limit=10&after=01ARZ3NDEKTSV4RRFFQ69G5FBX",
-			},
-			"search": map[string]any{
-				"full_text_param": "q",
-				"description":     "Searches across all text/string columns",
-				"example":         "?q=wireless",
-			},
-			"field_selection": map[string]any{
-				"param":       "fields",
-				"description": "Return only specified fields (id always included)",
-				"example":     "?fields=name,price",
-			},
-		},
-		Aggregation: map[string]any{
-			"supported":     []string{"count", "sum", "avg", "min", "max"},
-			"numeric_types": []string{"integer", "decimal"},
-			"note":          "Aggregation functions work on integer and decimal field types only",
 		},
 		HTTPStatusCodes: map[string]string{
 			"200": "OK - Successful GET request",

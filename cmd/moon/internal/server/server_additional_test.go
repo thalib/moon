@@ -256,13 +256,25 @@ func TestServerRoutes_DocumentationEndpoints(t *testing.T) {
 		{
 			name:           "Markdown documentation",
 			method:         http.MethodGet,
-			path:           "/doc/llms-full.txt",
+			path:           "/doc/llms.md",
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "Markdown text format",
+			method:         http.MethodGet,
+			path:           "/doc/llms.txt",
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "JSON appendix",
+			method:         http.MethodGet,
+			path:           "/doc/llms.json",
 			expectedStatus: http.StatusOK,
 		},
 		{
 			name:           "Old markdown endpoint should return 404",
 			method:         http.MethodGet,
-			path:           "/doc/md",
+			path:           "/doc/llms-full.txt",
 			expectedStatus: http.StatusNotFound,
 		},
 		{
