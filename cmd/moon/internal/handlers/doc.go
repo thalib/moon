@@ -884,9 +884,6 @@ func (h *DocHandler) buildJSONAppendix() string {
 		CORS: map[string]any{
 			"allowed_methods": []string{"GET", "POST", "OPTIONS"},
 			"allowed_headers": []string{"Authorization", "Content-Type", "X-API-Key"},
-			"configurable":    true,
-			"config_file":     "samples/moon.conf",
-			"config_key":      "cors.allowed_origins",
 		},
 		Guarantees: map[string]bool{
 			"transactions":    false,
