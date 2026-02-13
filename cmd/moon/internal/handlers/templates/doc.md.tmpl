@@ -112,63 +112,7 @@ Update collection support following schema modification operations:
 
 ---
 
-## Data Access
-
-These endpoints manage records within a specific collection. Replace `{collection}` with your collection name.
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/collections:list` | GET | List all records |
-| `/collections:schema` | GET | Get collection schema (read-only) |
-| `/collections:get` | GET | Get a single record (requires `?id=...`) |
-| `/collections:create` | POST | Create a new record |
-| `/collections:update` | POST | Update an existing record |
-| `/collections:destroy` | POST | Delete a record |
-
-{{ include "060-data.md" }}
-
----
-
-## Query Options
-
-Query parameters for filtering, sorting, searching, field selection, and pagination when listing records. Using these options allows you to retrieve specific subsets of data based on your criteria.
-
-| Query Options | Description |
-|---------------|-------------|
-| `?column[operator]=value` | Filter records by column values using comparison operators |
-| `?sort={fields}` | Sort by one or more fields (prefix `-` for descending) |
-| `?q={term}` | Full-text search across all text columns |
-| `?fields={field1,field2}` | Select specific fields to return (id always included) |
-| `?limit={number}` | Limit number of records returned (default: 15, max: 100) |
-| `?after={cursor}` | Get records after the specified cursor |
-
-{{ include "070-query.md" }}
-
-### Combined Query Examples
-
-query parameters can be combined to perform complex queries. Here are some examples:
-
-Filter, sort, and limit:
-```bash
-curl -g "{{$ApiURL}}/products:list?quantity[gte]=10&price[lt]=100&sort=-price&limit=5" \
-  -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
-```
-
-Search with category filter and field selection:
-```bash
-curl -g "{{$ApiURL}}/products:list?q=laptop&brand[eq]=Wow&fields=title,price,quantity" \
-  -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
-```
-
-Multiple filters with pagination:
-```bash
-curl -g "{{$ApiURL}}/products:list?price[gte]=100&quantity[gt]=0&sort=-price&limit=10&after=01ARZ3NDEK" \
-  -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
-```
-
----
-
-## Aggregation Operations
+### Aggregation Operations
 
 Traditional analytics and reporting often require downloading large datasets to the client for processing, which is inefficient and slow—especially for counting, summing, or calculating averages across millions of records.
 
@@ -190,6 +134,62 @@ Server-side aggregation endpoints for analytics. Replace `{collection}` with you
 - Aggregation functions (`sum`, `avg`, `min`, `max`) are supported only on `integer` and `decimal` field types. 
 
 {{ include "080-aggregation.md" }}
+
+---
+
+## Data Access
+
+These endpoints manage records within a specific collection. Replace `{collection}` with your collection name.
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/collections:list` | GET | List all records |
+| `/collections:schema` | GET | Get collection schema (read-only) |
+| `/collections:get` | GET | Get a single record (requires `?id=...`) |
+| `/collections:create` | POST | Create a new record |
+| `/collections:update` | POST | Update an existing record |
+| `/collections:destroy` | POST | Delete a record |
+
+{{ include "060-data.md" }}
+
+---
+
+### Query Options
+
+Query parameters for filtering, sorting, searching, field selection, and pagination when listing records. Using these options allows you to retrieve specific subsets of data based on your criteria.
+
+| Query Options | Description |
+|---------------|-------------|
+| `?column[operator]=value` | Filter records by column values using comparison operators |
+| `?sort={fields}` | Sort by one or more fields (prefix `-` for descending) |
+| `?q={term}` | Full-text search across all text columns |
+| `?fields={field1,field2}` | Select specific fields to return (id always included) |
+| `?limit={number}` | Limit number of records returned (default: 15, max: 100) |
+| `?after={cursor}` | Get records after the specified cursor |
+
+{{ include "070-query.md" }}
+
+#### Combined Query Examples
+
+query parameters can be combined to perform complex queries. Here are some examples:
+
+Filter, sort, and limit:
+```bash
+curl -g "{{$ApiURL}}/products:list?quantity[gte]=10&price[lt]=100&sort=-price&limit=5" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
+```
+
+Search with category filter and field selection:
+```bash
+curl -g "{{$ApiURL}}/products:list?q=laptop&brand[eq]=Wow&fields=title,price,quantity" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
+```
+
+Multiple filters with pagination:
+```bash
+curl -g "{{$ApiURL}}/products:list?price[gte]=100&quantity[gt]=0&sort=-price&limit=10&after=01ARZ3NDEK" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
+```
 
 ---
 

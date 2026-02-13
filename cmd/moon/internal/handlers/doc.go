@@ -219,7 +219,7 @@ func (h *DocHandler) Markdown(w http.ResponseWriter, r *http.Request) {
 func (h *DocHandler) JSON(w http.ResponseWriter, r *http.Request) {
 	// Build JSON appendix
 	jsonAppendix := h.buildJSONAppendix()
-	
+
 	// Check if JSON appendix is empty or error
 	if jsonAppendix == "" {
 		log.Printf("ERROR: JSON appendix is missing")
@@ -734,6 +734,42 @@ func (h *DocHandler) buildJSONAppendix() string {
 					"auth_required": true,
 					"role_required": "admin",
 				},
+				"aggregation": map[string]any{
+					"count": map[string]any{
+						"path":          "/{collection}:count",
+						"method":        "GET",
+						"auth_required": true,
+						"description":   "Count records",
+					},
+					"sum": map[string]any{
+						"path":          "/{collection}:sum",
+						"method":        "GET",
+						"auth_required": true,
+						"params":        []string{"field"},
+						"description":   "Sum numeric field",
+					},
+					"avg": map[string]any{
+						"path":          "/{collection}:avg",
+						"method":        "GET",
+						"auth_required": true,
+						"params":        []string{"field"},
+						"description":   "Average numeric field",
+					},
+					"min": map[string]any{
+						"path":          "/{collection}:min",
+						"method":        "GET",
+						"auth_required": true,
+						"params":        []string{"field"},
+						"description":   "Minimum value",
+					},
+					"max": map[string]any{
+						"path":          "/{collection}:max",
+						"method":        "GET",
+						"auth_required": true,
+						"params":        []string{"field"},
+						"description":   "Maximum value",
+					},
+				},
 			},
 			"data_access": map[string]any{
 				"list": map[string]any{
@@ -767,41 +803,37 @@ func (h *DocHandler) buildJSONAppendix() string {
 					"auth_required": true,
 					"description":   "Delete record",
 				},
-			},
-			"aggregation": map[string]any{
-				"count": map[string]any{
-					"path":          "/{collection}:count",
-					"method":        "GET",
-					"auth_required": true,
-					"description":   "Count records",
-				},
-				"sum": map[string]any{
-					"path":          "/{collection}:sum",
-					"method":        "GET",
-					"auth_required": true,
-					"params":        []string{"field"},
-					"description":   "Sum numeric field",
-				},
-				"avg": map[string]any{
-					"path":          "/{collection}:avg",
-					"method":        "GET",
-					"auth_required": true,
-					"params":        []string{"field"},
-					"description":   "Average numeric field",
-				},
-				"min": map[string]any{
-					"path":          "/{collection}:min",
-					"method":        "GET",
-					"auth_required": true,
-					"params":        []string{"field"},
-					"description":   "Minimum value",
-				},
-				"max": map[string]any{
-					"path":          "/{collection}:max",
-					"method":        "GET",
-					"auth_required": true,
-					"params":        []string{"field"},
-					"description":   "Maximum value",
+				"query": map[string]any{
+					"operators": []string{"eq", "ne", "gt", "lt", "gte", "lte", "like", "in"},
+					"syntax": map[string]any{
+						"filter": "?column[operator]=value",
+						"examples": []string{
+							"?price[gte]=100",
+							"?category[eq]=electronics",
+							"?name[like]=%mouse%",
+						},
+					},
+					"sorting": map[string]any{
+						"syntax":     "?sort={field1,-field2}",
+						"ascending":  "field",
+						"descending": "-field",
+						"example":    "?sort=-price,name",
+					},
+					"pagination": map[string]any{
+						"cursor_param": "after",
+						"limit_param":  "limit",
+						"example":      "?limit=10&after=01ARZ3NDEKTSV4RRFFQ69G5FBX",
+					},
+					"search": map[string]any{
+						"full_text_param": "q",
+						"description":     "Searches across all text/string columns",
+						"example":         "?q=wireless",
+					},
+					"field_selection": map[string]any{
+						"param":       "fields",
+						"description": "Return only specified fields (id always included)",
+						"example":     "?fields=name,price",
+					},
 				},
 			},
 			"documentation": map[string]any{
@@ -836,45 +868,6 @@ func (h *DocHandler) buildJSONAppendix() string {
 					"role_required": "admin",
 					"description":   "Refresh documentation cache",
 				},
-			},
-		},
-		DataAccess: DataAccessInfo{
-			Query: map[string]any{
-				"operators": []string{"eq", "ne", "gt", "lt", "gte", "lte", "like", "in"},
-				"syntax": map[string]any{
-					"filter": "?column[operator]=value",
-					"examples": []string{
-						"?price[gte]=100",
-						"?category[eq]=electronics",
-						"?name[like]=%mouse%",
-					},
-				},
-				"sorting": map[string]any{
-					"syntax":     "?sort={field1,-field2}",
-					"ascending":  "field",
-					"descending": "-field",
-					"example":    "?sort=-price,name",
-				},
-				"pagination": map[string]any{
-					"cursor_param": "after",
-					"limit_param":  "limit",
-					"example":      "?limit=10&after=01ARZ3NDEKTSV4RRFFQ69G5FBX",
-				},
-				"search": map[string]any{
-					"full_text_param": "q",
-					"description":     "Searches across all text/string columns",
-					"example":         "?q=wireless",
-				},
-				"field_selection": map[string]any{
-					"param":       "fields",
-					"description": "Return only specified fields (id always included)",
-					"example":     "?fields=name,price",
-				},
-			},
-			Aggregation: map[string]any{
-				"supported":     []string{"count", "sum", "avg", "min", "max"},
-				"numeric_types": []string{"integer", "decimal"},
-				"note":          "Aggregation functions work on integer and decimal field types only",
 			},
 		},
 		HTTPStatusCodes: map[string]string{
