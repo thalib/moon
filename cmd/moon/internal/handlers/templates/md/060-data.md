@@ -75,12 +75,12 @@ curl -s -X POST "http://localhost:6006/products:create" \
   "data": {
     "brand": "Wow",
     "details": "Ergonomic wireless mouse",
-    "id": "01KH94DNRETS9E92D2CN37B5KC",
+    "id": "01KHA959CEZAY7ZMP1Q8CNX1AY",
     "price": "29.99",
     "quantity": 10,
     "title": "Wireless Mouse"
   },
-  "message": "Record created successfully with id 01KH94DNRETS9E92D2CN37B5KC"
+  "message": "Record created successfully with id 01KHA959CEZAY7ZMP1Q8CNX1AY"
 }
 ```
 
@@ -119,12 +119,12 @@ curl -s -X POST "http://localhost:6006/products:create" \
   "results": [
     {
       "index": 0,
-      "id": "01KH94DP2JN3NB88C6598ECD69",
+      "id": "01KHA959P4RTCB47RDCEA42MJX",
       "status": "created",
       "data": {
         "brand": "KeyPro",
         "details": "Mechanical keyboard",
-        "id": "01KH94DP2JN3NB88C6598ECD69",
+        "id": "01KHA959P4RTCB47RDCEA42MJX",
         "price": "49.99",
         "quantity": 5,
         "title": "Keyboard"
@@ -132,12 +132,12 @@ curl -s -X POST "http://localhost:6006/products:create" \
     },
     {
       "index": 1,
-      "id": "01KH94DP2QKEPV3PT3THJ666RE",
+      "id": "01KHA959P8YDWVGA8XHXH3YFRC",
       "status": "created",
       "data": {
         "brand": "ViewMax",
         "details": "24-inch FHD monitor",
-        "id": "01KH94DP2QKEPV3PT3THJ666RE",
+        "id": "01KHA959P8YDWVGA8XHXH3YFRC",
         "price": "199.99",
         "quantity": 2,
         "title": "Monitor"
@@ -167,7 +167,7 @@ curl -s -X GET "http://localhost:6006/products:list" \
     {
       "brand": "Wow",
       "details": "Ergonomic wireless mouse",
-      "id": "01KH94DNRETS9E92D2CN37B5KC",
+      "id": "01KHA959CEZAY7ZMP1Q8CNX1AY",
       "price": "29.99",
       "quantity": 10,
       "title": "Wireless Mouse"
@@ -175,7 +175,7 @@ curl -s -X GET "http://localhost:6006/products:list" \
     {
       "brand": "KeyPro",
       "details": "Mechanical keyboard",
-      "id": "01KH94DP2JN3NB88C6598ECD69",
+      "id": "01KHA959P4RTCB47RDCEA42MJX",
       "price": "49.99",
       "quantity": 5,
       "title": "Keyboard"
@@ -183,7 +183,7 @@ curl -s -X GET "http://localhost:6006/products:list" \
     {
       "brand": "ViewMax",
       "details": "24-inch FHD monitor",
-      "id": "01KH94DP2QKEPV3PT3THJ666RE",
+      "id": "01KHA959P8YDWVGA8XHXH3YFRC",
       "price": "199.99",
       "quantity": 2,
       "title": "Monitor"
@@ -198,7 +198,7 @@ curl -s -X GET "http://localhost:6006/products:list" \
 ### Get Single Record
 
 ```bash
-curl -s -X GET "http://localhost:6006/products:get?id=01KH94DNRETS9E92D2CN37B5KC" \
+curl -s -X GET "http://localhost:6006/products:get?id=01KHA959CEZAY7ZMP1Q8CNX1AY" \
     -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
 ```
 
@@ -209,7 +209,7 @@ curl -s -X GET "http://localhost:6006/products:get?id=01KH94DNRETS9E92D2CN37B5KC
   "data": {
     "brand": "Wow",
     "details": "Ergonomic wireless mouse",
-    "id": "01KH94DNRETS9E92D2CN37B5KC",
+    "id": "01KHA959CEZAY7ZMP1Q8CNX1AY",
     "price": "29.99",
     "quantity": 10,
     "title": "Wireless Mouse"
@@ -225,7 +225,7 @@ curl -s -X POST "http://localhost:6006/products:update" \
     -H "Content-Type: application/json" \
     -d '
       {
-        "id": "01KH94DNRETS9E92D2CN37B5KC",
+        "id": "01KHA959CEZAY7ZMP1Q8CNX1AY",
         "data": {
           "price": "6000.00"
         }
@@ -238,10 +238,10 @@ curl -s -X POST "http://localhost:6006/products:update" \
 ```json
 {
   "data": {
-    "id": "01KH94DNRETS9E92D2CN37B5KC",
+    "id": "01KHA959CEZAY7ZMP1Q8CNX1AY",
     "price": "6000.00"
   },
-  "message": "Record 01KH94DNRETS9E92D2CN37B5KC updated successfully"
+  "message": "Record 01KHA959CEZAY7ZMP1Q8CNX1AY updated successfully"
 }
 ```
 
@@ -255,12 +255,12 @@ curl -s -X POST "http://localhost:6006/products:update" \
       {
         "data": [
           {
-            "id": "01KH94DNRETS9E92D2CN37B5KC",
+            "id": "01KHA959CEZAY7ZMP1Q8CNX1AY",
             "price": "100.00",
             "title": "Updated Product 1"
           },
           {
-            "id": "01KH94DP2JN3NB88C6598ECD69",
+            "id": "01KHA959P4RTCB47RDCEA42MJX",
             "price": "200.00",
             "title": "Updated Product 2"
           }
@@ -276,20 +276,20 @@ curl -s -X POST "http://localhost:6006/products:update" \
   "results": [
     {
       "index": 0,
-      "id": "01KH94DNRETS9E92D2CN37B5KC",
+      "id": "01KHA959CEZAY7ZMP1Q8CNX1AY",
       "status": "updated",
       "data": {
-        "id": "01KH94DNRETS9E92D2CN37B5KC",
+        "id": "01KHA959CEZAY7ZMP1Q8CNX1AY",
         "price": "100.00",
         "title": "Updated Product 1"
       }
     },
     {
       "index": 1,
-      "id": "01KH94DP2JN3NB88C6598ECD69",
+      "id": "01KHA959P4RTCB47RDCEA42MJX",
       "status": "updated",
       "data": {
-        "id": "01KH94DP2JN3NB88C6598ECD69",
+        "id": "01KHA959P4RTCB47RDCEA42MJX",
         "price": "200.00",
         "title": "Updated Product 2"
       }
@@ -311,7 +311,7 @@ curl -s -X POST "http://localhost:6006/products:destroy" \
     -H "Content-Type: application/json" \
     -d '
       {
-        "id": "01KH94DNRETS9E92D2CN37B5KC"
+        "id": "01KHA959CEZAY7ZMP1Q8CNX1AY"
       }
     ' | jq .
 ```
@@ -320,7 +320,7 @@ curl -s -X POST "http://localhost:6006/products:destroy" \
 
 ```json
 {
-  "message": "Record 01KH94DNRETS9E92D2CN37B5KC deleted successfully"
+  "message": "Record 01KHA959CEZAY7ZMP1Q8CNX1AY deleted successfully"
 }
 ```
 
@@ -333,8 +333,8 @@ curl -s -X POST "http://localhost:6006/products:destroy" \
     -d '
       {
         "data": [
-          "01KH94DP2JN3NB88C6598ECD69",
-          "01KH94DP2QKEPV3PT3THJ666RE"
+          "01KHA959P4RTCB47RDCEA42MJX",
+          "01KHA959P8YDWVGA8XHXH3YFRC"
         ]
       }
     ' | jq .
@@ -347,12 +347,12 @@ curl -s -X POST "http://localhost:6006/products:destroy" \
   "results": [
     {
       "index": 0,
-      "id": "01KH94DP2JN3NB88C6598ECD69",
+      "id": "01KHA959P4RTCB47RDCEA42MJX",
       "status": "deleted"
     },
     {
       "index": 1,
-      "id": "01KH94DP2QKEPV3PT3THJ666RE",
+      "id": "01KHA959P8YDWVGA8XHXH3YFRC",
       "status": "deleted"
     }
   ],
