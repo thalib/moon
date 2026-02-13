@@ -190,12 +190,6 @@ Response:
 }
 ```
 
-### Field-Specific Default Values
-
-~~To override the type default for a nullable field, specify the `default` property in the collection schema:~~
-
-**DEPRECATED:** Custom default values can no longer be set via API endpoints. All nullable fields automatically receive type-based defaults as shown in the table above.
-
 ### nullable vs. default
 
 - **`nullable` (API):** Controls whether a field must be provided in API requests
@@ -290,15 +284,6 @@ Moon enforces strict validation rules to ensure data integrity and prevent namin
 | Min page size | 1 | No | Hardcoded minimum |
 | Default page size | 15 | Yes (`pagination.default_page_size`) | When no limit specified |
 | Max page size | 200 | Yes (`pagination.max_page_size`) | Maximum allowed |
-
-### Deprecated Types
-
-The following types are deprecated and will return an error:
-
-| Deprecated | Use Instead | Rationale |
-|------------|-------------|-----------|
-| `text` | `string` | Redundant - both map to TEXT |
-| `float` | `decimal` or `integer` | Precision issues with floating-point |
 
 ## API Standards
 
