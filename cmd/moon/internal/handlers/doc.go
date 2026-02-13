@@ -358,7 +358,6 @@ func (h *DocHandler) getCollectionNames() []string {
 type JSONAppendixData struct {
 	Service         string             `json:"service"`
 	Version         string             `json:"version"`
-	DocumentVersion string             `json:"document_version"`
 	BaseURL         string             `json:"base_url"`
 	URLPrefix       *string            `json:"url_prefix"`
 	Authentication  AuthInfo           `json:"authentication"`
@@ -412,6 +411,7 @@ type FieldInfo struct {
 	Name     string `json:"name"`
 	Type     string `json:"type"`
 	Nullable bool   `json:"nullable"`
+	Unique   bool   `json:"unique"`
 }
 
 // buildJSONAppendix generates a dynamic JSON appendix from the registry and config
@@ -458,6 +458,7 @@ func (h *DocHandler) buildJSONAppendix() string {
 				Name:     col.Name,
 				Type:     string(col.Type),
 				Nullable: col.Nullable,
+				Unique:   col.Unique,
 			})
 		}
 
@@ -469,11 +470,10 @@ func (h *DocHandler) buildJSONAppendix() string {
 
 	// Build the appendix data structure
 	appendix := JSONAppendixData{
-		Service:         "moon",
-		Version:         h.version,
-		DocumentVersion: "1.5.1",
-		BaseURL:         fmt.Sprintf("http://localhost:%d", h.config.Server.Port),
-		URLPrefix:       urlPrefix,
+		Service:   "moon",
+		Version:   "1.00",
+		BaseURL:   fmt.Sprintf("http://localhost:%d", h.config.Server.Port),
+		URLPrefix: urlPrefix,
 		Authentication: AuthInfo{
 			Modes:        authModes,
 			Header:       "Authorization: Bearer <token>",
@@ -507,12 +507,50 @@ func (h *DocHandler) buildJSONAppendix() string {
 			},
 		},
 		DataTypes: []DataTypeInfo{
-			{Name: "string", Description: "Text values of any length", SQLMapping: "TEXT", Example: "Wireless Mouse"},
-			{Name: "integer", Description: "64-bit whole numbers", SQLMapping: "INTEGER", Example: 42},
-			{Name: "boolean", Description: "true/false values", SQLMapping: "BOOLEAN", Example: true},
-			{Name: "datetime", Description: "Date/time in RFC3339 or ISO 8601 format", SQLMapping: "DATETIME", Example: "2023-01-31T13:45:00Z"},
-			{Name: "json", Description: "Arbitrary JSON object or array", SQLMapping: "JSON", Example: map[string]string{"key": "value"}},
-			{Name: "decimal", Description: "Decimal values with precision", SQLMapping: "DECIMAL", Format: "string", Example: "199.99", Note: "API input/output uses strings, default 2 decimal places"},
+			{
+				Name:        "string",
+				Description: "Text values of any length",
+				SQLMapping:  "TEXT",
+				Example:     "Wireless Mouse",
+				Note:        "Nullable fields default to empty string ('') when null",
+			},
+			{
+				Name:        "integer",
+				Description: "64-bit whole numbers",
+				SQLMapping:  "INTEGER",
+				Example:     42,
+				Note:        "Nullable fields default to 0 when null",
+			},
+			{
+				Name:        "boolean",
+				Description: "true/false values",
+				SQLMapping:  "BOOLEAN",
+				Example:     true,
+				Note:        "Nullable fields default to false when null",
+			},
+			{
+				Name:        "datetime",
+				Description: "Date/time in RFC3339 or ISO 8601 format",
+				SQLMapping:  "DATETIME",
+				Example:     "2023-01-31T13:45:00Z",
+				Format:      "RFC3339",
+				Note:        "Stored as ISO 8601, nullable fields default to empty string when null",
+			},
+			{
+				Name:        "json",
+				Description: "Arbitrary JSON object or array",
+				SQLMapping:  "JSON",
+				Example:     map[string]string{"key": "value"},
+				Note:        "Stored as JSON text, nullable fields default to null",
+			},
+			{
+				Name:        "decimal",
+				Description: "Decimal values with precision",
+				SQLMapping:  "DECIMAL",
+				Format:      "string",
+				Example:     "199.99",
+				Note:        "API input/output uses strings, default precision 2 decimal places, nullable fields default to '0.00' when null",
+			},
 		},
 		RegisteredColls: registeredColls,
 		Endpoints: map[string]any{

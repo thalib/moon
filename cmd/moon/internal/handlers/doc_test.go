@@ -525,8 +525,11 @@ func TestDocHandler_JSONAppendixPresence(t *testing.T) {
 	if !strings.Contains(body, `"service": "moon"`) {
 		t.Error("expected service field in JSON appendix")
 	}
-	if !strings.Contains(body, `"version": "1.99"`) {
-		t.Error("expected version field in JSON appendix")
+	if !strings.Contains(body, `"version": "1.00"`) {
+		t.Error("expected version field to be 1.00 in JSON appendix")
+	}
+	if strings.Contains(body, `"document_version"`) {
+		t.Error("did not expect document_version field in JSON appendix")
 	}
 	if !strings.Contains(body, `"registered_collections"`) {
 		t.Error("expected registered_collections field in JSON appendix")
@@ -568,6 +571,75 @@ func TestDocHandler_JSONAppendixPresence(t *testing.T) {
 	}
 	if !strings.Contains(body, `"api_key"`) {
 		t.Error("expected api_key auth mode in JSON appendix")
+	}
+
+	// Check for unique property in fields
+	if !strings.Contains(body, `"unique"`) {
+		t.Error("expected unique property in field definitions")
+	}
+}
+
+func TestDocHandler_JSONAppendixUniqueAndDataTypes(t *testing.T) {
+	// Setup with collections that have unique fields
+	reg := registry.NewSchemaRegistry()
+	reg.Set(&registry.Collection{
+		Name: "users",
+		Columns: []registry.Column{
+			{Name: "email", Type: registry.TypeString, Nullable: false, Unique: true},
+			{Name: "name", Type: registry.TypeString, Nullable: false, Unique: false},
+			{Name: "age", Type: registry.TypeInteger, Nullable: true, Unique: false},
+		},
+	})
+
+	cfg := &config.AppConfig{
+		Server: config.ServerConfig{
+			Host:   "localhost",
+			Port:   6006,
+			Prefix: "",
+		},
+	}
+
+	handler := NewDocHandler(reg, cfg, "1.99")
+
+	// Test Markdown
+	req := httptest.NewRequest(http.MethodGet, "/doc/llms-full.txt", nil)
+	rec := httptest.NewRecorder()
+	handler.Markdown(rec, req)
+
+	body := rec.Body.String()
+
+	// Check for unique properties
+	if !strings.Contains(body, `"unique": true`) {
+		t.Error("expected unique: true for unique fields in JSON appendix")
+	}
+	if !strings.Contains(body, `"unique": false`) {
+		t.Error("expected unique: false for non-unique fields in JSON appendix")
+	}
+
+	// Check for enhanced data type information with notes
+	if !strings.Contains(body, `"note"`) {
+		t.Error("expected note field in data types")
+	}
+	if !strings.Contains(body, `Nullable fields default to`) {
+		t.Error("expected nullability default information in data types")
+	}
+
+	// Check for specific data type notes
+	if !strings.Contains(body, `empty string ('') when null`) {
+		t.Error("expected string nullability note")
+	}
+	if !strings.Contains(body, `default to 0 when null`) {
+		t.Error("expected integer nullability note")
+	}
+
+	// Check that version is hardcoded to 1.00
+	if !strings.Contains(body, `"version": "1.00"`) {
+		t.Error("expected version to be hardcoded to 1.00")
+	}
+
+	// Check that document_version is removed
+	if strings.Contains(body, `"document_version"`) {
+		t.Error("document_version field should be removed from JSON appendix")
 	}
 }
 
