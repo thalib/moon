@@ -471,7 +471,7 @@ func (h *DocHandler) buildJSONAppendix() string {
 	// Build the appendix data structure
 	appendix := JSONAppendixData{
 		Service:   "moon",
-		Version:   "1.00",
+		Version:   h.version,
 		BaseURL:   fmt.Sprintf("http://localhost:%d", h.config.Server.Port),
 		URLPrefix: urlPrefix,
 		Authentication: AuthInfo{
