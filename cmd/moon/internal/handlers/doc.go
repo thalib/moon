@@ -431,7 +431,6 @@ type DataTypeInfo struct {
 	SQLMapping  string `json:"sql_mapping"`
 	Example     any    `json:"example"`
 	Format      string `json:"format,omitempty"`
-	Default     any    `json:"default,omitempty"`
 	Note        string `json:"note,omitempty"`
 }
 
@@ -499,7 +498,6 @@ func (h *DocHandler) buildJSONAppendix() string {
 				Description: "Text values of any length",
 				SQLMapping:  "TEXT",
 				Example:     "Wireless Mouse",
-				Default:     "",
 				Note:        "Nullable fields default to empty string ('') when null",
 			},
 			{
@@ -507,7 +505,6 @@ func (h *DocHandler) buildJSONAppendix() string {
 				Description: "64-bit whole numbers",
 				SQLMapping:  "INTEGER",
 				Example:     42,
-				Default:     0,
 				Note:        "Nullable fields default to 0 when null",
 			},
 			{
@@ -515,7 +512,6 @@ func (h *DocHandler) buildJSONAppendix() string {
 				Description: "true/false values",
 				SQLMapping:  "BOOLEAN",
 				Example:     true,
-				Default:     false,
 				Note:        "Nullable fields default to false when null",
 			},
 			{
@@ -524,7 +520,6 @@ func (h *DocHandler) buildJSONAppendix() string {
 				SQLMapping:  "DATETIME",
 				Example:     "2023-01-31T13:45:00Z",
 				Format:      "RFC3339",
-				Default:     nil,
 				Note:        "Stored as ISO 8601, nullable fields default to empty string when null",
 			},
 			{
@@ -532,7 +527,6 @@ func (h *DocHandler) buildJSONAppendix() string {
 				Description: "Arbitrary JSON object or array",
 				SQLMapping:  "JSON",
 				Example:     map[string]string{"key": "value"},
-				Default:     "{}",
 				Note:        "Stored as JSON text, nullable fields default to null",
 			},
 			{
@@ -541,7 +535,6 @@ func (h *DocHandler) buildJSONAppendix() string {
 				SQLMapping:  "DECIMAL",
 				Format:      "string",
 				Example:     "199.99",
-				Default:     "0.00",
 				Note:        "API input/output uses strings, default precision 2 decimal places, nullable fields default to '0.00' when null",
 			},
 		},
