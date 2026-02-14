@@ -144,8 +144,8 @@ func (h *APIKeysHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 
 	keys, err := h.apiKeyRepo.ListPaginated(ctx, auth.APIKeyListOptions{
-		Limit:     limit + 1,
-		AfterULID: after,
+		Limit:   limit + 1,
+		AfterID: after,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to list API keys")

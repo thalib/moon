@@ -148,7 +148,7 @@ func (h *UsersHandler) List(w http.ResponseWriter, r *http.Request) {
 	// List users
 	users, err := h.userRepo.List(ctx, auth.ListOptions{
 		Limit:      limit + 1, // Fetch one extra to determine if there are more
-		AfterULID:  after,
+		AfterID:    after,
 		RoleFilter: roleFilter,
 	})
 	if err != nil {
@@ -420,7 +420,7 @@ func (h *UsersHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	case "revoke_sessions":
 		// Delete all refresh tokens for this user
-		if err := h.tokenRepo.DeleteByUserPKID(ctx, user.PKID); err != nil {
+		if err := h.tokenRepo.DeleteByUserID(ctx, user.PKID); err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to revoke sessions")
 			return
 		}
@@ -567,7 +567,7 @@ func (h *UsersHandler) Destroy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Delete user's refresh tokens first (cascade)
-	if err := h.tokenRepo.DeleteByUserPKID(ctx, user.PKID); err != nil {
+	if err := h.tokenRepo.DeleteByUserID(ctx, user.PKID); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to delete user sessions")
 		return
 	}
