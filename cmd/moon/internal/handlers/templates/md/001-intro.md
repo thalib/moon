@@ -140,12 +140,16 @@ All successful responses return JSON with relevant data.
 
 | Status Code | Meaning |
 |-------------|---------|
-| `200 OK`      | Successful GET requests                                        |
-| `201 Created` | Successful POST requests creating resources                    |
-| `400 Bad Request` | Invalid input, missing required field, invalid filter operator |
-| `404 Not Found`   | Collection/record not found                             |
-| `409 Conflict`    | Collection/record already exists                                  |
-| `500 Internal Server Error` | Server error                                     |
+| `200 OK`      | OK – Successful GET request |
+| `201 Created` | Created – Successful POST request creating resource |
+| `207 Multi-Status` | Multi-Status – Partial success for batch operations |
+| `400 Bad Request` | Bad Request – Invalid input or parameters |
+| `401 Unauthorized` | Unauthorized – Missing or invalid authentication |
+| `403 Forbidden` | Forbidden – Insufficient permissions |
+| `404 Not Found`   | Not Found – Resource not found |
+| `409 Conflict`    | Conflict – Resource already exists |
+| `429 Too Many Requests` | Too Many Requests – Rate limit exceeded |
+| `500 Internal Server Error` | Internal Server Error – Server error |                                   |
 
 ### Success Responses (200 or 201)
 
