@@ -1938,3 +1938,188 @@ name TEXT NOT NULL
 		}
 	})
 }
+
+// TestDataHandler_NoPkidExposure ensures that the internal pkid column is never exposed in API responses
+func TestDataHandler_NoPkidExposure(t *testing.T) {
+	// Create in-memory SQLite database
+	dbConfig := database.Config{
+		ConnectionString: ":memory:",
+		MaxOpenConns:     5,
+		MaxIdleConns:     2,
+	}
+
+	driver, err := database.NewDriver(dbConfig)
+	if err != nil {
+		t.Fatalf("failed to create driver: %v", err)
+	}
+
+	ctx := context.Background()
+	if err := driver.Connect(ctx); err != nil {
+		t.Fatalf("failed to connect: %v", err)
+	}
+	defer driver.Close()
+
+	// Create a test table WITH pkid column (as Moon creates tables)
+	createTableSQL := `
+		CREATE TABLE products (
+			pkid INTEGER PRIMARY KEY AUTOINCREMENT,
+			id TEXT NOT NULL UNIQUE,
+			name TEXT NOT NULL,
+			price NUMERIC NOT NULL
+		)
+	`
+	if _, err := driver.Exec(ctx, createTableSQL); err != nil {
+		t.Fatalf("failed to create table: %v", err)
+	}
+
+	// Insert test data directly (including pkid)
+	insertSQL := `INSERT INTO products (pkid, id, name, price) VALUES (?, ?, ?, ?)`
+	testID := "01KHCZKMM0N808MKSHBNWF464F"
+	if _, err := driver.Exec(ctx, insertSQL, 1, testID, "Test Product", "29.99"); err != nil {
+		t.Fatalf("failed to insert test data: %v", err)
+	}
+
+	// Setup registry
+	reg := registry.NewSchemaRegistry()
+	collection := &registry.Collection{
+		Name: "products",
+		Columns: []registry.Column{
+			{Name: "name", Type: registry.TypeString, Nullable: false},
+			{Name: "price", Type: registry.TypeDecimal, Nullable: false},
+		},
+	}
+	reg.Set(collection)
+
+	handler := NewDataHandler(driver, reg, testConfig())
+
+	// Test 1: List operation should not expose pkid
+	t.Run("List_NoPkid", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/products:list", nil)
+		w := httptest.NewRecorder()
+
+		handler.List(w, req, "products")
+
+		if w.Code != http.StatusOK {
+			t.Errorf("expected status %d, got %d. Body: %s", http.StatusOK, w.Code, w.Body.String())
+			return
+		}
+
+		var response DataListResponse
+		if err := json.NewDecoder(w.Body).Decode(&response); err != nil {
+			t.Fatalf("failed to decode response: %v", err)
+		}
+
+		if len(response.Data) == 0 {
+			t.Fatal("expected at least one record")
+		}
+
+		// Check that pkid is NOT in the response
+		for i, record := range response.Data {
+			if _, exists := record["pkid"]; exists {
+				t.Errorf("pkid should NOT be exposed in API response (record %d)", i)
+			}
+			// Verify id IS present
+			if _, exists := record["id"]; !exists {
+				t.Errorf("id should be present in API response (record %d)", i)
+			}
+		}
+	})
+
+	// Test 2: Get operation should not expose pkid
+	t.Run("Get_NoPkid", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/products:get?id="+testID, nil)
+		w := httptest.NewRecorder()
+
+		handler.Get(w, req, "products")
+
+		if w.Code != http.StatusOK {
+			t.Errorf("expected status %d, got %d. Body: %s", http.StatusOK, w.Code, w.Body.String())
+			return
+		}
+
+		var response DataGetResponse
+		if err := json.NewDecoder(w.Body).Decode(&response); err != nil {
+			t.Fatalf("failed to decode response: %v", err)
+		}
+
+		// Check that pkid is NOT in the response
+		if _, exists := response.Data["pkid"]; exists {
+			t.Error("pkid should NOT be exposed in API response")
+		}
+		// Verify id IS present
+		if _, exists := response.Data["id"]; !exists {
+			t.Error("id should be present in API response")
+		}
+	})
+
+	// Test 3: Create operation response should not expose pkid
+	t.Run("Create_NoPkid", func(t *testing.T) {
+		reqBody := map[string]any{
+			"data": map[string]any{
+				"name":  "New Product",
+				"price": "19.99",
+			},
+		}
+		body, _ := json.Marshal(reqBody)
+
+		req := httptest.NewRequest(http.MethodPost, "/products:create", bytes.NewReader(body))
+		w := httptest.NewRecorder()
+
+		handler.Create(w, req, "products")
+
+		if w.Code != http.StatusCreated {
+			t.Errorf("expected status %d, got %d. Body: %s", http.StatusCreated, w.Code, w.Body.String())
+			return
+		}
+
+		var response CreateDataResponse
+		if err := json.NewDecoder(w.Body).Decode(&response); err != nil {
+			t.Fatalf("failed to decode response: %v", err)
+		}
+
+		// Check that pkid is NOT in the response
+		if _, exists := response.Data["pkid"]; exists {
+			t.Error("pkid should NOT be exposed in API response")
+		}
+		// Verify id IS present
+		if _, exists := response.Data["id"]; !exists {
+			t.Error("id should be present in API response")
+		}
+	})
+
+	// Test 4: Update operation response should not expose pkid
+	t.Run("Update_NoPkid", func(t *testing.T) {
+		reqBody := UpdateDataRequest{
+			ID: testID,
+			Data: map[string]any{
+				"name":  "Updated Product",
+				"price": "39.99",
+			},
+		}
+		body, _ := json.Marshal(reqBody)
+
+		req := httptest.NewRequest(http.MethodPost, "/products:update", bytes.NewReader(body))
+		w := httptest.NewRecorder()
+
+		handler.Update(w, req, "products")
+
+		if w.Code != http.StatusOK {
+			t.Errorf("expected status %d, got %d. Body: %s", http.StatusOK, w.Code, w.Body.String())
+			return
+		}
+
+		var response UpdateDataResponse
+		if err := json.NewDecoder(w.Body).Decode(&response); err != nil {
+			t.Fatalf("failed to decode response: %v", err)
+		}
+
+		// Check that pkid is NOT in the response
+		if _, exists := response.Data["pkid"]; exists {
+			t.Error("pkid should NOT be exposed in API response")
+		}
+		// Verify id IS present
+		if _, exists := response.Data["id"]; !exists {
+			t.Error("id should be present in API response")
+		}
+	})
+}

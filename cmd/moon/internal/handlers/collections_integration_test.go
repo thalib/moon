@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -480,4 +481,228 @@ func TestCollectionsHandler_List_DetailedResponse(t *testing.T) {
 			t.Errorf("Collection %s: expected %d records, got %d", col.Name, expectedCount, col.Records)
 		}
 	}
+}
+
+// TestSystemColumnsProtection_Integration tests that system columns (pkid, id) cannot be modified, deleted, or renamed
+func TestSystemColumnsProtection_Integration(t *testing.T) {
+	driver := createTestDBForCollections(t)
+	defer driver.Close()
+
+	reg := registry.NewSchemaRegistry()
+	handler := NewCollectionsHandler(driver, reg)
+
+	// Create a test collection
+	createBody := map[string]any{
+		"name": "products",
+		"columns": []map[string]any{
+			{"name": "name", "type": "string", "nullable": false},
+			{"name": "price", "type": "integer", "nullable": false},
+		},
+	}
+	body, _ := json.Marshal(createBody)
+	req := httptest.NewRequest(http.MethodPost, "/collections:create", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+	handler.Create(w, req)
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("Failed to create collection: %s", w.Body.String())
+	}
+
+	// Test 1: Cannot add 'pkid' as a column
+	t.Run("CannotAddPkid", func(t *testing.T) {
+		updateBody := map[string]any{
+			"name": "products",
+			"add_columns": []map[string]any{
+				{"name": "pkid", "type": "integer", "nullable": false},
+			},
+		}
+		body, _ := json.Marshal(updateBody)
+		req := httptest.NewRequest(http.MethodPost, "/collections:update", bytes.NewReader(body))
+		w := httptest.NewRecorder()
+		handler.Update(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("Expected status %d for adding pkid, got %d. Body: %s", http.StatusBadRequest, w.Code, w.Body.String())
+		}
+
+		var errResp map[string]any
+		json.NewDecoder(w.Body).Decode(&errResp)
+		if errStr, ok := errResp["error"].(string); ok {
+			if !strings.Contains(errStr, "system column") {
+				t.Errorf("Expected error to mention 'system column', got: %s", errStr)
+			}
+		}
+	})
+
+	// Test 2: Cannot add 'id' as a column
+	t.Run("CannotAddId", func(t *testing.T) {
+		updateBody := map[string]any{
+			"name": "products",
+			"add_columns": []map[string]any{
+				{"name": "id", "type": "string", "nullable": false},
+			},
+		}
+		body, _ := json.Marshal(updateBody)
+		req := httptest.NewRequest(http.MethodPost, "/collections:update", bytes.NewReader(body))
+		w := httptest.NewRecorder()
+		handler.Update(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("Expected status %d for adding id, got %d. Body: %s", http.StatusBadRequest, w.Code, w.Body.String())
+		}
+	})
+
+	// Test 3: Cannot remove 'pkid'
+	t.Run("CannotRemovePkid", func(t *testing.T) {
+		updateBody := map[string]any{
+			"name":           "products",
+			"remove_columns": []string{"pkid"},
+		}
+		body, _ := json.Marshal(updateBody)
+		req := httptest.NewRequest(http.MethodPost, "/collections:update", bytes.NewReader(body))
+		w := httptest.NewRecorder()
+		handler.Update(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("Expected status %d for removing pkid, got %d. Body: %s", http.StatusBadRequest, w.Code, w.Body.String())
+		}
+
+		var errResp map[string]any
+		json.NewDecoder(w.Body).Decode(&errResp)
+		if errStr, ok := errResp["error"].(string); ok {
+			if !strings.Contains(errStr, "system column") {
+				t.Errorf("Expected error to mention 'system column', got: %s", errStr)
+			}
+		}
+	})
+
+	// Test 4: Cannot remove 'id'
+	t.Run("CannotRemoveId", func(t *testing.T) {
+		updateBody := map[string]any{
+			"name":           "products",
+			"remove_columns": []string{"id"},
+		}
+		body, _ := json.Marshal(updateBody)
+		req := httptest.NewRequest(http.MethodPost, "/collections:update", bytes.NewReader(body))
+		w := httptest.NewRecorder()
+		handler.Update(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("Expected status %d for removing id, got %d. Body: %s", http.StatusBadRequest, w.Code, w.Body.String())
+		}
+
+		var errResp map[string]any
+		json.NewDecoder(w.Body).Decode(&errResp)
+		if errStr, ok := errResp["error"].(string); ok {
+			if !strings.Contains(errStr, "system column") {
+				t.Errorf("Expected error to mention 'system column', got: %s", errStr)
+			}
+		}
+	})
+
+	// Test 5: Cannot rename 'pkid'
+	t.Run("CannotRenamePkid", func(t *testing.T) {
+		updateBody := map[string]any{
+			"name": "products",
+			"rename_columns": []map[string]any{
+				{"old_name": "pkid", "new_name": "primary_key"},
+			},
+		}
+		body, _ := json.Marshal(updateBody)
+		req := httptest.NewRequest(http.MethodPost, "/collections:update", bytes.NewReader(body))
+		w := httptest.NewRecorder()
+		handler.Update(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("Expected status %d for renaming pkid, got %d. Body: %s", http.StatusBadRequest, w.Code, w.Body.String())
+		}
+
+		var errResp map[string]any
+		json.NewDecoder(w.Body).Decode(&errResp)
+		if errStr, ok := errResp["error"].(string); ok {
+			if !strings.Contains(errStr, "system column") {
+				t.Errorf("Expected error to mention 'system column', got: %s", errStr)
+			}
+		}
+	})
+
+	// Test 6: Cannot rename 'id'
+	t.Run("CannotRenameId", func(t *testing.T) {
+		updateBody := map[string]any{
+			"name": "products",
+			"rename_columns": []map[string]any{
+				{"old_name": "id", "new_name": "identifier"},
+			},
+		}
+		body, _ := json.Marshal(updateBody)
+		req := httptest.NewRequest(http.MethodPost, "/collections:update", bytes.NewReader(body))
+		w := httptest.NewRecorder()
+		handler.Update(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("Expected status %d for renaming id, got %d. Body: %s", http.StatusBadRequest, w.Code, w.Body.String())
+		}
+
+		var errResp map[string]any
+		json.NewDecoder(w.Body).Decode(&errResp)
+		if errStr, ok := errResp["error"].(string); ok {
+			if !strings.Contains(errStr, "system column") {
+				t.Errorf("Expected error to mention 'system column', got: %s", errStr)
+			}
+		}
+	})
+
+	// Test 7: Cannot modify 'pkid'
+	t.Run("CannotModifyPkid", func(t *testing.T) {
+		nullable := false
+		updateBody := map[string]any{
+			"name": "products",
+			"modify_columns": []map[string]any{
+				{"name": "pkid", "type": "string", "nullable": &nullable},
+			},
+		}
+		body, _ := json.Marshal(updateBody)
+		req := httptest.NewRequest(http.MethodPost, "/collections:update", bytes.NewReader(body))
+		w := httptest.NewRecorder()
+		handler.Update(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("Expected status %d for modifying pkid, got %d. Body: %s", http.StatusBadRequest, w.Code, w.Body.String())
+		}
+
+		var errResp map[string]any
+		json.NewDecoder(w.Body).Decode(&errResp)
+		if errStr, ok := errResp["error"].(string); ok {
+			if !strings.Contains(errStr, "system column") {
+				t.Errorf("Expected error to mention 'system column', got: %s", errStr)
+			}
+		}
+	})
+
+	// Test 8: Cannot modify 'id'
+	t.Run("CannotModifyId", func(t *testing.T) {
+		nullable := false
+		updateBody := map[string]any{
+			"name": "products",
+			"modify_columns": []map[string]any{
+				{"name": "id", "type": "integer", "nullable": &nullable},
+			},
+		}
+		body, _ := json.Marshal(updateBody)
+		req := httptest.NewRequest(http.MethodPost, "/collections:update", bytes.NewReader(body))
+		w := httptest.NewRecorder()
+		handler.Update(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("Expected status %d for modifying id, got %d. Body: %s", http.StatusBadRequest, w.Code, w.Body.String())
+		}
+
+		var errResp map[string]any
+		json.NewDecoder(w.Body).Decode(&errResp)
+		if errStr, ok := errResp["error"].(string); ok {
+			if !strings.Contains(errStr, "system column") {
+				t.Errorf("Expected error to mention 'system column', got: %s", errStr)
+			}
+		}
+	})
 }

@@ -2298,6 +2298,11 @@ func parseRows(rows *sql.Rows, collection *registry.Collection) ([]map[string]an
 
 		rowData := make(map[string]any)
 		for i, col := range columns {
+			// Filter out internal system column pkid - it must never be exposed via API
+			if col == "pkid" {
+				continue
+			}
+
 			val := values[i]
 
 			// Convert []byte to string for text fields

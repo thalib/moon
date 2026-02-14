@@ -533,12 +533,41 @@ func TestValidateColumnName(t *testing.T) {
 
 // TestValidateColumnName_SystemColumns tests system column validation specifically
 func TestValidateColumnName_SystemColumns(t *testing.T) {
-	// "id" is a system column
-	// However, it is also too short (2 chars, min is 3)
-	// So the length check fails first
-	err := validateColumnName("id")
-	if err == nil {
-		t.Error("Expected error for system column 'id'")
+	tests := []struct {
+		name        string
+		columnName  string
+		expectError bool
+		errContains string
+	}{
+		{
+			name:        "id_is_system_column",
+			columnName:  "id",
+			expectError: true,
+			errContains: "column name must be at least", // Length check fails first (2 < 3)
+		},
+		{
+			name:        "pkid_is_system_column",
+			columnName:  "pkid",
+			expectError: true,
+			errContains: "cannot add system column", // pkid is 4 chars, passes length check
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateColumnName(tt.columnName)
+			if tt.expectError {
+				if err == nil {
+					t.Errorf("Expected error for system column '%s'", tt.columnName)
+				} else if !strings.Contains(err.Error(), tt.errContains) {
+					t.Errorf("Expected error to contain '%s', got: %v", tt.errContains, err)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Unexpected error: %v", err)
+				}
+			}
+		})
 	}
 }
 
