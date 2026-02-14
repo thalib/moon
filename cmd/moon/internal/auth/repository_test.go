@@ -55,11 +55,11 @@ func TestUserRepository_Create(t *testing.T) {
 		t.Fatalf("Create() error = %v", err)
 	}
 
-	if user.ID == 0 {
-		t.Error("Create() did not set user ID")
+	if user.PKID == 0 {
+		t.Error("Create() did not set user PKID")
 	}
-	if user.ULID == "" {
-		t.Error("Create() did not set user ULID")
+	if user.ID == "" {
+		t.Error("Create() did not set user ID")
 	}
 	if user.CreatedAt.IsZero() {
 		t.Error("Create() did not set CreatedAt")
@@ -137,7 +137,7 @@ func TestUserRepository_GetByEmail(t *testing.T) {
 	}
 }
 
-func TestUserRepository_GetByULID(t *testing.T) {
+func TestUserRepository_GetByID(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
 
@@ -155,15 +155,15 @@ func TestUserRepository_GetByULID(t *testing.T) {
 		t.Fatalf("Create() error = %v", err)
 	}
 
-	found, err := repo.GetByULID(ctx, user.ULID)
+	found, err := repo.GetByID(ctx, user.ID)
 	if err != nil {
-		t.Fatalf("GetByULID() error = %v", err)
+		t.Fatalf("GetByID() error = %v", err)
 	}
 	if found == nil {
-		t.Fatal("GetByULID() returned nil")
+		t.Fatal("GetByID() returned nil")
 	}
-	if found.ULID != user.ULID {
-		t.Errorf("GetByULID() ulid = %q, want %q", found.ULID, user.ULID)
+	if found.ID != user.ID {
+		t.Errorf("GetByID() id = %q, want %q", found.ID, user.ID)
 	}
 }
 
@@ -216,7 +216,7 @@ func TestUserRepository_Delete(t *testing.T) {
 		t.Fatalf("Create() error = %v", err)
 	}
 
-	if err := repo.Delete(ctx, user.ID); err != nil {
+	if err := repo.Delete(ctx, user.PKID); err != nil {
 		t.Fatalf("Delete() error = %v", err)
 	}
 
@@ -324,7 +324,7 @@ func TestRefreshTokenRepository_Create(t *testing.T) {
 	}
 
 	token := &RefreshToken{
-		UserID:    user.ID,
+		UserPKID:  user.PKID,
 		TokenHash: HashToken("refresh-token-123"),
 		ExpiresAt: time.Now().Add(7 * 24 * time.Hour),
 	}
@@ -333,8 +333,8 @@ func TestRefreshTokenRepository_Create(t *testing.T) {
 		t.Fatalf("Create() error = %v", err)
 	}
 
-	if token.ID == 0 {
-		t.Error("Create() did not set token ID")
+	if token.PKID == 0 {
+		t.Error("Create() did not set token PKID")
 	}
 }
 
@@ -359,7 +359,7 @@ func TestRefreshTokenRepository_GetByHash(t *testing.T) {
 
 	tokenHash := HashToken("refresh-token-123")
 	token := &RefreshToken{
-		UserID:    user.ID,
+		UserPKID:  user.PKID,
 		TokenHash: tokenHash,
 		ExpiresAt: time.Now().Add(7 * 24 * time.Hour),
 	}
@@ -401,7 +401,7 @@ func TestRefreshTokenRepository_DeleteByUserID(t *testing.T) {
 	// Create multiple tokens
 	for i := 0; i < 3; i++ {
 		token := &RefreshToken{
-			UserID:    user.ID,
+			UserPKID:  user.PKID,
 			TokenHash: HashToken("token-" + string(rune('0'+i))),
 			ExpiresAt: time.Now().Add(7 * 24 * time.Hour),
 		}
@@ -410,7 +410,7 @@ func TestRefreshTokenRepository_DeleteByUserID(t *testing.T) {
 		}
 	}
 
-	if err := tokenRepo.DeleteByUserID(ctx, user.ID); err != nil {
+	if err := tokenRepo.DeleteByUserID(ctx, user.PKID); err != nil {
 		t.Fatalf("DeleteByUserID() error = %v", err)
 	}
 
@@ -443,11 +443,11 @@ func TestAPIKeyRepository_Create(t *testing.T) {
 		t.Fatalf("Create() error = %v", err)
 	}
 
-	if apiKey.ID == 0 {
-		t.Error("Create() did not set ID")
+	if apiKey.PKID == 0 {
+		t.Error("Create() did not set PKID")
 	}
-	if apiKey.ULID == "" {
-		t.Error("Create() did not set ULID")
+	if apiKey.ID == "" {
+		t.Error("Create() did not set ID")
 	}
 }
 
@@ -546,7 +546,7 @@ func TestAPIKeyRepository_ListPaginated(t *testing.T) {
 	}
 
 	// Test pagination with after cursor
-	keys, err = repo.ListPaginated(ctx, APIKeyListOptions{Limit: 2, AfterULID: keys[1].ULID})
+	keys, err = repo.ListPaginated(ctx, APIKeyListOptions{Limit: 2, AfterID: keys[1].ID})
 	if err != nil {
 		t.Fatalf("ListPaginated() error = %v", err)
 	}
@@ -592,7 +592,7 @@ func TestAPIKeyRepository_NameExists(t *testing.T) {
 	}
 
 	// Test excluding own ID
-	exists, err = repo.NameExists(ctx, "Unique Name", apiKey.ID)
+	exists, err = repo.NameExists(ctx, "Unique Name", apiKey.PKID)
 	if err != nil {
 		t.Fatalf("NameExists() error = %v", err)
 	}
@@ -623,7 +623,7 @@ func TestAPIKeyRepository_UpdateKeyHash(t *testing.T) {
 	_, newKeyHash, _ := GenerateAPIKey()
 
 	// Update the hash
-	if err := repo.UpdateKeyHash(ctx, apiKey.ID, newKeyHash); err != nil {
+	if err := repo.UpdateKeyHash(ctx, apiKey.PKID, newKeyHash); err != nil {
 		t.Fatalf("UpdateKeyHash() error = %v", err)
 	}
 
@@ -641,7 +641,7 @@ func TestAPIKeyRepository_UpdateKeyHash(t *testing.T) {
 	if found == nil {
 		t.Fatal("UpdateKeyHash() new hash should work")
 	}
-	if found.ID != apiKey.ID {
+	if found.PKID != apiKey.PKID {
 		t.Error("UpdateKeyHash() should return same key")
 	}
 }
@@ -693,7 +693,7 @@ func TestAPIKeyRepository_UpdateMetadata(t *testing.T) {
 	}
 }
 
-func TestAPIKeyRepository_GetByULID(t *testing.T) {
+func TestAPIKeyRepository_GetByID(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
 
@@ -702,7 +702,7 @@ func TestAPIKeyRepository_GetByULID(t *testing.T) {
 
 	_, keyHash, _ := GenerateAPIKey()
 	apiKey := &APIKey{
-		Name:     "ULID Test Key",
+		Name:     "ID Test Key",
 		KeyHash:  keyHash,
 		Role:     "admin",
 		CanWrite: true,
@@ -711,25 +711,25 @@ func TestAPIKeyRepository_GetByULID(t *testing.T) {
 		t.Fatalf("Create() error = %v", err)
 	}
 
-	// Test GetByULID
-	found, err := repo.GetByULID(ctx, apiKey.ULID)
+	// Test GetByID
+	found, err := repo.GetByID(ctx, apiKey.ID)
 	if err != nil {
-		t.Fatalf("GetByULID() error = %v", err)
+		t.Fatalf("GetByID() error = %v", err)
 	}
 	if found == nil {
-		t.Fatal("GetByULID() returned nil")
+		t.Fatal("GetByID() returned nil")
 	}
-	if found.ULID != apiKey.ULID {
-		t.Errorf("GetByULID() ulid = %q, want %q", found.ULID, apiKey.ULID)
+	if found.ID != apiKey.ID {
+		t.Errorf("GetByID() id = %q, want %q", found.ID, apiKey.ID)
 	}
 
 	// Test not found
-	notFound, err := repo.GetByULID(ctx, "nonexistent")
+	notFound, err := repo.GetByID(ctx, "nonexistent")
 	if err != nil {
-		t.Fatalf("GetByULID() error = %v", err)
+		t.Fatalf("GetByID() error = %v", err)
 	}
 	if notFound != nil {
-		t.Error("GetByULID() should return nil for nonexistent ULID")
+		t.Error("GetByID() should return nil for nonexistent ID")
 	}
 }
 
@@ -751,7 +751,7 @@ func TestAPIKeyRepository_Delete(t *testing.T) {
 		t.Fatalf("Create() error = %v", err)
 	}
 
-	if err := repo.Delete(ctx, apiKey.ID); err != nil {
+	if err := repo.Delete(ctx, apiKey.PKID); err != nil {
 		t.Fatalf("Delete() error = %v", err)
 	}
 

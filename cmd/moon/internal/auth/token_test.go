@@ -26,7 +26,7 @@ func TestTokenService_GenerateTokenPair(t *testing.T) {
 	svc := NewTokenService("test-secret-key-123", 3600, 604800)
 
 	user := &User{
-		ULID:     "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+		ID:       "01ARZ3NDEKTSV4RRFFQ69G5FAV",
 		Username: "testuser",
 		Role:     "admin",
 		CanWrite: true,
@@ -67,7 +67,7 @@ func TestTokenService_ValidateAccessToken(t *testing.T) {
 	svc := NewTokenService("test-secret-key-123", 3600, 604800)
 
 	user := &User{
-		ULID:     "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+		ID:       "01ARZ3NDEKTSV4RRFFQ69G5FAV",
 		Username: "testuser",
 		Role:     "admin",
 		CanWrite: true,
@@ -83,8 +83,8 @@ func TestTokenService_ValidateAccessToken(t *testing.T) {
 		t.Fatalf("ValidateAccessToken() error = %v", err)
 	}
 
-	if claims.UserID != user.ULID {
-		t.Errorf("UserID = %q, want %q", claims.UserID, user.ULID)
+	if claims.UserID != user.ID {
+		t.Errorf("UserID = %q, want %q", claims.UserID, user.ID)
 	}
 
 	if claims.Username != user.Username {
@@ -127,7 +127,7 @@ func TestTokenService_ValidateAccessToken_WrongSecret(t *testing.T) {
 	svc2 := NewTokenService("secret-2", 3600, 604800)
 
 	user := &User{
-		ULID:     "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+		ID:       "01ARZ3NDEKTSV4RRFFQ69G5FAV",
 		Username: "testuser",
 		Role:     "admin",
 		CanWrite: true,
@@ -149,7 +149,7 @@ func TestTokenService_ValidateAccessToken_ExpiredToken(t *testing.T) {
 	svc := NewTokenService("test-secret", -1, 604800) // negative expiry = already expired
 
 	user := &User{
-		ULID:     "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+		ID:       "01ARZ3NDEKTSV4RRFFQ69G5FAV",
 		Username: "testuser",
 		Role:     "admin",
 		CanWrite: true,
@@ -170,7 +170,7 @@ func TestTokenService_GenerateRefreshToken_Uniqueness(t *testing.T) {
 	svc := NewTokenService("secret", 3600, 604800)
 
 	user := &User{
-		ULID:     "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+		ID:       "01ARZ3NDEKTSV4RRFFQ69G5FAV",
 		Username: "testuser",
 		Role:     "admin",
 		CanWrite: true,
@@ -194,7 +194,7 @@ func TestClaims_RegisteredClaims(t *testing.T) {
 	svc := NewTokenService("test-secret", 3600, 604800)
 
 	user := &User{
-		ULID:     "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+		ID:       "01ARZ3NDEKTSV4RRFFQ69G5FAV",
 		Username: "testuser",
 		Role:     "admin",
 		CanWrite: true,
@@ -210,9 +210,9 @@ func TestClaims_RegisteredClaims(t *testing.T) {
 		t.Fatalf("ValidateAccessToken() error = %v", err)
 	}
 
-	// Check subject is set to user ULID
-	if claims.Subject != user.ULID {
-		t.Errorf("Subject = %q, want %q", claims.Subject, user.ULID)
+	// Check subject is set to user ID
+	if claims.Subject != user.ID {
+		t.Errorf("Subject = %q, want %q", claims.Subject, user.ID)
 	}
 
 	// Check issued at is set
