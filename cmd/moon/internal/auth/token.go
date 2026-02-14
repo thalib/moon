@@ -69,7 +69,7 @@ func (s *TokenService) generateAccessToken(user *User) (string, time.Time, error
 	expiresAt := now.Add(s.accessExpiry)
 
 	claims := &Claims{
-		UserID:   user.ULID,
+		UserID:   user.ID,
 		Username: user.Username,
 		Role:     user.Role,
 		CanWrite: user.CanWrite,
@@ -77,7 +77,7 @@ func (s *TokenService) generateAccessToken(user *User) (string, time.Time, error
 			ExpiresAt: jwt.NewNumericDate(expiresAt),
 			IssuedAt:  jwt.NewNumericDate(now),
 			NotBefore: jwt.NewNumericDate(now.Add(-constants.JWTClockSkew)),
-			Subject:   user.ULID,
+			Subject:   user.ID,
 		},
 	}
 
