@@ -31,8 +31,8 @@ var (
 
 	// System columns that cannot be added, removed, or renamed
 	systemColumns = map[string]bool{
+		"pkid": true,
 		"id":   true,
-		"ulid": true,
 	}
 )
 
@@ -1073,18 +1073,18 @@ func generateCreateTableDDL(tableName string, columns []registry.Column, dialect
 
 	sb.WriteString(fmt.Sprintf("CREATE TABLE %s (", tableName))
 
-	// Add id column (auto-increment primary key)
+	// Add pkid column (auto-increment primary key)
 	switch dialect {
 	case database.DialectPostgres:
-		sb.WriteString("\n  id SERIAL PRIMARY KEY")
+		sb.WriteString("\n  pkid SERIAL PRIMARY KEY")
 	case database.DialectMySQL:
-		sb.WriteString("\n  id INT AUTO_INCREMENT PRIMARY KEY")
+		sb.WriteString("\n  pkid INT AUTO_INCREMENT PRIMARY KEY")
 	case database.DialectSQLite:
-		sb.WriteString("\n  id INTEGER PRIMARY KEY AUTOINCREMENT")
+		sb.WriteString("\n  pkid INTEGER PRIMARY KEY AUTOINCREMENT")
 	}
 
-	// Add ulid column (unique, not null)
-	sb.WriteString(",\n  ulid CHAR(26) NOT NULL UNIQUE")
+	// Add id column (ULID: unique, not null)
+	sb.WriteString(",\n  id CHAR(26) NOT NULL UNIQUE")
 
 	// Add user-defined columns
 	for _, col := range columns {

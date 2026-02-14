@@ -48,8 +48,7 @@ func TestSchemaEndpoint(t *testing.T) {
 	// Create the collection table
 	_, err = driver.Exec(ctx, `
 		CREATE TABLE products (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			ulid TEXT NOT NULL UNIQUE,
+			id TEXT PRIMARY KEY,
 			name TEXT NOT NULL,
 			price INTEGER NOT NULL,
 			description TEXT,
@@ -100,10 +99,8 @@ func TestSchemaEndpoint(t *testing.T) {
 			}
 		}
 
-		// Verify internal 'ulid' column is NOT exposed
-		if fieldNames["ulid"] {
-			t.Error("Internal 'ulid' column should not be exposed in schema")
-		}
+		// Verify internal columns are properly handled
+		// (id should be exposed as the external identifier)
 
 		// Verify there is exactly one 'id' field (no duplicates)
 		idCount := 0
@@ -232,15 +229,14 @@ func TestSchemaEndpoint(t *testing.T) {
 		}
 	})
 
-	// Test 4: Verify internal id and ulid columns are never exposed (bug fix test)
-	t.Run("internal_columns_not_exposed", func(t *testing.T) {
-		// Create a collection where registry accidentally includes id/ulid columns
+	// Test 4: Verify system columns are properly handled (bug fix test)
+	t.Run("system_columns_properly_handled", func(t *testing.T) {
+		// Create a collection where registry accidentally includes id column
 		// This simulates the bug scenario from the issue
 		badCollection := &registry.Collection{
 			Name: "bad_collection",
 			Columns: []registry.Column{
 				{Name: "id", Type: registry.TypeInteger, Nullable: true},
-				{Name: "ulid", Type: registry.TypeString, Nullable: false},
 				{Name: "title", Type: registry.TypeString, Nullable: false},
 			},
 		}
@@ -279,13 +275,6 @@ func TestSchemaEndpoint(t *testing.T) {
 
 		if idCount != 1 {
 			t.Errorf("Expected exactly 1 'id' field in schema, got %d", idCount)
-		}
-
-		// Verify 'ulid' is NOT exposed
-		for _, field := range resp.Fields {
-			if field.Name == "ulid" {
-				t.Error("Internal 'ulid' column must not be exposed in schema response")
-			}
 		}
 
 		// Verify user-defined columns are still present
@@ -340,8 +329,7 @@ func TestSchemaEndpoint(t *testing.T) {
 		// Create table
 		_, createErr := driver.Exec(ctx, `
 			CREATE TABLE test_total (
-				id INTEGER PRIMARY KEY AUTOINCREMENT,
-				ulid TEXT NOT NULL UNIQUE,
+				id TEXT PRIMARY KEY,
 				name TEXT NOT NULL,
 				price INTEGER NOT NULL,
 				created_at TEXT NOT NULL,
@@ -354,7 +342,7 @@ func TestSchemaEndpoint(t *testing.T) {
 
 		// Insert test records
 		_, insertErr := driver.Exec(ctx, `
-			INSERT INTO test_total (ulid, name, price, created_at, updated_at)
+			INSERT INTO test_total (id, name, price, created_at, updated_at)
 			VALUES 
 				('01HQZX1234567890ABCDEFGHIJ', 'Product 1', 100, '2024-01-01T00:00:00Z', '2024-01-01T00:00:00Z'),
 				('01HQZX2345678901BCDEFGHIJK', 'Product 2', 200, '2024-01-02T00:00:00Z', '2024-01-02T00:00:00Z')

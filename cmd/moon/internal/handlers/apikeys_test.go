@@ -787,7 +787,7 @@ func TestNewAPIKeysHandler(t *testing.T) {
 
 func TestAPIKeyToPublicInfo(t *testing.T) {
 	apiKey := &auth.APIKey{
-		ULID:        "01H1234567890ABCDEFGHJKMNP",
+		ID:          "01H1234567890ABCDEFGHJKMNP",
 		Name:        "test-key",
 		Description: "Test description",
 		Role:        "admin",
@@ -796,8 +796,8 @@ func TestAPIKeyToPublicInfo(t *testing.T) {
 
 	info := apiKeyToPublicInfo(apiKey)
 
-	if info.ID != apiKey.ULID {
-		t.Errorf("apiKeyToPublicInfo() ID = %s, want %s", info.ID, apiKey.ULID)
+	if info.ID != apiKey.ID {
+		t.Errorf("apiKeyToPublicInfo() ID = %s, want %s", info.ID, apiKey.ID)
 	}
 	if info.Name != apiKey.Name {
 		t.Errorf("apiKeyToPublicInfo() Name = %s, want %s", info.Name, apiKey.Name)

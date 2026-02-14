@@ -169,7 +169,7 @@ func TestUsersHandler_Get_Success(t *testing.T) {
 	handler, admin, adminToken, db := setupTestUsersHandler(t)
 	defer db.Close()
 
-	req := httptest.NewRequest(http.MethodGet, "/users:get?id="+admin.ULID, nil)
+	req := httptest.NewRequest(http.MethodGet, "/users:get?id="+admin.ID, nil)
 	req.Header.Set("Authorization", "Bearer "+adminToken)
 	w := httptest.NewRecorder()
 
@@ -432,7 +432,7 @@ func TestUsersHandler_Update_Success(t *testing.T) {
 	}
 	bodyBytes, _ := json.Marshal(body)
 
-	req := httptest.NewRequest(http.MethodPost, "/users:update?id="+testUser.ULID, bytes.NewReader(bodyBytes))
+	req := httptest.NewRequest(http.MethodPost, "/users:update?id="+testUser.ID, bytes.NewReader(bodyBytes))
 	req.Header.Set("Authorization", "Bearer "+adminToken)
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -479,7 +479,7 @@ func TestUsersHandler_Update_ResetPassword(t *testing.T) {
 	}
 	bodyBytes, _ := json.Marshal(body)
 
-	req := httptest.NewRequest(http.MethodPost, "/users:update?id="+testUser.ULID, bytes.NewReader(bodyBytes))
+	req := httptest.NewRequest(http.MethodPost, "/users:update?id="+testUser.ID, bytes.NewReader(bodyBytes))
 	req.Header.Set("Authorization", "Bearer "+adminToken)
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -491,7 +491,7 @@ func TestUsersHandler_Update_ResetPassword(t *testing.T) {
 	}
 
 	// Verify new password works
-	updatedUser, _ := userRepo.GetByULID(ctx, testUser.ULID)
+	updatedUser, _ := userRepo.GetByID(ctx, testUser.ID)
 	if err := auth.ComparePassword(updatedUser.PasswordHash, "NewPass456"); err != nil {
 		t.Error("Update() password reset didn't work")
 	}
@@ -522,7 +522,7 @@ func TestUsersHandler_Update_RevokeSessions(t *testing.T) {
 	}
 	bodyBytes, _ := json.Marshal(body)
 
-	req := httptest.NewRequest(http.MethodPost, "/users:update?id="+testUser.ULID, bytes.NewReader(bodyBytes))
+	req := httptest.NewRequest(http.MethodPost, "/users:update?id="+testUser.ID, bytes.NewReader(bodyBytes))
 	req.Header.Set("Authorization", "Bearer "+adminToken)
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -544,7 +544,7 @@ func TestUsersHandler_Update_CannotModifySelf(t *testing.T) {
 	}
 	bodyBytes, _ := json.Marshal(body)
 
-	req := httptest.NewRequest(http.MethodPost, "/users:update?id="+admin.ULID, bytes.NewReader(bodyBytes))
+	req := httptest.NewRequest(http.MethodPost, "/users:update?id="+admin.ID, bytes.NewReader(bodyBytes))
 	req.Header.Set("Authorization", "Bearer "+adminToken)
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -589,7 +589,7 @@ func TestUsersHandler_Update_CannotDowngradeLastAdmin(t *testing.T) {
 	}
 	bodyBytes, _ := json.Marshal(body)
 
-	req := httptest.NewRequest(http.MethodPost, "/users:update?id="+secondAdmin.ULID, bytes.NewReader(bodyBytes))
+	req := httptest.NewRequest(http.MethodPost, "/users:update?id="+secondAdmin.ID, bytes.NewReader(bodyBytes))
 	req.Header.Set("Authorization", "Bearer "+adminToken)
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -621,7 +621,7 @@ func TestUsersHandler_Destroy_Success(t *testing.T) {
 		t.Fatalf("failed to create test user: %v", err)
 	}
 
-	req := httptest.NewRequest(http.MethodPost, "/users:destroy?id="+testUser.ULID, nil)
+	req := httptest.NewRequest(http.MethodPost, "/users:destroy?id="+testUser.ID, nil)
 	req.Header.Set("Authorization", "Bearer "+adminToken)
 	w := httptest.NewRecorder()
 
@@ -632,7 +632,7 @@ func TestUsersHandler_Destroy_Success(t *testing.T) {
 	}
 
 	// Verify user is deleted
-	deletedUser, _ := userRepo.GetByULID(ctx, testUser.ULID)
+	deletedUser, _ := userRepo.GetByID(ctx, testUser.ID)
 	if deletedUser != nil {
 		t.Error("Destroy() user should be deleted")
 	}
@@ -642,7 +642,7 @@ func TestUsersHandler_Destroy_CannotDeleteSelf(t *testing.T) {
 	handler, admin, adminToken, db := setupTestUsersHandler(t)
 	defer db.Close()
 
-	req := httptest.NewRequest(http.MethodPost, "/users:destroy?id="+admin.ULID, nil)
+	req := httptest.NewRequest(http.MethodPost, "/users:destroy?id="+admin.ID, nil)
 	req.Header.Set("Authorization", "Bearer "+adminToken)
 	w := httptest.NewRecorder()
 
@@ -680,7 +680,7 @@ func TestUsersHandler_Destroy_CannotDeleteLastAdmin(t *testing.T) {
 	}
 
 	// Delete second admin (should succeed)
-	req := httptest.NewRequest(http.MethodPost, "/users:destroy?id="+secondAdmin.ULID, nil)
+	req := httptest.NewRequest(http.MethodPost, "/users:destroy?id="+secondAdmin.ID, nil)
 	req.Header.Set("Authorization", "Bearer "+adminToken)
 	w := httptest.NewRecorder()
 
@@ -912,7 +912,7 @@ func TestUsersHandler_Update_InvalidAction(t *testing.T) {
 	}
 	bodyBytes, _ := json.Marshal(body)
 
-	req := httptest.NewRequest(http.MethodPost, "/users:update?id="+testUser.ULID, bytes.NewReader(bodyBytes))
+	req := httptest.NewRequest(http.MethodPost, "/users:update?id="+testUser.ID, bytes.NewReader(bodyBytes))
 	req.Header.Set("Authorization", "Bearer "+adminToken)
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -949,7 +949,7 @@ func TestUsersHandler_Update_ResetPasswordMissingPassword(t *testing.T) {
 	}
 	bodyBytes, _ := json.Marshal(body)
 
-	req := httptest.NewRequest(http.MethodPost, "/users:update?id="+testUser.ULID, bytes.NewReader(bodyBytes))
+	req := httptest.NewRequest(http.MethodPost, "/users:update?id="+testUser.ID, bytes.NewReader(bodyBytes))
 	req.Header.Set("Authorization", "Bearer "+adminToken)
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -984,7 +984,7 @@ func TestUsersHandler_Update_NoFieldsToUpdate(t *testing.T) {
 	body := UpdateUserRequest{}
 	bodyBytes, _ := json.Marshal(body)
 
-	req := httptest.NewRequest(http.MethodPost, "/users:update?id="+testUser.ULID, bytes.NewReader(bodyBytes))
+	req := httptest.NewRequest(http.MethodPost, "/users:update?id="+testUser.ID, bytes.NewReader(bodyBytes))
 	req.Header.Set("Authorization", "Bearer "+adminToken)
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -998,7 +998,7 @@ func TestUsersHandler_Update_NoFieldsToUpdate(t *testing.T) {
 
 func TestUserToPublicInfo(t *testing.T) {
 	user := &auth.User{
-		ULID:     "01H1234567890ABCDEFGHJKMNP",
+		ID:       "01H1234567890ABCDEFGHJKMNP",
 		Username: "testuser",
 		Email:    "test@example.com",
 		Role:     "admin",
@@ -1007,8 +1007,8 @@ func TestUserToPublicInfo(t *testing.T) {
 
 	info := userToPublicInfo(user)
 
-	if info.ID != user.ULID {
-		t.Errorf("userToPublicInfo() ID = %s, want %s", info.ID, user.ULID)
+	if info.ID != user.ID {
+		t.Errorf("userToPublicInfo() ID = %s, want %s", info.ID, user.ID)
 	}
 	if info.Username != user.Username {
 		t.Errorf("userToPublicInfo() Username = %s, want %s", info.Username, user.Username)

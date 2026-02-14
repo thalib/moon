@@ -57,7 +57,7 @@ Authorization: Bearer <access_token>
 **JWT Claims Structure:**
 
 Access tokens contain the following claims:
-- `user_id`: Internal user ID (integer)
+- `user_id`: User's ULID identifier (string, from `id` column)
 - `username`: User's username (string)
 - `email`: User's email address (string)
 - `role`: User's role (`admin`, `user`, or `readonly`)
@@ -309,7 +309,7 @@ The password policy is applied and validated in the following scenarios:
 
 **Refresh Token Storage:**
 
-- Stored in database with: user_id, token_hash, expires_at, created_at, last_used_at
+- Stored in database with: user_pkid, token_hash, expires_at, created_at, last_used_at
 - Tokens are single-use: invalidated immediately after successful refresh
 - New refresh token issued with each successful refresh
 - **Expired Token Cleanup:** Expired tokens should be purged from the database periodically via a scheduled cleanup job (implementation recommended but not automatic)
@@ -411,19 +411,19 @@ The middleware pipeline executes in strict order to ensure security and correctn
 
 ```sql
 CREATE TABLE users (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,  -- Internal ID (not exposed)
-  ulid TEXT UNIQUE NOT NULL,              -- External ID (exposed as "id")
+  pkid INTEGER PRIMARY KEY AUTOINCREMENT,  -- Internal ID (not exposed)
+  id TEXT UNIQUE NOT NULL,                 -- ULID, exposed as "id" in API
   username TEXT UNIQUE NOT NULL,
   email TEXT UNIQUE NOT NULL,
-  password_hash TEXT NOT NULL,            -- bcrypt hash
-  role TEXT NOT NULL,                     -- "admin" or "user"
-  can_write BOOLEAN DEFAULT FALSE,        -- Write permission for user role
+  password_hash TEXT NOT NULL,             -- bcrypt hash
+  role TEXT NOT NULL,                      -- "admin" or "user"
+  can_write BOOLEAN DEFAULT FALSE,         -- Write permission for user role
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   last_login_at TIMESTAMP
 );
 
-CREATE INDEX idx_users_ulid ON users(ulid);
+CREATE INDEX idx_users_id ON users(id);
 CREATE INDEX idx_users_username ON users(username);
 CREATE INDEX idx_users_email ON users(email);
 ```
@@ -432,16 +432,16 @@ CREATE INDEX idx_users_email ON users(email);
 
 ```sql
 CREATE TABLE refresh_tokens (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NOT NULL,               -- Foreign key to users.id
+  pkid INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_pkid INTEGER NOT NULL,             -- Foreign key to users.pkid
   token_hash TEXT UNIQUE NOT NULL,        -- SHA-256 hash of refresh token
   expires_at TIMESTAMP NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   last_used_at TIMESTAMP,
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  FOREIGN KEY (user_pkid) REFERENCES users(pkid) ON DELETE CASCADE
 );
 
-CREATE INDEX idx_refresh_tokens_user_id ON refresh_tokens(user_id);
+CREATE INDEX idx_refresh_tokens_user_pkid ON refresh_tokens(user_pkid);
 CREATE INDEX idx_refresh_tokens_hash ON refresh_tokens(token_hash);
 CREATE INDEX idx_refresh_tokens_expires ON refresh_tokens(expires_at);
 ```
@@ -450,8 +450,8 @@ CREATE INDEX idx_refresh_tokens_expires ON refresh_tokens(expires_at);
 
 ```sql
 CREATE TABLE apikeys (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  ulid TEXT UNIQUE NOT NULL,              -- External ID (exposed as "id")
+  pkid INTEGER PRIMARY KEY AUTOINCREMENT,
+  id TEXT UNIQUE NOT NULL,                -- ULID, exposed as "id" in API
   name TEXT NOT NULL,
   description TEXT,
   key_hash TEXT UNIQUE NOT NULL,          -- SHA-256 hash of API key
@@ -461,7 +461,7 @@ CREATE TABLE apikeys (
   last_used_at TIMESTAMP
 );
 
-CREATE INDEX idx_apikeys_ulid ON apikeys(ulid);
+CREATE INDEX idx_apikeys_id ON apikeys(id);
 CREATE INDEX idx_apikeys_hash ON apikeys(key_hash);
 ```
 

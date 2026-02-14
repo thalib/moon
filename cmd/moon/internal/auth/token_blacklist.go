@@ -13,9 +13,9 @@ import (
 
 // BlacklistedToken represents a revoked JWT access token
 type BlacklistedToken struct {
-	ID        int64
+	PKID      int64
 	TokenHash string
-	UserID    int64
+	UserPKID  int64
 	ExpiresAt time.Time
 	CreatedAt time.Time
 }
@@ -31,23 +31,23 @@ func NewTokenBlacklist(db database.Driver) *TokenBlacklist {
 }
 
 // Add adds a token to the blacklist
-func (b *TokenBlacklist) Add(ctx context.Context, token string, userID int64, expiresAt time.Time) error {
+func (b *TokenBlacklist) Add(ctx context.Context, token string, userPKID int64, expiresAt time.Time) error {
 	tokenHash := hashTokenForBlacklist(token)
 
 	var query string
 	switch b.db.Dialect() {
 	case database.DialectPostgres:
-		query = fmt.Sprintf(`INSERT INTO %s (token_hash, user_id, expires_at, created_at)
+		query = fmt.Sprintf(`INSERT INTO %s (token_hash, user_pkid, expires_at, created_at)
 			VALUES ($1, $2, $3, $4)`, constants.TableBlacklistedTokens)
-		_, err := b.db.Exec(ctx, query, tokenHash, userID, expiresAt, time.Now())
+		_, err := b.db.Exec(ctx, query, tokenHash, userPKID, expiresAt, time.Now())
 		if err != nil {
 			return fmt.Errorf("failed to blacklist token: %w", err)
 		}
 		return nil
 	default:
-		query = fmt.Sprintf(`INSERT INTO %s (token_hash, user_id, expires_at, created_at)
+		query = fmt.Sprintf(`INSERT INTO %s (token_hash, user_pkid, expires_at, created_at)
 			VALUES (?, ?, ?, ?)`, constants.TableBlacklistedTokens)
-		_, err := b.db.Exec(ctx, query, tokenHash, userID, expiresAt, time.Now())
+		_, err := b.db.Exec(ctx, query, tokenHash, userPKID, expiresAt, time.Now())
 		if err != nil {
 			return fmt.Errorf("failed to blacklist token: %w", err)
 		}
@@ -74,7 +74,7 @@ func (b *TokenBlacklist) IsBlacklisted(ctx context.Context, token string) (bool,
 }
 
 // RevokeAllUserTokens revokes all tokens for a specific user
-func (b *TokenBlacklist) RevokeAllUserTokens(ctx context.Context, userID int64) error {
+func (b *TokenBlacklist) RevokeAllUserTokens(ctx context.Context, userPKID int64) error {
 	// We can't blacklist all existing tokens without having them
 	// Instead, we'll mark that tokens issued before this time should be invalid
 	// This is handled by storing a revocation timestamp in a separate table

@@ -251,7 +251,7 @@ func (h *DataHandler) List(w http.ResponseWriter, r *http.Request, collectionNam
 	// Add cursor condition if provided (AFTER counting)
 	if after != "" {
 		conditions = append(conditions, query.Condition{
-			Column:   "ulid",
+			Column:   "id",
 			Operator: query.OpGreaterThan,
 			Value:    after,
 		})
@@ -358,12 +358,12 @@ func (h *DataHandler) Get(w http.ResponseWriter, r *http.Request, collectionName
 	}
 
 	// Build SELECT query using ULID
-	query := fmt.Sprintf("SELECT * FROM %s WHERE ulid = ?", collectionName)
+	query := fmt.Sprintf("SELECT * FROM %s WHERE id = ?", collectionName)
 	args := []any{idStr}
 
 	// Adjust placeholder style based on dialect
 	if h.db.Dialect() == database.DialectPostgres {
-		query = fmt.Sprintf("SELECT * FROM %s WHERE ulid = $1", collectionName)
+		query = fmt.Sprintf("SELECT * FROM %s WHERE id = $1", collectionName)
 	}
 
 	// Execute query
@@ -452,7 +452,7 @@ func (h *DataHandler) createSingle(w http.ResponseWriter, r *http.Request, colle
 	ulid := generateULID()
 
 	// Build INSERT query including ULID
-	columns := []string{"ulid"}
+	columns := []string{"id"}
 	placeholders := []string{}
 	values := []any{ulid}
 	i := 1
@@ -573,7 +573,7 @@ func (h *DataHandler) createBatchAtomic(w http.ResponseWriter, ctx context.Conte
 		ulid := generateULID()
 
 		// Build INSERT query
-		columns := []string{"ulid"}
+		columns := []string{"id"}
 		placeholders := []string{}
 		values := []any{ulid}
 		i := 1
@@ -669,7 +669,7 @@ func (h *DataHandler) createBatchBestEffort(w http.ResponseWriter, ctx context.C
 		ulid := generateULID()
 
 		// Build INSERT query
-		columns := []string{"ulid"}
+		columns := []string{"id"}
 		placeholders := []string{}
 		values := []any{ulid}
 		i := 1
@@ -867,12 +867,12 @@ func (h *DataHandler) updateSingleLegacy(w http.ResponseWriter, r *http.Request,
 
 	var query string
 	if h.db.Dialect() == database.DialectPostgres {
-		query = fmt.Sprintf("UPDATE %s SET %s WHERE ulid = $%d",
+		query = fmt.Sprintf("UPDATE %s SET %s WHERE id = $%d",
 			collectionName,
 			strings.Join(setClauses, ", "),
 			i)
 	} else {
-		query = fmt.Sprintf("UPDATE %s SET %s WHERE ulid = ?",
+		query = fmt.Sprintf("UPDATE %s SET %s WHERE id = ?",
 			collectionName,
 			strings.Join(setClauses, ", "))
 	}
@@ -976,12 +976,12 @@ func (h *DataHandler) updateSingle(w http.ResponseWriter, r *http.Request, colle
 
 	var query string
 	if h.db.Dialect() == database.DialectPostgres {
-		query = fmt.Sprintf("UPDATE %s SET %s WHERE ulid = $%d",
+		query = fmt.Sprintf("UPDATE %s SET %s WHERE id = $%d",
 			collectionName,
 			strings.Join(setClauses, ", "),
 			i)
 	} else {
-		query = fmt.Sprintf("UPDATE %s SET %s WHERE ulid = ?",
+		query = fmt.Sprintf("UPDATE %s SET %s WHERE id = ?",
 			collectionName,
 			strings.Join(setClauses, ", "))
 	}
@@ -1125,12 +1125,12 @@ func (h *DataHandler) updateBatchAtomic(w http.ResponseWriter, ctx context.Conte
 
 		var query string
 		if h.db.Dialect() == database.DialectPostgres {
-			query = fmt.Sprintf("UPDATE %s SET %s WHERE ulid = $%d",
+			query = fmt.Sprintf("UPDATE %s SET %s WHERE id = $%d",
 				collectionName,
 				strings.Join(setClauses, ", "),
 				i)
 		} else {
-			query = fmt.Sprintf("UPDATE %s SET %s WHERE ulid = ?",
+			query = fmt.Sprintf("UPDATE %s SET %s WHERE id = ?",
 				collectionName,
 				strings.Join(setClauses, ", "))
 		}
@@ -1274,12 +1274,12 @@ func (h *DataHandler) updateBatchBestEffort(w http.ResponseWriter, ctx context.C
 
 		var query string
 		if h.db.Dialect() == database.DialectPostgres {
-			query = fmt.Sprintf("UPDATE %s SET %s WHERE ulid = $%d",
+			query = fmt.Sprintf("UPDATE %s SET %s WHERE id = $%d",
 				collectionName,
 				strings.Join(setClauses, ", "),
 				i)
 		} else {
-			query = fmt.Sprintf("UPDATE %s SET %s WHERE ulid = ?",
+			query = fmt.Sprintf("UPDATE %s SET %s WHERE id = ?",
 				collectionName,
 				strings.Join(setClauses, ", "))
 		}
@@ -1446,12 +1446,12 @@ func (h *DataHandler) destroySingleLegacy(w http.ResponseWriter, r *http.Request
 	}
 
 	// Build DELETE query using ULID
-	query := fmt.Sprintf("DELETE FROM %s WHERE ulid = ?", collectionName)
+	query := fmt.Sprintf("DELETE FROM %s WHERE id = ?", collectionName)
 	args := []any{req.ID}
 
 	// Adjust placeholder style based on dialect
 	if h.db.Dialect() == database.DialectPostgres {
-		query = fmt.Sprintf("DELETE FROM %s WHERE ulid = $1", collectionName)
+		query = fmt.Sprintf("DELETE FROM %s WHERE id = $1", collectionName)
 	}
 
 	// Execute delete
@@ -1495,12 +1495,12 @@ func (h *DataHandler) destroySingle(w http.ResponseWriter, r *http.Request, coll
 	}
 
 	// Build DELETE query using ULID
-	query := fmt.Sprintf("DELETE FROM %s WHERE ulid = ?", collectionName)
+	query := fmt.Sprintf("DELETE FROM %s WHERE id = ?", collectionName)
 	args := []any{id}
 
 	// Adjust placeholder style based on dialect
 	if h.db.Dialect() == database.DialectPostgres {
-		query = fmt.Sprintf("DELETE FROM %s WHERE ulid = $1", collectionName)
+		query = fmt.Sprintf("DELETE FROM %s WHERE id = $1", collectionName)
 	}
 
 	// Execute delete
@@ -1580,12 +1580,12 @@ func (h *DataHandler) destroyBatchAtomic(w http.ResponseWriter, ctx context.Cont
 
 	// Delete each item
 	for _, id := range ids {
-		query := fmt.Sprintf("DELETE FROM %s WHERE ulid = ?", collectionName)
+		query := fmt.Sprintf("DELETE FROM %s WHERE id = ?", collectionName)
 		args := []any{id}
 
 		// Adjust placeholder style based on dialect
 		if h.db.Dialect() == database.DialectPostgres {
-			query = fmt.Sprintf("DELETE FROM %s WHERE ulid = $1", collectionName)
+			query = fmt.Sprintf("DELETE FROM %s WHERE id = $1", collectionName)
 		}
 
 		// Execute delete within transaction
@@ -1643,12 +1643,12 @@ func (h *DataHandler) destroyBatchBestEffort(w http.ResponseWriter, ctx context.
 		}
 
 		// Build DELETE query using ULID
-		query := fmt.Sprintf("DELETE FROM %s WHERE ulid = ?", collectionName)
+		query := fmt.Sprintf("DELETE FROM %s WHERE id = ?", collectionName)
 		args := []any{id}
 
 		// Adjust placeholder style based on dialect
 		if h.db.Dialect() == database.DialectPostgres {
-			query = fmt.Sprintf("DELETE FROM %s WHERE ulid = $1", collectionName)
+			query = fmt.Sprintf("DELETE FROM %s WHERE id = $1", collectionName)
 		}
 
 		// Execute delete
@@ -1831,8 +1831,8 @@ func buildConditions(filters []filterParam, collection *registry.Collection) ([]
 	for _, col := range collection.Columns {
 		validColumns[col.Name] = col
 	}
-	// Also allow filtering by ulid
-	validColumns["ulid"] = registry.Column{Name: "ulid", Type: registry.TypeString}
+	// Also allow filtering by id (ULID column)
+	validColumns["id"] = registry.Column{Name: "id", Type: registry.TypeString}
 
 	for _, filter := range filters {
 		// Validate column exists in schema
@@ -1946,7 +1946,7 @@ func parseSort(r *http.Request) ([]sortField, error) {
 }
 
 // parseFields parses the fields query parameter
-// Returns nil to select all fields, or a list of requested fields (always includes ulid)
+// Returns nil to select all fields, or a list of requested fields (always includes id)
 func parseFields(r *http.Request, collection *registry.Collection) ([]string, error) {
 	fieldsParam := r.URL.Query().Get("fields")
 	if fieldsParam == "" {
@@ -1962,8 +1962,7 @@ func parseFields(r *http.Request, collection *registry.Collection) ([]string, er
 	for _, col := range collection.Columns {
 		validColumns[col.Name] = true
 	}
-	validColumns["ulid"] = true
-	validColumns["id"] = true // Allow "id" as alias for ulid
+	validColumns["id"] = true // The ULID column
 
 	// Validate and collect fields
 	fieldsMap := make(map[string]bool)
@@ -1973,11 +1972,6 @@ func parseFields(r *http.Request, collection *registry.Collection) ([]string, er
 			continue
 		}
 
-		// Map "id" to "ulid" internally
-		if field == "id" {
-			field = "ulid"
-		}
-
 		if !validColumns[field] {
 			return nil, fmt.Errorf("invalid field: %s", field)
 		}
@@ -1985,8 +1979,8 @@ func parseFields(r *http.Request, collection *registry.Collection) ([]string, er
 		fieldsMap[field] = true
 	}
 
-	// Always include ulid for pagination consistency
-	fieldsMap["ulid"] = true
+	// Always include id for pagination consistency
+	fieldsMap["id"] = true
 
 	// Convert map to slice
 	fields := make([]string, 0, len(fieldsMap))
@@ -2000,8 +1994,8 @@ func parseFields(r *http.Request, collection *registry.Collection) ([]string, er
 // buildOrderBy constructs ORDER BY clause from sort fields
 func buildOrderBy(sorts []sortField, collection *registry.Collection, builder query.Builder) (string, error) {
 	if len(sorts) == 0 {
-		// Default sorting by ulid
-		return "ulid ASC", nil
+		// Default sorting by id
+		return "id ASC", nil
 	}
 
 	// Create a map of valid column names
@@ -2009,8 +2003,8 @@ func buildOrderBy(sorts []sortField, collection *registry.Collection, builder qu
 	for _, col := range collection.Columns {
 		validColumns[col.Name] = true
 	}
-	// Also allow sorting by ulid
-	validColumns["ulid"] = true
+	// Also allow sorting by id (ULID column)
+	validColumns["id"] = true
 
 	var orderParts []string
 	for _, sort := range sorts {
@@ -2317,17 +2311,9 @@ func parseRows(rows *sql.Rows, collection *registry.Collection) ([]map[string]an
 				val = convertToBoolean(val)
 			}
 
-			// Map internal 'id' column to nothing (never expose it)
-			// Map 'ulid' column to 'id' in API response (per PRD requirement)
-			if col == "id" {
-				// Skip internal SQL id
-				continue
-			} else if col == "ulid" {
-				// Expose ulid as 'id' in API
-				rowData["id"] = val
-			} else {
-				rowData[col] = val
-			}
+			// The 'id' column in the database is exposed as 'id' in the API
+			// (no special mapping needed now that the column is named 'id')
+			rowData[col] = val
 		}
 
 		result = append(result, rowData)
@@ -2379,7 +2365,8 @@ func convertToBoolean(val any) bool {
 
 // validateFields validates request data against collection schema
 // requireAll: if true, requires all non-nullable fields to be present (for create operations)
-//             if false, only validates fields that are present (for update operations)
+//
+//	if false, only validates fields that are present (for update operations)
 func validateFields(data map[string]any, collection *registry.Collection) error {
 	return validateFieldsWithMode(data, collection, true)
 }
@@ -2396,9 +2383,8 @@ func validateFieldsWithMode(data map[string]any, collection *registry.Collection
 	for _, col := range collection.Columns {
 		validFields[col.Name] = true
 	}
-	// Allow system columns (id, ulid) in request data
+	// Allow id (ULID column) in request data
 	validFields["id"] = true
-	validFields["ulid"] = true
 
 	for field := range data {
 		if !validFields[field] {

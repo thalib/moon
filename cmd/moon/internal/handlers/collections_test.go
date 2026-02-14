@@ -499,9 +499,7 @@ func TestValidateColumnName(t *testing.T) {
 		// Invalid: length
 		{"too short", "ab", true, "at least 3"},
 
-		// Invalid: system columns (note: these are also too short, so length error comes first)
-		// Using a longer name that's still a system column concept
-		// Actually, id and ulid are both only 2-4 chars, so we need to test system column check separately
+		// Invalid: system columns (note: id is also too short, so length error comes first)
 
 		// Invalid: uppercase
 		{"starts uppercase", "Name", true, "lowercase"},
@@ -535,20 +533,12 @@ func TestValidateColumnName(t *testing.T) {
 
 // TestValidateColumnName_SystemColumns tests system column validation specifically
 func TestValidateColumnName_SystemColumns(t *testing.T) {
-	// "id" and "ulid" are system columns
-	// However, they are also too short (2 and 4 chars, min is 3)
+	// "id" is a system column
+	// However, it is also too short (2 chars, min is 3)
 	// So the length check fails first
 	err := validateColumnName("id")
 	if err == nil {
 		t.Error("Expected error for system column 'id'")
-	}
-
-	err = validateColumnName("ulid")
-	if err == nil {
-		t.Error("Expected error for system column 'ulid'")
-	}
-	if err != nil && !strings.Contains(err.Error(), "system column") {
-		t.Errorf("Expected system column error for 'ulid', got: %v", err)
 	}
 }
 
@@ -692,7 +682,6 @@ func TestUpdate_RemoveColumns_SystemColumn(t *testing.T) {
 		columnName string
 	}{
 		{"remove id", "id"},
-		{"remove ulid", "ulid"},
 	}
 
 	for _, tt := range tests {

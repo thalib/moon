@@ -705,11 +705,11 @@ func TestDataHandler_Create_IgnoresClientProvidedULID(t *testing.T) {
 	}
 	handler := NewDataHandler(driver, reg, testConfig())
 
-	// Client attempts to provide a ULID
-	clientProvidedULID := "01AAAAAAAAAAAAAAAAAAAAAAA"
+	// Client attempts to provide an ID
+	clientProvidedID := "01AAAAAAAAAAAAAAAAAAAAAAA"
 	reqBody := CreateDataRequest{
 		Data: map[string]any{
-			"ulid":  clientProvidedULID,
+			"id":    clientProvidedID,
 			"name":  "Test Product",
 			"price": 19,
 		},
@@ -737,22 +737,22 @@ func TestDataHandler_Create_IgnoresClientProvidedULID(t *testing.T) {
 		t.Errorf("expected ULID (26 chars), got %d chars: %v", len(idStr), idStr)
 	}
 
-	// Verify the server-generated ULID is different from the client-provided one
-	if idStr == clientProvidedULID {
-		t.Errorf("server should generate a new ULID, not use client-provided value")
+	// Verify the server-generated ID is different from the client-provided one
+	if idStr == clientProvidedID {
+		t.Errorf("server should generate a new ID, not use client-provided value")
 	}
 
-	// Verify the INSERT query used the server-generated ULID, not the client-provided one
+	// Verify the INSERT query used the server-generated ID, not the client-provided one
 	if len(capturedArgs) > 0 {
-		insertedULID, ok := capturedArgs[0].(string)
+		insertedID, ok := capturedArgs[0].(string)
 		if !ok {
-			t.Fatalf("expected first arg to be ULID string, got %T", capturedArgs[0])
+			t.Fatalf("expected first arg to be ID string, got %T", capturedArgs[0])
 		}
-		if insertedULID == clientProvidedULID {
-			t.Errorf("INSERT should use server-generated ULID, not client-provided value")
+		if insertedID == clientProvidedID {
+			t.Errorf("INSERT should use server-generated ID, not client-provided value")
 		}
-		if insertedULID != idStr {
-			t.Errorf("INSERT ULID (%s) should match response ULID (%s)", insertedULID, idStr)
+		if insertedID != idStr {
+			t.Errorf("INSERT ID (%s) should match response ID (%s)", insertedID, idStr)
 		}
 	}
 }
@@ -780,7 +780,7 @@ func TestDataHandler_Integration_SQLite(t *testing.T) {
 	// Create a test table
 	createTableSQL := `
 		CREATE TABLE products (
-			ulid TEXT PRIMARY KEY,
+			id TEXT PRIMARY KEY,
 			name TEXT NOT NULL,
 			price REAL NOT NULL
 		)
@@ -1317,7 +1317,7 @@ func TestBuildOrderBy(t *testing.T) {
 			name:     "No sorts - default",
 			sorts:    []sortField{},
 			dialect:  database.DialectSQLite,
-			expected: "ulid ASC",
+			expected: "id ASC",
 			wantErr:  false,
 		},
 		{
@@ -1367,12 +1367,12 @@ func TestBuildOrderBy(t *testing.T) {
 			wantErr:  false,
 		},
 		{
-			name: "Sort by ulid",
+			name: "Sort by id",
 			sorts: []sortField{
-				{column: "ulid", direction: "DESC"},
+				{column: "id", direction: "DESC"},
 			},
 			dialect:  database.DialectSQLite,
-			expected: "ulid DESC",
+			expected: "id DESC",
 			wantErr:  false,
 		},
 		{
@@ -1493,8 +1493,8 @@ func TestParseFields(t *testing.T) {
 			url:     "/products:list?fields=name",
 			wantErr: false,
 			checkFields: func(t *testing.T, fields []string) {
-				if len(fields) != 2 { // name + ulid
-					t.Errorf("expected 2 fields (name + ulid), got %d", len(fields))
+				if len(fields) != 2 { // name + id
+					t.Errorf("expected 2 fields (name + id), got %d", len(fields))
 				}
 			},
 		},
@@ -1503,7 +1503,7 @@ func TestParseFields(t *testing.T) {
 			url:     "/products:list?fields=name,price",
 			wantErr: false,
 			checkFields: func(t *testing.T, fields []string) {
-				if len(fields) != 3 { // name, price + ulid
+				if len(fields) != 3 { // name, price + id
 					t.Errorf("expected 3 fields, got %d", len(fields))
 				}
 			},
@@ -1513,25 +1513,25 @@ func TestParseFields(t *testing.T) {
 			url:     "/products:list?fields=name,price,stock",
 			wantErr: false,
 			checkFields: func(t *testing.T, fields []string) {
-				if len(fields) != 4 { // name, price, stock + ulid
+				if len(fields) != 4 { // name, price, stock + id
 					t.Errorf("expected 4 fields, got %d", len(fields))
 				}
 			},
 		},
 		{
-			name:    "Always includes ulid",
+			name:    "Always includes id",
 			url:     "/products:list?fields=name",
 			wantErr: false,
 			checkFields: func(t *testing.T, fields []string) {
-				hasUlid := false
+				hasID := false
 				for _, f := range fields {
-					if f == "ulid" {
-						hasUlid = true
+					if f == "id" {
+						hasID = true
 						break
 					}
 				}
-				if !hasUlid {
-					t.Error("ulid should always be included")
+				if !hasID {
+					t.Error("id should always be included")
 				}
 			},
 		},
@@ -1591,7 +1591,7 @@ func TestDataHandler_CursorPagination(t *testing.T) {
 	// Create a test table
 	createTableSQL := `
 CREATE TABLE test_pagination (
-ulid TEXT PRIMARY KEY,
+id TEXT PRIMARY KEY,
 name TEXT NOT NULL
 )
 `
@@ -1724,7 +1724,7 @@ name TEXT NOT NULL
 		// Create new table for this test
 		createSQL := `
 CREATE TABLE test_single (
-ulid TEXT PRIMARY KEY,
+id TEXT PRIMARY KEY,
 name TEXT NOT NULL
 )
 `
@@ -1780,7 +1780,7 @@ name TEXT NOT NULL
 		// Create new empty table
 		createSQL := `
 CREATE TABLE test_empty (
-ulid TEXT PRIMARY KEY,
+id TEXT PRIMARY KEY,
 name TEXT NOT NULL
 )
 `
@@ -1824,7 +1824,7 @@ name TEXT NOT NULL
 		// Create new table for this test
 		createSQL := `
 CREATE TABLE test_exact (
-ulid TEXT PRIMARY KEY,
+id TEXT PRIMARY KEY,
 name TEXT NOT NULL
 )
 `

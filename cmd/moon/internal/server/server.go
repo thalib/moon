@@ -372,7 +372,7 @@ func (s *Server) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			if err == nil && apiKeyObj != nil {
 				// Valid API key - create auth entity
 				entity := &middleware.AuthEntity{
-					ID:       apiKeyObj.ULID,
+					ID:       apiKeyObj.ID,
 					Type:     middleware.EntityTypeAPIKey,
 					Role:     apiKeyObj.Role,
 					CanWrite: apiKeyObj.CanWrite,
@@ -380,11 +380,11 @@ func (s *Server) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 				ctx = middleware.SetAuthEntity(ctx, entity)
 
 				// Update last used (non-blocking)
-				go func(id int64) {
-					if err := s.apiKeyRepo.UpdateLastUsed(context.Background(), id); err != nil {
+				go func(pkid int64) {
+					if err := s.apiKeyRepo.UpdateLastUsed(context.Background(), pkid); err != nil {
 						log.Printf("Failed to update API key last used: %v", err)
 					}
-				}(apiKeyObj.ID)
+				}(apiKeyObj.PKID)
 
 				next(w, r.WithContext(ctx))
 				return

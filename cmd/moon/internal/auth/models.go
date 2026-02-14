@@ -6,8 +6,8 @@ import (
 
 // User represents a user in the system.
 type User struct {
-	ID           int64      `json:"-"`
-	ULID         string     `json:"id"`
+	PKID         int64      `json:"-"`
+	ID           string     `json:"id"`
 	Username     string     `json:"username"`
 	Email        string     `json:"email"`
 	PasswordHash string     `json:"-"`
@@ -47,8 +47,8 @@ func IsValidRole(role string) bool {
 
 // RefreshToken represents a refresh token for JWT authentication.
 type RefreshToken struct {
-	ID         int64     `json:"-"`
-	UserID     int64     `json:"-"`
+	PKID       int64     `json:"-"`
+	UserPKID   int64     `json:"-"`
 	TokenHash  string    `json:"-"`
 	ExpiresAt  time.Time `json:"expires_at"`
 	CreatedAt  time.Time `json:"created_at"`
@@ -62,8 +62,8 @@ func (r *RefreshToken) IsExpired() bool {
 
 // APIKey represents an API key for programmatic access.
 type APIKey struct {
-	ID          int64      `json:"-"`
-	ULID        string     `json:"id"`
+	PKID        int64      `json:"-"`
+	ID          string     `json:"id"`
 	Name        string     `json:"name"`
 	Description string     `json:"description,omitempty"`
 	KeyHash     string     `json:"-"`

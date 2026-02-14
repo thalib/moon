@@ -34,8 +34,7 @@ func setupDataIntegrationTest(t *testing.T) (database.Driver, *registry.SchemaRe
 
 	// Create table
 	_, err = driver.Exec(ctx, `CREATE TABLE products (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		ulid TEXT NOT NULL UNIQUE,
+		id TEXT PRIMARY KEY,
 		name TEXT NOT NULL,
 		price INTEGER NOT NULL,
 		category TEXT,
@@ -171,7 +170,7 @@ func TestDataHandler_List_Integration(t *testing.T) {
 
 	// Insert test data directly
 	testProducts := []struct {
-		ulid     string
+		id       string
 		name     string
 		price    int
 		category string
@@ -184,8 +183,8 @@ func TestDataHandler_List_Integration(t *testing.T) {
 	}
 
 	for _, p := range testProducts {
-		_, err := driver.Exec(ctx, "INSERT INTO products (ulid, name, price, category) VALUES (?, ?, ?, ?)",
-			p.ulid, p.name, p.price, p.category)
+		_, err := driver.Exec(ctx, "INSERT INTO products (id, name, price, category) VALUES (?, ?, ?, ?)",
+			p.id, p.name, p.price, p.category)
 		if err != nil {
 			t.Fatalf("Failed to insert test data: %v", err)
 		}
@@ -248,7 +247,7 @@ func TestDataHandler_List_WithSort(t *testing.T) {
 
 	// Insert test data
 	testProducts := []struct {
-		ulid  string
+		id    string
 		name  string
 		price int
 	}{
@@ -258,8 +257,8 @@ func TestDataHandler_List_WithSort(t *testing.T) {
 	}
 
 	for _, p := range testProducts {
-		_, err := driver.Exec(ctx, "INSERT INTO products (ulid, name, price, category) VALUES (?, ?, ?, 'fruit')",
-			p.ulid, p.name, p.price)
+		_, err := driver.Exec(ctx, "INSERT INTO products (id, name, price, category) VALUES (?, ?, ?, 'fruit')",
+			p.id, p.name, p.price)
 		if err != nil {
 			t.Fatalf("Failed to insert: %v", err)
 		}
@@ -309,7 +308,7 @@ func TestDataHandler_List_WithSearch(t *testing.T) {
 
 	// Insert test data with varied names
 	testProducts := []struct {
-		ulid string
+		id   string
 		name string
 	}{
 		{"01ARYZ6S41TSV4RRFFQ69G5FA1", "Red Apple"},
@@ -319,8 +318,8 @@ func TestDataHandler_List_WithSearch(t *testing.T) {
 	}
 
 	for _, p := range testProducts {
-		_, err := driver.Exec(ctx, "INSERT INTO products (ulid, name, price, category) VALUES (?, ?, 10, 'fruit')",
-			p.ulid, p.name)
+		_, err := driver.Exec(ctx, "INSERT INTO products (id, name, price, category) VALUES (?, ?, 10, 'fruit')",
+			p.id, p.name)
 		if err != nil {
 			t.Fatalf("Failed to insert: %v", err)
 		}
@@ -352,7 +351,7 @@ func TestDataHandler_List_WithFields(t *testing.T) {
 	ctx := context.Background()
 
 	// Insert test data
-	_, err := driver.Exec(ctx, "INSERT INTO products (ulid, name, price, category) VALUES (?, ?, ?, ?)",
+	_, err := driver.Exec(ctx, "INSERT INTO products (id, name, price, category) VALUES (?, ?, ?, ?)",
 		"01ARYZ6S41TSV4RRFFQ69G5FA1", "Test", 100, "cat1")
 	if err != nil {
 		t.Fatalf("Failed to insert: %v", err)
@@ -371,7 +370,7 @@ func TestDataHandler_List_WithFields(t *testing.T) {
 	json.NewDecoder(w.Body).Decode(&resp)
 
 	if len(resp.Data) > 0 {
-		// Should have name and price, and possibly ulid (always included)
+		// Should have name and price, and possibly id (always included)
 		if _, hasName := resp.Data[0]["name"]; !hasName {
 			t.Error("Expected 'name' field in response")
 		}
@@ -381,12 +380,12 @@ func TestDataHandler_List_WithFields(t *testing.T) {
 	}
 }
 
-// TestDataHandler_Create_ClientULIDIgnored tests that client-provided IDs are handled properly
-func TestDataHandler_Create_ClientULIDIgnored(t *testing.T) {
+// TestDataHandler_Create_ClientIDIgnored tests that client-provided IDs are handled properly
+func TestDataHandler_Create_ClientIDIgnored(t *testing.T) {
 	driver, _, handler := setupDataIntegrationTest(t)
 	defer driver.Close()
 
-	// Provide valid fields only (no id or ulid as those are system fields)
+	// Provide valid fields only (no id as it is a system field)
 	createBody := CreateDataRequest{
 		Data: map[string]any{
 			"name":  "Test Product",
@@ -425,7 +424,7 @@ func TestDataHandler_BooleanResponseUniformity(t *testing.T) {
 
 	// Insert test data with boolean field set to 1 (SQLite representation)
 	testProducts := []struct {
-		ulid   string
+		id     string
 		name   string
 		active int
 	}{
@@ -434,15 +433,15 @@ func TestDataHandler_BooleanResponseUniformity(t *testing.T) {
 	}
 
 	for _, p := range testProducts {
-		_, err := driver.Exec(ctx, "INSERT INTO products (ulid, name, price, active) VALUES (?, ?, 10, ?)",
-			p.ulid, p.name, p.active)
+		_, err := driver.Exec(ctx, "INSERT INTO products (id, name, price, active) VALUES (?, ?, 10, ?)",
+			p.id, p.name, p.active)
 		if err != nil {
 			t.Fatalf("Failed to insert: %v", err)
 		}
 	}
 
 	// Test 1: Get single record and verify boolean is true, not 1
-	req := httptest.NewRequest(http.MethodGet, "/products:get?id="+testProducts[0].ulid, nil)
+	req := httptest.NewRequest(http.MethodGet, "/products:get?id="+testProducts[0].id, nil)
 	w := httptest.NewRecorder()
 	handler.Get(w, req, "products")
 
@@ -470,7 +469,7 @@ func TestDataHandler_BooleanResponseUniformity(t *testing.T) {
 	}
 
 	// Test 2: Get record with false value
-	req = httptest.NewRequest(http.MethodGet, "/products:get?id="+testProducts[1].ulid, nil)
+	req = httptest.NewRequest(http.MethodGet, "/products:get?id="+testProducts[1].id, nil)
 	w = httptest.NewRecorder()
 	handler.Get(w, req, "products")
 
@@ -521,7 +520,7 @@ func TestDataHandler_BooleanResponseUniformity(t *testing.T) {
 	}
 
 	// Test 4: Verify raw JSON contains literal true/false, not 1/0
-	req = httptest.NewRequest(http.MethodGet, "/products:get?id="+testProducts[0].ulid, nil)
+	req = httptest.NewRequest(http.MethodGet, "/products:get?id="+testProducts[0].id, nil)
 	w = httptest.NewRecorder()
 	handler.Get(w, req, "products")
 
@@ -546,7 +545,7 @@ func TestDataHandler_List_TotalField(t *testing.T) {
 
 	// Insert test data - 5 products
 	testProducts := []struct {
-		ulid     string
+		id       string
 		name     string
 		price    int
 		category string
@@ -559,8 +558,8 @@ func TestDataHandler_List_TotalField(t *testing.T) {
 	}
 
 	for _, p := range testProducts {
-		_, err := driver.Exec(ctx, "INSERT INTO products (ulid, name, price, category) VALUES (?, ?, ?, ?)",
-			p.ulid, p.name, p.price, p.category)
+		_, err := driver.Exec(ctx, "INSERT INTO products (id, name, price, category) VALUES (?, ?, ?, ?)",
+			p.id, p.name, p.price, p.category)
 		if err != nil {
 			t.Fatalf("Failed to insert: %v", err)
 		}
@@ -653,8 +652,7 @@ func TestDataHandler_List_TotalField(t *testing.T) {
 		reg.Set(emptyCollection)
 
 		_, err := driver.Exec(ctx, `CREATE TABLE empty_test (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			ulid TEXT NOT NULL UNIQUE,
+			id TEXT PRIMARY KEY,
 			name TEXT NOT NULL,
 			created_at TEXT,
 			updated_at TEXT

@@ -144,8 +144,8 @@ func (h *APIKeysHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 
 	keys, err := h.apiKeyRepo.ListPaginated(ctx, auth.APIKeyListOptions{
-		Limit:     limit + 1,
-		AfterULID: after,
+		Limit:   limit + 1,
+		AfterID: after,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to list API keys")
@@ -155,7 +155,7 @@ func (h *APIKeysHandler) List(w http.ResponseWriter, r *http.Request) {
 	var nextCursor *string
 	if len(keys) > limit {
 		keys = keys[:limit]
-		cursor := keys[len(keys)-1].ULID
+		cursor := keys[len(keys)-1].ID
 		nextCursor = &cursor
 	}
 
@@ -194,7 +194,7 @@ func (h *APIKeysHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	apiKey, err := h.apiKeyRepo.GetByULID(ctx, keyID)
+	apiKey, err := h.apiKeyRepo.GetByID(ctx, keyID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to get API key")
 		return
@@ -296,7 +296,7 @@ func (h *APIKeysHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.logAdminAction("apikey_created", claims.UserID, apiKey.ULID)
+	h.logAdminAction("apikey_created", claims.UserID, apiKey.ID)
 
 	writeJSON(w, http.StatusCreated, CreateAPIKeyResponse{
 		Message: "API key created successfully",
@@ -333,7 +333,7 @@ func (h *APIKeysHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	apiKey, err := h.apiKeyRepo.GetByULID(ctx, keyID)
+	apiKey, err := h.apiKeyRepo.GetByID(ctx, keyID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to get API key")
 		return
@@ -352,12 +352,12 @@ func (h *APIKeysHandler) Update(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if err := h.apiKeyRepo.UpdateKeyHash(ctx, apiKey.ID, keyHash); err != nil {
+		if err := h.apiKeyRepo.UpdateKeyHash(ctx, apiKey.PKID, keyHash); err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to rotate API key")
 			return
 		}
 
-		h.logAdminAction("apikey_rotated", claims.UserID, apiKey.ULID)
+		h.logAdminAction("apikey_rotated", claims.UserID, apiKey.ID)
 
 		writeJSON(w, http.StatusOK, UpdateAPIKeyResponse{
 			Message: "API key rotated successfully",
@@ -385,7 +385,7 @@ func (h *APIKeysHandler) Update(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Check if name exists for another key
-		exists, err := h.apiKeyRepo.NameExists(ctx, *req.Name, apiKey.ID)
+		exists, err := h.apiKeyRepo.NameExists(ctx, *req.Name, apiKey.PKID)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to check name")
 			return
@@ -424,7 +424,7 @@ func (h *APIKeysHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.logAdminAction("apikey_updated", claims.UserID, apiKey.ULID)
+	h.logAdminAction("apikey_updated", claims.UserID, apiKey.ID)
 
 	writeJSON(w, http.StatusOK, UpdateAPIKeyResponse{
 		Message: "API key updated successfully",
@@ -453,7 +453,7 @@ func (h *APIKeysHandler) Destroy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	apiKey, err := h.apiKeyRepo.GetByULID(ctx, keyID)
+	apiKey, err := h.apiKeyRepo.GetByID(ctx, keyID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to get API key")
 		return
@@ -464,7 +464,7 @@ func (h *APIKeysHandler) Destroy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.apiKeyRepo.Delete(ctx, apiKey.ID); err != nil {
+	if err := h.apiKeyRepo.Delete(ctx, apiKey.PKID); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to delete API key")
 		return
 	}
@@ -517,7 +517,7 @@ func (h *APIKeysHandler) logAdminAction(action, adminULID, targetULID string) {
 // apiKeyToPublicInfo converts an APIKey to public info.
 func apiKeyToPublicInfo(apiKey *auth.APIKey) APIKeyPublicInfo {
 	info := APIKeyPublicInfo{
-		ID:          apiKey.ULID,
+		ID:          apiKey.ID,
 		Name:        apiKey.Name,
 		Description: apiKey.Description,
 		Role:        apiKey.Role,

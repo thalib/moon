@@ -263,7 +263,7 @@ Moon enforces strict validation rules to ensure data integrity and prevent namin
 | Minimum length | 3 characters | Short names like `id`, `at` are not allowed |
 | Maximum length | 63 characters | Matches PostgreSQL identifier limit |
 | Pattern | `^[a-z][a-z0-9_]*$` | Lowercase only, must start with letter |
-| Reserved names | `id`, `ulid` | System columns, automatically created |
+| Reserved names | `pkid`, `id` | System columns, automatically created |
 | SQL keywords | 100+ keywords | Same list as collection names |
 
 **Important:** Unlike collection names, column names are NOT auto-normalized to lowercase. Uppercase characters will be rejected with an error.
@@ -883,10 +883,10 @@ batch:
 #### Identifiers
 
 - Records use a ULID as the external identifier.
-- The database stores an auto-increment `id` column (internal use only) and a `ulid` column (ULID string).
-- API responses expose the `ulid` column as `id` for simplicity.
-- The internal auto-increment `id` is never exposed via the API.
-- System columns (`id`, `ulid`) are automatically created and protected from modification, deletion, or renaming.
+- The database stores a `pkid` column (auto-increment integer, internal use only) and an `id` column (ULID string).
+- API responses expose the `id` column directly (which contains the ULID value).
+- The internal `pkid` column is never exposed via the API.
+- System columns (`pkid`, `id`) are automatically created and protected from modification, deletion, or renaming.
 
 #### Advanced Query Parameters for `/{name}:list`
 
@@ -926,7 +926,7 @@ The list endpoint supports powerful query parameters for filtering, sorting, sea
 
 **Cursor Pagination:**
 
-- Syntax: `?after=<ulid>`
+- Syntax: `?after=<id>` (ULID value from the `id` column)
 - Returns `next_cursor` in the response when more results are available
 - Example: `?after=01ARZ3NDEKTSV4RRFFQ69G5FBX`
 
@@ -1122,9 +1122,9 @@ The `POST /collections:update` endpoint supports comprehensive column lifecycle 
 Operations are executed in the following order: rename → modify → add → remove
 
 **IMPORTANT RULES**
-- System columns (`id`, `ulid`) are automatically created and protected from modification, deletion, or renaming.
-- The internal auto-increment column `id` is never exposed via the API.
-- API responses expose the `ulid` column as `id` for simplicity and consistency.
+- System columns (`pkid`, `id`) are automatically created and protected from modification, deletion, or renaming.
+- The internal `pkid` column (auto-increment integer) is never exposed via the API.
+- API responses expose the `id` column (ULID string) directly.
 
 **Request Body Structure:**
 
@@ -1219,9 +1219,9 @@ Operations are executed in the following order: rename → modify → add → re
 - Registry is atomically updated only after successful DDL execution
 - On failure, registry is rolled back to previous state
 - Descriptive errors returned for invalid operations
-- System columns (`id`, `ulid`) are automatically created and protected from modification, deletion, or renaming.
-- The internal auto-increment column `id` is never exposed via the API.
-- API responses expose the `ulid` column as `id` for simplicity and consistency.
+- System columns (`pkid`, `id`) are automatically created and protected from modification, deletion, or renaming.
+- The internal `pkid` column (auto-increment integer) is never exposed via the API.
+- API responses expose the `id` column (ULID string) directly.
 
 **Database Dialect Support:**
 

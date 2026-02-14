@@ -23,8 +23,8 @@ func GetSchemaSQL(dialect database.DialectType) []string {
 func getSQLiteSchema() []string {
 	return []string{
 		`CREATE TABLE IF NOT EXISTS ` + constants.TableUsers + ` (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			ulid TEXT NOT NULL UNIQUE,
+			pkid INTEGER PRIMARY KEY AUTOINCREMENT,
+			id TEXT NOT NULL UNIQUE,
 			username TEXT NOT NULL UNIQUE,
 			email TEXT NOT NULL UNIQUE,
 			password_hash TEXT NOT NULL,
@@ -34,26 +34,26 @@ func getSQLiteSchema() []string {
 			updated_at DATETIME NOT NULL,
 			last_login_at DATETIME
 		)`,
-		`CREATE INDEX IF NOT EXISTS idx_moon_users_ulid ON ` + constants.TableUsers + `(ulid)`,
+		`CREATE INDEX IF NOT EXISTS idx_moon_users_id ON ` + constants.TableUsers + `(id)`,
 		`CREATE INDEX IF NOT EXISTS idx_moon_users_username ON ` + constants.TableUsers + `(username)`,
 		`CREATE INDEX IF NOT EXISTS idx_moon_users_email ON ` + constants.TableUsers + `(email)`,
 
 		`CREATE TABLE IF NOT EXISTS ` + constants.TableRefreshTokens + ` (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			user_id INTEGER NOT NULL,
+			pkid INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_pkid INTEGER NOT NULL,
 			token_hash TEXT NOT NULL UNIQUE,
 			expires_at DATETIME NOT NULL,
 			created_at DATETIME NOT NULL,
 			last_used_at DATETIME NOT NULL,
-			FOREIGN KEY (user_id) REFERENCES ` + constants.TableUsers + `(id) ON DELETE CASCADE
+			FOREIGN KEY (user_pkid) REFERENCES ` + constants.TableUsers + `(pkid) ON DELETE CASCADE
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_moon_refresh_tokens_token_hash ON ` + constants.TableRefreshTokens + `(token_hash)`,
-		`CREATE INDEX IF NOT EXISTS idx_moon_refresh_tokens_user_id ON ` + constants.TableRefreshTokens + `(user_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_moon_refresh_tokens_user_pkid ON ` + constants.TableRefreshTokens + `(user_pkid)`,
 		`CREATE INDEX IF NOT EXISTS idx_moon_refresh_tokens_expires_at ON ` + constants.TableRefreshTokens + `(expires_at)`,
 
 		`CREATE TABLE IF NOT EXISTS ` + constants.TableAPIKeys + ` (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			ulid TEXT NOT NULL UNIQUE,
+			pkid INTEGER PRIMARY KEY AUTOINCREMENT,
+			id TEXT NOT NULL UNIQUE,
 			name TEXT NOT NULL,
 			description TEXT,
 			key_hash TEXT NOT NULL UNIQUE,
@@ -62,16 +62,16 @@ func getSQLiteSchema() []string {
 			created_at DATETIME NOT NULL,
 			last_used_at DATETIME
 		)`,
-		`CREATE INDEX IF NOT EXISTS idx_moon_apikeys_ulid ON ` + constants.TableAPIKeys + `(ulid)`,
+		`CREATE INDEX IF NOT EXISTS idx_moon_apikeys_id ON ` + constants.TableAPIKeys + `(id)`,
 		`CREATE INDEX IF NOT EXISTS idx_moon_apikeys_key_hash ON ` + constants.TableAPIKeys + `(key_hash)`,
 
 		`CREATE TABLE IF NOT EXISTS ` + constants.TableBlacklistedTokens + ` (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			pkid INTEGER PRIMARY KEY AUTOINCREMENT,
 			token_hash TEXT NOT NULL UNIQUE,
-			user_id INTEGER NOT NULL,
+			user_pkid INTEGER NOT NULL,
 			expires_at DATETIME NOT NULL,
 			created_at DATETIME NOT NULL,
-			FOREIGN KEY (user_id) REFERENCES ` + constants.TableUsers + `(id) ON DELETE CASCADE
+			FOREIGN KEY (user_pkid) REFERENCES ` + constants.TableUsers + `(pkid) ON DELETE CASCADE
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_moon_blacklisted_tokens_token_hash ON ` + constants.TableBlacklistedTokens + `(token_hash)`,
 		`CREATE INDEX IF NOT EXISTS idx_moon_blacklisted_tokens_expires_at ON ` + constants.TableBlacklistedTokens + `(expires_at)`,
@@ -81,8 +81,8 @@ func getSQLiteSchema() []string {
 func getPostgresSchema() []string {
 	return []string{
 		`CREATE TABLE IF NOT EXISTS ` + constants.TableUsers + ` (
-			id BIGSERIAL PRIMARY KEY,
-			ulid VARCHAR(26) NOT NULL UNIQUE,
+			pkid BIGSERIAL PRIMARY KEY,
+			id VARCHAR(26) NOT NULL UNIQUE,
 			username VARCHAR(255) NOT NULL UNIQUE,
 			email VARCHAR(255) NOT NULL UNIQUE,
 			password_hash VARCHAR(255) NOT NULL,
@@ -92,25 +92,25 @@ func getPostgresSchema() []string {
 			updated_at TIMESTAMP NOT NULL,
 			last_login_at TIMESTAMP
 		)`,
-		`CREATE INDEX IF NOT EXISTS idx_moon_users_ulid ON ` + constants.TableUsers + `(ulid)`,
+		`CREATE INDEX IF NOT EXISTS idx_moon_users_id ON ` + constants.TableUsers + `(id)`,
 		`CREATE INDEX IF NOT EXISTS idx_moon_users_username ON ` + constants.TableUsers + `(username)`,
 		`CREATE INDEX IF NOT EXISTS idx_moon_users_email ON ` + constants.TableUsers + `(email)`,
 
 		`CREATE TABLE IF NOT EXISTS ` + constants.TableRefreshTokens + ` (
-			id BIGSERIAL PRIMARY KEY,
-			user_id BIGINT NOT NULL REFERENCES ` + constants.TableUsers + `(id) ON DELETE CASCADE,
+			pkid BIGSERIAL PRIMARY KEY,
+			user_pkid BIGINT NOT NULL REFERENCES ` + constants.TableUsers + `(pkid) ON DELETE CASCADE,
 			token_hash VARCHAR(64) NOT NULL UNIQUE,
 			expires_at TIMESTAMP NOT NULL,
 			created_at TIMESTAMP NOT NULL,
 			last_used_at TIMESTAMP NOT NULL
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_moon_refresh_tokens_token_hash ON ` + constants.TableRefreshTokens + `(token_hash)`,
-		`CREATE INDEX IF NOT EXISTS idx_moon_refresh_tokens_user_id ON ` + constants.TableRefreshTokens + `(user_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_moon_refresh_tokens_user_pkid ON ` + constants.TableRefreshTokens + `(user_pkid)`,
 		`CREATE INDEX IF NOT EXISTS idx_moon_refresh_tokens_expires_at ON ` + constants.TableRefreshTokens + `(expires_at)`,
 
 		`CREATE TABLE IF NOT EXISTS ` + constants.TableAPIKeys + ` (
-			id BIGSERIAL PRIMARY KEY,
-			ulid VARCHAR(26) NOT NULL UNIQUE,
+			pkid BIGSERIAL PRIMARY KEY,
+			id VARCHAR(26) NOT NULL UNIQUE,
 			name VARCHAR(255) NOT NULL,
 			description TEXT,
 			key_hash VARCHAR(64) NOT NULL UNIQUE,
@@ -119,13 +119,13 @@ func getPostgresSchema() []string {
 			created_at TIMESTAMP NOT NULL,
 			last_used_at TIMESTAMP
 		)`,
-		`CREATE INDEX IF NOT EXISTS idx_moon_apikeys_ulid ON ` + constants.TableAPIKeys + `(ulid)`,
+		`CREATE INDEX IF NOT EXISTS idx_moon_apikeys_id ON ` + constants.TableAPIKeys + `(id)`,
 		`CREATE INDEX IF NOT EXISTS idx_moon_apikeys_key_hash ON ` + constants.TableAPIKeys + `(key_hash)`,
 
 		`CREATE TABLE IF NOT EXISTS ` + constants.TableBlacklistedTokens + ` (
-			id BIGSERIAL PRIMARY KEY,
+			pkid BIGSERIAL PRIMARY KEY,
 			token_hash VARCHAR(64) NOT NULL UNIQUE,
-			user_id BIGINT NOT NULL REFERENCES ` + constants.TableUsers + `(id) ON DELETE CASCADE,
+			user_pkid BIGINT NOT NULL REFERENCES ` + constants.TableUsers + `(pkid) ON DELETE CASCADE,
 			expires_at TIMESTAMP NOT NULL,
 			created_at TIMESTAMP NOT NULL
 		)`,
@@ -137,8 +137,8 @@ func getPostgresSchema() []string {
 func getMySQLSchema() []string {
 	return []string{
 		`CREATE TABLE IF NOT EXISTS ` + constants.TableUsers + ` (
-			id BIGINT AUTO_INCREMENT PRIMARY KEY,
-			ulid VARCHAR(26) NOT NULL UNIQUE,
+			pkid BIGINT AUTO_INCREMENT PRIMARY KEY,
+			id VARCHAR(26) NOT NULL UNIQUE,
 			username VARCHAR(255) NOT NULL UNIQUE,
 			email VARCHAR(255) NOT NULL UNIQUE,
 			password_hash VARCHAR(255) NOT NULL,
@@ -147,27 +147,27 @@ func getMySQLSchema() []string {
 			created_at DATETIME NOT NULL,
 			updated_at DATETIME NOT NULL,
 			last_login_at DATETIME,
-			INDEX idx_moon_users_ulid (ulid),
+			INDEX idx_moon_users_id (id),
 			INDEX idx_moon_users_username (username),
 			INDEX idx_moon_users_email (email)
 		)`,
 
 		`CREATE TABLE IF NOT EXISTS ` + constants.TableRefreshTokens + ` (
-			id BIGINT AUTO_INCREMENT PRIMARY KEY,
-			user_id BIGINT NOT NULL,
+			pkid BIGINT AUTO_INCREMENT PRIMARY KEY,
+			user_pkid BIGINT NOT NULL,
 			token_hash VARCHAR(64) NOT NULL UNIQUE,
 			expires_at DATETIME NOT NULL,
 			created_at DATETIME NOT NULL,
 			last_used_at DATETIME NOT NULL,
 			INDEX idx_moon_refresh_tokens_token_hash (token_hash),
-			INDEX idx_moon_refresh_tokens_user_id (user_id),
+			INDEX idx_moon_refresh_tokens_user_pkid (user_pkid),
 			INDEX idx_moon_refresh_tokens_expires_at (expires_at),
-			FOREIGN KEY (user_id) REFERENCES ` + constants.TableUsers + `(id) ON DELETE CASCADE
+			FOREIGN KEY (user_pkid) REFERENCES ` + constants.TableUsers + `(pkid) ON DELETE CASCADE
 		)`,
 
 		`CREATE TABLE IF NOT EXISTS ` + constants.TableAPIKeys + ` (
-			id BIGINT AUTO_INCREMENT PRIMARY KEY,
-			ulid VARCHAR(26) NOT NULL UNIQUE,
+			pkid BIGINT AUTO_INCREMENT PRIMARY KEY,
+			id VARCHAR(26) NOT NULL UNIQUE,
 			name VARCHAR(255) NOT NULL,
 			description TEXT,
 			key_hash VARCHAR(64) NOT NULL UNIQUE,
@@ -175,19 +175,19 @@ func getMySQLSchema() []string {
 			can_write BOOLEAN NOT NULL DEFAULT true,
 			created_at DATETIME NOT NULL,
 			last_used_at DATETIME,
-			INDEX idx_moon_apikeys_ulid (ulid),
+			INDEX idx_moon_apikeys_id (id),
 			INDEX idx_moon_apikeys_key_hash (key_hash)
 		)`,
 
 		`CREATE TABLE IF NOT EXISTS ` + constants.TableBlacklistedTokens + ` (
-			id BIGINT AUTO_INCREMENT PRIMARY KEY,
+			pkid BIGINT AUTO_INCREMENT PRIMARY KEY,
 			token_hash VARCHAR(64) NOT NULL UNIQUE,
-			user_id BIGINT NOT NULL,
+			user_pkid BIGINT NOT NULL,
 			expires_at DATETIME NOT NULL,
 			created_at DATETIME NOT NULL,
 			INDEX idx_moon_blacklisted_tokens_token_hash (token_hash),
 			INDEX idx_moon_blacklisted_tokens_expires_at (expires_at),
-			FOREIGN KEY (user_id) REFERENCES ` + constants.TableUsers + `(id) ON DELETE CASCADE
+			FOREIGN KEY (user_pkid) REFERENCES ` + constants.TableUsers + `(pkid) ON DELETE CASCADE
 		)`,
 	}
 }

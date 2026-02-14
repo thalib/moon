@@ -154,7 +154,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	// Store refresh token hash
 	refreshToken := &auth.RefreshToken{
-		UserID:    user.ID,
+		UserPKID:  user.PKID,
 		TokenHash: auth.HashToken(rawRefreshToken),
 		ExpiresAt: time.Now().Add(h.tokenService.RefreshExpiry()),
 	}
@@ -165,7 +165,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Update last login
-	if err := h.userRepo.UpdateLastLogin(ctx, user.ID); err != nil {
+	if err := h.userRepo.UpdateLastLogin(ctx, user.PKID); err != nil {
 		// Non-fatal error, log but continue
 	}
 
@@ -175,7 +175,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		ExpiresAt:    tokenPair.ExpiresAt,
 		TokenType:    tokenPair.TokenType,
 		User: UserInfo{
-			ID:       user.ULID,
+			ID:       user.ID,
 			Username: user.Username,
 			Email:    user.Email,
 			Role:     user.Role,
@@ -219,10 +219,10 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		claims, err := h.tokenService.ValidateAccessToken(accessToken)
 		if err == nil {
 			// Get user by ULID from claims
-			user, err := h.userRepo.GetByULID(ctx, claims.UserID)
+			user, err := h.userRepo.GetByID(ctx, claims.UserID)
 			if err == nil && user != nil {
 				expiresAt := claims.ExpiresAt.Time
-				_ = h.tokenBlacklist.Add(ctx, accessToken, user.ID, expiresAt)
+				_ = h.tokenBlacklist.Add(ctx, accessToken, user.PKID, expiresAt)
 			}
 		}
 	}
@@ -285,13 +285,13 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 
 	if refreshToken.IsExpired() {
 		// Delete expired token
-		h.tokenRepo.Delete(ctx, refreshToken.ID)
+		h.tokenRepo.Delete(ctx, refreshToken.PKID)
 		writeError(w, http.StatusUnauthorized, "refresh token expired")
 		return
 	}
 
 	// Get user
-	user, err := h.userRepo.GetByID(ctx, refreshToken.UserID)
+	user, err := h.userRepo.GetByPKID(ctx, refreshToken.UserPKID)
 	if err != nil || user == nil {
 		writeError(w, http.StatusUnauthorized, "user not found")
 		return
@@ -305,11 +305,11 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Delete old refresh token
-	h.tokenRepo.Delete(ctx, refreshToken.ID)
+	h.tokenRepo.Delete(ctx, refreshToken.PKID)
 
 	// Store new refresh token
 	newRefreshToken := &auth.RefreshToken{
-		UserID:    user.ID,
+		UserPKID:  user.PKID,
 		TokenHash: auth.HashToken(newRawRefreshToken),
 		ExpiresAt: time.Now().Add(h.tokenService.RefreshExpiry()),
 	}
@@ -325,7 +325,7 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 		ExpiresAt:    tokenPair.ExpiresAt,
 		TokenType:    tokenPair.TokenType,
 		User: UserInfo{
-			ID:       user.ULID,
+			ID:       user.ID,
 			Username: user.Username,
 			Email:    user.Email,
 			Role:     user.Role,
@@ -359,7 +359,7 @@ func (h *AuthHandler) GetMe(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
-	user, err := h.userRepo.GetByULID(ctx, userID)
+	user, err := h.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to get user")
 		return
@@ -371,7 +371,7 @@ func (h *AuthHandler) GetMe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := UserInfo{
-		ID:       user.ULID,
+		ID:       user.ID,
 		Username: user.Username,
 		Email:    user.Email,
 		Role:     user.Role,
@@ -398,7 +398,7 @@ func (h *AuthHandler) UpdateMe(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
-	user, err := h.userRepo.GetByULID(ctx, userID)
+	user, err := h.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to get user")
 		return
@@ -437,7 +437,7 @@ func (h *AuthHandler) UpdateMe(w http.ResponseWriter, r *http.Request) {
 		user.PasswordHash = newHash
 
 		// Password changed - revoke all refresh tokens to force re-login
-		if err := h.tokenRepo.DeleteAllByUserID(ctx, user.ID); err != nil {
+		if err := h.tokenRepo.DeleteAllByUserID(ctx, user.PKID); err != nil {
 			// Log but don't fail - password update is more important
 			writeError(w, http.StatusInternalServerError, "failed to revoke sessions")
 			return
@@ -449,7 +449,7 @@ func (h *AuthHandler) UpdateMe(w http.ResponseWriter, r *http.Request) {
 			claims, err := h.tokenService.ValidateAccessToken(accessToken)
 			if err == nil {
 				expiresAt := claims.ExpiresAt.Time
-				_ = h.tokenBlacklist.Add(ctx, accessToken, user.ID, expiresAt)
+				_ = h.tokenBlacklist.Add(ctx, accessToken, user.PKID, expiresAt)
 			}
 		}
 	}
@@ -461,7 +461,7 @@ func (h *AuthHandler) UpdateMe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := UserInfo{
-		ID:       user.ULID,
+		ID:       user.ID,
 		Username: user.Username,
 		Email:    user.Email,
 		Role:     user.Role,

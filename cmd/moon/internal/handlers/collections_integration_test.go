@@ -428,9 +428,9 @@ func TestCollectionsHandler_List_DetailedResponse(t *testing.T) {
 
 		// Insert records
 		for i := 0; i < cd.records; i++ {
-			insertSQL := fmt.Sprintf("INSERT INTO %s (ulid, data) VALUES (?, ?)", cd.name)
+			insertSQL := fmt.Sprintf("INSERT INTO %s (id, data) VALUES (?, ?)", cd.name)
 			if driver.Dialect() == database.DialectPostgres {
-				insertSQL = fmt.Sprintf("INSERT INTO %s (ulid, data) VALUES ($1, $2)", cd.name)
+				insertSQL = fmt.Sprintf("INSERT INTO %s (id, data) VALUES ($1, $2)", cd.name)
 			}
 			_, err := driver.Exec(ctx, insertSQL, ulidpkg.Generate(), fmt.Sprintf("record_%d", i))
 			if err != nil {

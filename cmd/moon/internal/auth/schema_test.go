@@ -16,13 +16,13 @@ func TestGetSchemaSQL_SQLite(t *testing.T) {
 	// Check for expected tables
 	var hasUsers, hasRefreshTokens, hasAPIKeys bool
 	for _, stmt := range stmts {
-		if contains(stmt, "CREATE TABLE IF NOT EXISTS users") {
+		if contains(stmt, "CREATE TABLE IF NOT EXISTS moon_users") {
 			hasUsers = true
 		}
-		if contains(stmt, "CREATE TABLE IF NOT EXISTS refresh_tokens") {
+		if contains(stmt, "CREATE TABLE IF NOT EXISTS moon_refresh_tokens") {
 			hasRefreshTokens = true
 		}
-		if contains(stmt, "CREATE TABLE IF NOT EXISTS apikeys") {
+		if contains(stmt, "CREATE TABLE IF NOT EXISTS moon_apikeys") {
 			hasAPIKeys = true
 		}
 	}
@@ -48,13 +48,13 @@ func TestGetSchemaSQL_Postgres(t *testing.T) {
 	// Check for expected tables
 	var hasUsers, hasRefreshTokens, hasAPIKeys bool
 	for _, stmt := range stmts {
-		if contains(stmt, "CREATE TABLE IF NOT EXISTS users") {
+		if contains(stmt, "CREATE TABLE IF NOT EXISTS moon_users") {
 			hasUsers = true
 		}
-		if contains(stmt, "CREATE TABLE IF NOT EXISTS refresh_tokens") {
+		if contains(stmt, "CREATE TABLE IF NOT EXISTS moon_refresh_tokens") {
 			hasRefreshTokens = true
 		}
-		if contains(stmt, "CREATE TABLE IF NOT EXISTS apikeys") {
+		if contains(stmt, "CREATE TABLE IF NOT EXISTS moon_apikeys") {
 			hasAPIKeys = true
 		}
 	}
@@ -92,13 +92,13 @@ func TestGetSchemaSQL_MySQL(t *testing.T) {
 	// Check for expected tables
 	var hasUsers, hasRefreshTokens, hasAPIKeys bool
 	for _, stmt := range stmts {
-		if contains(stmt, "CREATE TABLE IF NOT EXISTS users") {
+		if contains(stmt, "CREATE TABLE IF NOT EXISTS moon_users") {
 			hasUsers = true
 		}
-		if contains(stmt, "CREATE TABLE IF NOT EXISTS refresh_tokens") {
+		if contains(stmt, "CREATE TABLE IF NOT EXISTS moon_refresh_tokens") {
 			hasRefreshTokens = true
 		}
-		if contains(stmt, "CREATE TABLE IF NOT EXISTS apikeys") {
+		if contains(stmt, "CREATE TABLE IF NOT EXISTS moon_apikeys") {
 			hasAPIKeys = true
 		}
 	}
@@ -138,7 +138,7 @@ func TestGetSchemaSQL_ForeignKeys(t *testing.T) {
 
 		found := false
 		for _, stmt := range stmts {
-			if contains(stmt, "FOREIGN KEY") || contains(stmt, "REFERENCES users(id)") {
+			if contains(stmt, "FOREIGN KEY") || contains(stmt, "REFERENCES moon_users(pkid)") {
 				found = true
 				break
 			}

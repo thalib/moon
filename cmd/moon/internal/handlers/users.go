@@ -148,7 +148,7 @@ func (h *UsersHandler) List(w http.ResponseWriter, r *http.Request) {
 	// List users
 	users, err := h.userRepo.List(ctx, auth.ListOptions{
 		Limit:      limit + 1, // Fetch one extra to determine if there are more
-		AfterULID:  after,
+		AfterID:    after,
 		RoleFilter: roleFilter,
 	})
 	if err != nil {
@@ -160,7 +160,7 @@ func (h *UsersHandler) List(w http.ResponseWriter, r *http.Request) {
 	var nextCursor *string
 	if len(users) > limit {
 		users = users[:limit]
-		cursor := users[len(users)-1].ULID
+		cursor := users[len(users)-1].ID
 		nextCursor = &cursor
 	}
 
@@ -203,7 +203,7 @@ func (h *UsersHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get user
-	user, err := h.userRepo.GetByULID(ctx, userID)
+	user, err := h.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to get user")
 		return
@@ -328,7 +328,7 @@ func (h *UsersHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.logAdminAction("user_created", claims.UserID, user.ULID)
+	h.logAdminAction("user_created", claims.UserID, user.ID)
 
 	writeJSON(w, http.StatusCreated, CreateUserResponse{
 		Message: "user created successfully",
@@ -372,7 +372,7 @@ func (h *UsersHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get user
-	user, err := h.userRepo.GetByULID(ctx, userID)
+	user, err := h.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to get user")
 		return
@@ -410,7 +410,7 @@ func (h *UsersHandler) Update(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		h.logAdminAction("password_reset", claims.UserID, user.ULID)
+		h.logAdminAction("password_reset", claims.UserID, user.ID)
 
 		writeJSON(w, http.StatusOK, UpdateUserResponse{
 			Message: "password reset successfully",
@@ -420,12 +420,12 @@ func (h *UsersHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	case "revoke_sessions":
 		// Delete all refresh tokens for this user
-		if err := h.tokenRepo.DeleteByUserID(ctx, user.ID); err != nil {
+		if err := h.tokenRepo.DeleteByUserID(ctx, user.PKID); err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to revoke sessions")
 			return
 		}
 
-		h.logAdminAction("sessions_revoked", claims.UserID, user.ULID)
+		h.logAdminAction("sessions_revoked", claims.UserID, user.ID)
 
 		writeJSON(w, http.StatusOK, UpdateUserResponse{
 			Message: "all sessions revoked successfully",
@@ -451,7 +451,7 @@ func (h *UsersHandler) Update(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Check if email exists for another user
-		exists, err := h.userRepo.EmailExists(ctx, *req.Email, user.ID)
+		exists, err := h.userRepo.EmailExists(ctx, *req.Email, user.PKID)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to check email")
 			return
@@ -504,7 +504,7 @@ func (h *UsersHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.logAdminAction("user_updated", claims.UserID, user.ULID)
+	h.logAdminAction("user_updated", claims.UserID, user.ID)
 
 	writeJSON(w, http.StatusOK, UpdateUserResponse{
 		Message: "user updated successfully",
@@ -542,7 +542,7 @@ func (h *UsersHandler) Destroy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get user to check role
-	user, err := h.userRepo.GetByULID(ctx, userID)
+	user, err := h.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to get user")
 		return
@@ -567,13 +567,13 @@ func (h *UsersHandler) Destroy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Delete user's refresh tokens first (cascade)
-	if err := h.tokenRepo.DeleteByUserID(ctx, user.ID); err != nil {
+	if err := h.tokenRepo.DeleteByUserID(ctx, user.PKID); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to delete user sessions")
 		return
 	}
 
 	// Delete user
-	if err := h.userRepo.Delete(ctx, user.ID); err != nil {
+	if err := h.userRepo.Delete(ctx, user.PKID); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to delete user")
 		return
 	}
@@ -626,7 +626,7 @@ func (h *UsersHandler) logAdminAction(action, adminULID, targetULID string) {
 // userToPublicInfo converts a User to public info.
 func userToPublicInfo(user *auth.User) UserPublicInfo {
 	info := UserPublicInfo{
-		ID:        user.ULID,
+		ID:        user.ID,
 		Username:  user.Username,
 		Email:     user.Email,
 		Role:      user.Role,
