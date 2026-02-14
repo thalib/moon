@@ -886,6 +886,7 @@ batch:
 - The database stores an auto-increment `id` column (internal use only) and a `ulid` column (ULID string).
 - API responses expose the `ulid` column as `id` for simplicity.
 - The internal auto-increment `id` is never exposed via the API.
+- System columns (`id`, `ulid`) are automatically created and protected from modification, deletion, or renaming.
 
 #### Advanced Query Parameters for `/{name}:list`
 
@@ -1120,6 +1121,11 @@ The `POST /collections:update` endpoint supports comprehensive column lifecycle 
 **Operation Order:**
 Operations are executed in the following order: rename → modify → add → remove
 
+**IMPORTANT RULES**
+- System columns (`id`, `ulid`) are automatically created and protected from modification, deletion, or renaming.
+- The internal auto-increment column `id` is never exposed via the API.
+- API responses expose the `ulid` column as `id` for simplicity and consistency.
+
 **Request Body Structure:**
 
 ```json
@@ -1134,8 +1140,6 @@ Operations are executed in the following order: rename → modify → add → re
 
 **Add Columns:**
 
-**Important:** The `default` and `default_value` fields are **not allowed** in add column requests and will result in a 400 Bad Request error. Type defaults are automatically applied by the backend.
-
 ```json
 {
   "name": "products",
@@ -1145,7 +1149,6 @@ Operations are executed in the following order: rename → modify → add → re
       "type": "string",
       "nullable": true,
       "unique": false
-      // Note: default_value is NOT allowed - Type defaults are applied automatically
     }
   ]
 }
@@ -1160,7 +1163,6 @@ Operations are executed in the following order: rename → modify → add → re
 }
 ```
 
-- Cannot remove system columns (`id`, `ulid`)
 - Column must exist in collection
 
 **Rename Columns:**
@@ -1177,13 +1179,10 @@ Operations are executed in the following order: rename → modify → add → re
 }
 ```
 
-- Cannot rename system columns (`id`, `ulid`)
 - New name must not conflict with existing columns
 - Old column must exist
 
 **Modify Columns:**
-
-**Important:** The `default` and `default_value` fields are **not allowed** in modify column requests and will result in a 400 Bad Request error.
 
 ```json
 {
@@ -1194,16 +1193,13 @@ Operations are executed in the following order: rename → modify → add → re
       "type": "integer",
       "nullable": false,
       "unique": false
-      // Note: default_value is NOT allowed and will be rejected
     }
   ]
 }
 ```
 
-- Cannot modify system columns (`id`, `ulid`)
 - Column must exist
 - Type changes should be compatible with existing data
-- **Cannot set or modify `default` or `default_value` fields** - these are managed internally
 
 **Combined Operations Example:**
 
@@ -1222,8 +1218,10 @@ Operations are executed in the following order: rename → modify → add → re
 - All operations are validated before execution
 - Registry is atomically updated only after successful DDL execution
 - On failure, registry is rolled back to previous state
-- System columns (`id`, `ulid`) are protected from modification
 - Descriptive errors returned for invalid operations
+- System columns (`id`, `ulid`) are automatically created and protected from modification, deletion, or renaming.
+- The internal auto-increment column `id` is never exposed via the API.
+- API responses expose the `ulid` column as `id` for simplicity and consistency.
 
 **Database Dialect Support:**
 
