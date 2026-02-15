@@ -527,6 +527,7 @@ func (h *CollectionsHandler) Update(w http.ResponseWriter, r *http.Request) {
 		}
 
 		for _, col := range req.AddColumns {
+			// Step 1: Add the column without unique constraint
 			ddl := generateAddColumnDDL(req.Name, col, h.db.Dialect())
 			if _, err := h.db.Exec(ctx, ddl); err != nil {
 				// Rollback registry on failure
@@ -534,6 +535,20 @@ func (h *CollectionsHandler) Update(w http.ResponseWriter, r *http.Request) {
 				h.registry.Set(collection)
 				writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to add column '%s': %v", col.Name, err))
 				return
+			}
+
+			// Step 2: If unique constraint is needed, add it separately
+			if col.Unique {
+				uniqueDDL := generateAddUniqueConstraintDDL(req.Name, col.Name, h.db.Dialect())
+				if _, err := h.db.Exec(ctx, uniqueDDL); err != nil {
+					// Rollback: drop the column we just added, then rollback registry
+					dropDDL := generateDropColumnDDL(req.Name, col.Name, h.db.Dialect())
+					h.db.Exec(ctx, dropDDL) // Best effort cleanup
+					collection.Columns = originalColumns
+					h.registry.Set(collection)
+					writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to add unique constraint on column '%s': %v", col.Name, err))
+					return
+				}
 			}
 
 			collection.Columns = append(collection.Columns, col)
@@ -1113,6 +1128,8 @@ func generateCreateTableDDL(tableName string, columns []registry.Column, dialect
 }
 
 // generateAddColumnDDL generates ALTER TABLE ADD COLUMN DDL
+// Note: UNIQUE constraint is NOT included here, as it's not portable across all databases.
+// Use generateAddUniqueConstraintDDL separately to add unique constraints.
 func generateAddColumnDDL(tableName string, column registry.Column, dialect database.DialectType) string {
 	var sb strings.Builder
 
@@ -1123,9 +1140,7 @@ func generateAddColumnDDL(tableName string, column registry.Column, dialect data
 		sb.WriteString(" NOT NULL")
 	}
 
-	if column.Unique {
-		sb.WriteString(" UNIQUE")
-	}
+	// UNIQUE constraint removed from here - handled separately by generateAddUniqueConstraintDDL
 
 	if column.DefaultValue != nil {
 		sb.WriteString(" DEFAULT ")
@@ -1133,6 +1148,26 @@ func generateAddColumnDDL(tableName string, column registry.Column, dialect data
 	}
 
 	return sb.String()
+}
+
+// generateAddUniqueConstraintDDL generates DDL to add a unique constraint/index to an existing column
+// This is called after the column has been added via generateAddColumnDDL
+func generateAddUniqueConstraintDDL(tableName string, columnName string, dialect database.DialectType) string {
+	switch dialect {
+	case database.DialectSQLite:
+		// SQLite doesn't support ALTER TABLE ADD CONSTRAINT for UNIQUE
+		// Use CREATE UNIQUE INDEX instead
+		indexName := fmt.Sprintf("idx_%s_%s", tableName, columnName)
+		return fmt.Sprintf("CREATE UNIQUE INDEX %s ON %s(%s)", indexName, tableName, columnName)
+	case database.DialectPostgres, database.DialectMySQL:
+		// PostgreSQL and MySQL support ADD CONSTRAINT
+		constraintName := fmt.Sprintf("%s_%s_unique", tableName, columnName)
+		return fmt.Sprintf("ALTER TABLE %s ADD CONSTRAINT %s UNIQUE(%s)", tableName, constraintName, columnName)
+	default:
+		// Fallback to constraint syntax
+		constraintName := fmt.Sprintf("%s_%s_unique", tableName, columnName)
+		return fmt.Sprintf("ALTER TABLE %s ADD CONSTRAINT %s UNIQUE(%s)", tableName, constraintName, columnName)
+	}
 }
 
 // generateDropColumnDDL generates ALTER TABLE DROP COLUMN DDL

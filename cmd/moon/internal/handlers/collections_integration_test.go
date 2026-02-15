@@ -706,3 +706,88 @@ func TestSystemColumnsProtection_Integration(t *testing.T) {
 		}
 	})
 }
+
+// TestCollectionsHandler_AddUniqueColumn_Integration tests adding a unique column via Update
+func TestCollectionsHandler_AddUniqueColumn_Integration(t *testing.T) {
+	driver := createTestDBForCollections(t)
+	defer driver.Close()
+
+	reg := registry.NewSchemaRegistry()
+	handler := NewCollectionsHandler(driver, reg)
+
+	// First create a collection
+	createBody := map[string]any{
+		"name": "products",
+		"columns": []map[string]any{
+			{"name": "title", "type": "string", "nullable": false},
+		},
+	}
+	body, _ := json.Marshal(createBody)
+	req := httptest.NewRequest(http.MethodPost, "/collections:create", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+	handler.Create(w, req)
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("Failed to create collection: %s", w.Body.String())
+	}
+
+	// Now add a unique column
+	updateBody := map[string]any{
+		"name": "products",
+		"add_columns": []map[string]any{
+			{"name": "slug", "type": "string", "nullable": false, "unique": true},
+		},
+	}
+	body, _ = json.Marshal(updateBody)
+	req = httptest.NewRequest(http.MethodPost, "/collections:update", bytes.NewReader(body))
+	w = httptest.NewRecorder()
+	handler.Update(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected status %d, got %d. Body: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	// Verify column was added
+	collection, _ := reg.Get("products")
+	if collection == nil {
+		t.Fatal("Collection not found")
+	}
+
+	hasSlug := false
+	for _, col := range collection.Columns {
+		if col.Name == "slug" {
+			hasSlug = true
+			if !col.Unique {
+				t.Error("Expected 'slug' column to have unique constraint")
+			}
+			break
+		}
+	}
+	if !hasSlug {
+		t.Error("Expected 'slug' column to be added")
+	}
+
+	// Verify the unique constraint works by trying to insert duplicate values
+	ctx := context.Background()
+
+	// Insert a record with a specific slug
+	_, err := driver.Exec(ctx, "INSERT INTO products (id, title, slug) VALUES (?, ?, ?)",
+		ulidpkg.Generate(), "Product 1", "test-slug")
+	if err != nil {
+		t.Fatalf("Failed to insert first record: %v", err)
+	}
+
+	// Try to insert another record with the same slug - should fail
+	_, err = driver.Exec(ctx, "INSERT INTO products (id, title, slug) VALUES (?, ?, ?)",
+		ulidpkg.Generate(), "Product 2", "test-slug")
+	if err == nil {
+		t.Error("Expected duplicate slug to fail, but it succeeded")
+	}
+
+	// Verify that different slug works
+	_, err = driver.Exec(ctx, "INSERT INTO products (id, title, slug) VALUES (?, ?, ?)",
+		ulidpkg.Generate(), "Product 3", "different-slug")
+	if err != nil {
+		t.Errorf("Failed to insert record with different slug: %v", err)
+	}
+}
