@@ -642,6 +642,109 @@ func TestGenerateDDL(t *testing.T) {
 	}
 }
 
+// TestGenerateAddColumnDDL tests the generateAddColumnDDL function
+func TestGenerateAddColumnDDL(t *testing.T) {
+	tests := []struct {
+		name        string
+		dialect     database.DialectType
+		column      registry.Column
+		contains    []string
+		notContains []string
+	}{
+		{
+			name:        "SQLite - basic column",
+			dialect:     database.DialectSQLite,
+			column:      registry.Column{Name: "test_col", Type: registry.TypeString, Nullable: false},
+			contains:    []string{"ALTER TABLE", "ADD COLUMN", "test_col", "TEXT", "NOT NULL"},
+			notContains: []string{"UNIQUE"},
+		},
+		{
+			name:        "SQLite - column with unique (should not include UNIQUE)",
+			dialect:     database.DialectSQLite,
+			column:      registry.Column{Name: "slug", Type: registry.TypeString, Nullable: false, Unique: true},
+			contains:    []string{"ALTER TABLE", "ADD COLUMN", "slug", "TEXT", "NOT NULL"},
+			notContains: []string{"UNIQUE"},
+		},
+		{
+			name:        "PostgreSQL - column with unique (should not include UNIQUE)",
+			dialect:     database.DialectPostgres,
+			column:      registry.Column{Name: "email", Type: registry.TypeString, Nullable: false, Unique: true},
+			contains:    []string{"ALTER TABLE", "ADD COLUMN", "email", "TEXT", "NOT NULL"},
+			notContains: []string{"UNIQUE"},
+		},
+		{
+			name:        "MySQL - column with unique (should not include UNIQUE)",
+			dialect:     database.DialectMySQL,
+			column:      registry.Column{Name: "code", Type: registry.TypeString, Nullable: false, Unique: true},
+			contains:    []string{"ALTER TABLE", "ADD COLUMN", "code", "TEXT", "NOT NULL"},
+			notContains: []string{"UNIQUE"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ddl := generateAddColumnDDL("test_table", tt.column, tt.dialect)
+
+			for _, expected := range tt.contains {
+				if !strings.Contains(ddl, expected) {
+					t.Errorf("Expected DDL to contain '%s', got: %s", expected, ddl)
+				}
+			}
+
+			for _, notExpected := range tt.notContains {
+				if strings.Contains(ddl, notExpected) {
+					t.Errorf("Expected DDL NOT to contain '%s', got: %s", notExpected, ddl)
+				}
+			}
+		})
+	}
+}
+
+// TestGenerateAddUniqueConstraintDDL tests the generateAddUniqueConstraintDDL function
+func TestGenerateAddUniqueConstraintDDL(t *testing.T) {
+	tests := []struct {
+		name       string
+		dialect    database.DialectType
+		tableName  string
+		columnName string
+		contains   []string
+	}{
+		{
+			name:       "SQLite - uses CREATE UNIQUE INDEX",
+			dialect:    database.DialectSQLite,
+			tableName:  "products",
+			columnName: "slug",
+			contains:   []string{"CREATE UNIQUE INDEX", "idx_products_slug", "ON products(slug)"},
+		},
+		{
+			name:       "PostgreSQL - uses ALTER TABLE ADD CONSTRAINT",
+			dialect:    database.DialectPostgres,
+			tableName:  "users",
+			columnName: "email",
+			contains:   []string{"ALTER TABLE users", "ADD CONSTRAINT", "users_email_unique", "UNIQUE(email)"},
+		},
+		{
+			name:       "MySQL - uses ALTER TABLE ADD CONSTRAINT",
+			dialect:    database.DialectMySQL,
+			tableName:  "orders",
+			columnName: "code",
+			contains:   []string{"ALTER TABLE orders", "ADD CONSTRAINT", "orders_code_unique", "UNIQUE(code)"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ddl := generateAddUniqueConstraintDDL(tt.tableName, tt.columnName, tt.dialect)
+
+			for _, expected := range tt.contains {
+				if !strings.Contains(ddl, expected) {
+					t.Errorf("Expected DDL to contain '%s', got: %s", expected, ddl)
+				}
+			}
+		})
+	}
+}
+
 // Tests for Remove Columns functionality
 func TestUpdate_RemoveColumns_Success(t *testing.T) {
 	handler, driver := setupTestHandler(t)
